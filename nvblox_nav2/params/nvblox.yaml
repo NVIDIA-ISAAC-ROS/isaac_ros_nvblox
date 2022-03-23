@@ -1,0 +1,22 @@
+nvblox_node:
+  ros__parameters:
+    global_frame: odom
+    voxel_size: 0.10
+    slice_height: 0.75
+    min_height: 0.05
+    max_height: 1.0
+    esdf: true
+    esdf_2d: true
+    mesh: true
+    distance_slice: true
+    tsdf_integrator_max_integration_distance_m: 5.0
+    tsdf_integrator_truncation_distance_vox: 4.0
+    tsdf_integrator_max_weight: 20.0
+    esdf_integrator_min_weight: 2.0
+    esdf_integrator_max_distance_m: 2.0
+    esdf_integrator_min_site_distance_vox: 1.0
+    max_tsdf_update_hz: 0.0
+    max_color_update_hz: 5.0
+    max_mesh_update_hz: 0.0
+    max_esdf_update_hz: 0.0
+    output_dir: /tmp/
