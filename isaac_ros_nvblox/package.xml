@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+
+<!--
+Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+
+NVIDIA CORPORATION and its licensors retain all intellectual property
+and proprietary rights in and to this software, related documentation
+and any modifications thereto.  Any use, reproduction, disclosure or
+distribution of this software and related documentation without an express
+license agreement from NVIDIA CORPORATION is strictly prohibited.
+-->
+
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>isaac_ros_nvblox</name>
+  <version>0.9.3</version>
+  <description>Nvblox ROS2 metapackage</description>
+
+  <maintainer email="holeynikova@nvidia.com">Helen Oleynikova</maintainer>
+  <license>NVIDIA Isaac ROS Software License</license>
+  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
+  <author>Helen Oleynikova</author>
+  <author>Alexander Millane</author>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>nvblox_ros</depend>
+  <depend>nvblox_msgs</depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
