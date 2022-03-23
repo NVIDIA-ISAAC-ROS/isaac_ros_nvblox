@@ -1,0 +1,12 @@
+<library path="nvblox_rviz_plugin">
+  <class
+    name="nvblox_rviz_plugin/NvbloxMesh"
+    type="nvblox_rviz_plugin::NvbloxMeshDisplay"
+    base_class_type="rviz_common::Display"
+  >
+    <description>
+      Displays incremental nvblox mesh messages.
+    </description>
+    <message_type>nvblox_msgs/msg/Mesh</message_type>
+  </class>
+</library>

@@ -1,0 +1,5 @@
+<library path="nvblox_nav2">
+  <class name="nvblox::nav2::NvbloxCostmapLayer" type="nvblox::nav2::NvbloxCostmapLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>Costmap layer that consumes Nvblox slices and outputs Nav2 costmaps.</description>
+  </class>
+</library>
