@@ -42,11 +42,7 @@ In addition to their use in reconstruction, distance fields are also useful for 
 
 
 # System Requirements
-This Isaac ROS package is designed and tested to be compatible with ROS2 Foxy on Jetson hardware.
-
-## Jetson
-- [Jetson AGX Xavier or Xavier NX](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/)
-- [JetPack 4.6.1](https://developer.nvidia.com/embedded/jetpack)
+This Isaac ROS package is designed and tested to be compatible with ROS2 Foxy, on x86, and on Jetson hardware.
 
 ## x86_64
 - Ubuntu 20.04+
@@ -54,12 +50,24 @@ This Isaac ROS package is designed and tested to be compatible with ROS2 Foxy on
 
 **Note:** If running [Isaac Sim](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/requirements.html), more VRAM would be required.
 
+## Jetson
+- [Jetson AGX Xavier or Xavier NX](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/)
+- [JetPack 4.6.1](https://developer.nvidia.com/embedded/jetpack)
+
 **Note:** For best performance on Jetson, ensure that power settings are configured appropriately ([Power Management for Jetson](https://docs.nvidia.com/jetson/l4t/index.html#page/Tegra%20Linux%20Driver%20Package%20Development%20Guide/power_management_jetson_xavier.html#wwpID0EUHA)).
 
-### Docker
-Precompiled ROS2 Foxy packages are not available for JetPack 4.6.1 (based on Ubuntu 18.04 Bionic). You can either manually compile ROS2 Foxy and required dependent packages from source or use the Isaac ROS development Docker image from [Isaac ROS Common](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common).
+## Docker
 
-You must first install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) to make use of the Docker container development/runtime environment.
+A docker based build can be used on both x86 and Jetson platforms. However, there is a particular impetus to consider it for building on Jetson platforms.
+
+JetPack 4.6.1, which currently ships with Jetson, is based on Ubuntu 18.04, and nvblox requires ROS2 Foxy, which is targeted at Ubuntu 20.04. Therefore, to use nvblox on jetson you have two options:
+
+* manually compile ROS2 Foxy and required dependent packages from source
+* or use the Isaac ROS development Docker image from [Isaac ROS Common](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common).
+
+We recommend the second option.
+
+The Jetson issue aside, to use the Isaac ROS development Docker image, you must first install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) to make use of the Docker container development/runtime environment.
 
 Configure `nvidia-container-runtime` as the default runtime for Docker by editing `/etc/docker/daemon.json` to include the following:
 ```
@@ -73,12 +81,7 @@ Configure `nvidia-container-runtime` as the default runtime for Docker by editin
 ```
 Then restart Docker: `sudo systemctl daemon-reload && sudo systemctl restart docker`
 
-Run the following script in `isaac_ros_common` to build the image and launch the container:
-
-`$ scripts/run_dev.sh <optional path>`
-
-You can either provide an optional path to mirror in your host ROS workspace with Isaac ROS packages, which will be made available in the container as `/workspaces/isaac_ros-dev`, or you can set up a new workspace in the container.
-
+Installing the Isaac ROS development Docker image is described [below](#isaac-ros-docker-setup).
 
 # Guided Tutorial: Nvblox with Nav2 and Isaac Sim
 In this example, we will use nvblox to build a reconstruction from simulation data streamed from [Isaac Sim](https://developer.nvidia.com/isaac-sim). Data will flow from the simulator to nvblox using ROS2 and the ``isaac_ros_nvblox`` interface.
@@ -127,7 +130,9 @@ The following instructions perform a Docker-based build. For a native build, fol
 
 ### Isaac ROS Docker Setup
 
-Clone the `isaac_ros_common` repo into a folder called `isaac_ros-dev`.
+First install the [Nvidia Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) as described [above](#docker).
+
+Clone the `isaac_ros_common` repo into a folder on your system at `~/workspaces/isaac_ros-dev/ros_ws/src`.
 
 ```
 mkdir -p ~/workspaces/isaac_ros-dev/ros_ws/src
@@ -135,9 +140,14 @@ cd ~/workspaces/isaac_ros-dev/ros_ws/src
 git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
 ```
 
-Follow the guide on the link to set up the `isaac_ros-dev` docker: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
+Clone the nvblox into `~/workspaces/isaac_ros-dev/ros_ws/src`. This folder will be mapped by the docker container as a ROS workspace.
 
-Start the Docker instance by navigating to the installed workspace and running the start script:
+```
+cd ~/workspaces/isaac_ros-dev/ros_ws/src
+git clone --recurse-submodules https://gitlab-master.nvidia.com/isaac_ros/isaac_ros_nvblox.git
+```
+
+Start the Docker instance by running the start script:
 
 ```
 ~/workspaces/isaac_ros-dev/ros_ws/src/isaac_ros_common/scripts/run_dev.sh
@@ -156,7 +166,7 @@ To build the code, first navigate to `/workspaces/isaac_ros-dev/ros_ws` inside t
 colcon build --packages-up-to nvblox_nav2 nvblox_ros nvblox_msgs nvblox_rviz_plugin
 ```
 
-All tests should pass.
+All built packages should succeed.
 
 ## Running the Simulation (on the Host) and the Reconstruction (in the Docker)
 For this example, you will need two terminals. In the first terminal, you will run Isaac Sim.
@@ -193,7 +203,7 @@ You should see the robot reconstructing a mesh, with a costmap overlaid on top. 
 in the command window at the top and select a goal in the main window. You should then see the robot plan a green path toward the
 goal and navigate there, both in rviz and in simulation.
 
-![readme_nav2](/uploads/0845bcad4f3d9ab05bbba0dbe3a659d7/readme_nav2.gif)
+<div align="center"><img src="docs/images/readme_nav2.gif" width=800px/></div>
 
 # Additional Notes
 
