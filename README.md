@@ -145,6 +145,8 @@ Clone the nvblox into `~/workspaces/isaac_ros-dev/ros_ws/src`. This folder will 
 ```
 cd ~/workspaces/isaac_ros-dev/ros_ws/src
 git clone --recurse-submodules https://gitlab-master.nvidia.com/isaac_ros/isaac_ros_nvblox.git
+cd isaac_ros_nvblox
+git lfs pull
 ```
 
 Start the Docker instance by running the start script:

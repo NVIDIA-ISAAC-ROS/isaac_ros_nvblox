@@ -1,4 +1,4 @@
 [submodule "nvblox"]
 	path = nvblox
-	url = git@github.com:nvidia-isaac/nvblox.git
+	url = https://github.com/nvidia-isaac/nvblox.git
 	branch = isaac_ros

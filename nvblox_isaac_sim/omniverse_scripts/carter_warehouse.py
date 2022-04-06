@@ -41,7 +41,7 @@ def setup_carter_sensors(
     if carter_version == 2:
         left_cam = "ROS_Stereo_Camera_Left"
         right_cam = "ROS_Stereo_Camera_Right"
-        left_cam_path = "chassis_link/stereo_cam_right/stereo_cam_right_sensor_frame/camera_sensor_left"
+        left_cam_path = "chassis_link/stereo_cam_left/stereo_cam_left_sensor_frame/camera_sensor_left"
         right_cam_path = "chassis_link/stereo_cam_right/stereo_cam_right_sensor_frame/camera_sensor_right"
         stereo_offset = -32.985  # TODO: double check this one
 
