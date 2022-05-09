@@ -15,8 +15,6 @@
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
-#include <nvblox/nvblox.h>
-#include <tf2_eigen/tf2_eigen.h>
 
 #include <libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -24,6 +22,7 @@
 #include <sensor_msgs/msg/image.hpp>
 #include <std_msgs/msg/string.hpp>
 #include <std_srvs/srv/empty.hpp>
+#include <tf2_eigen/tf2_eigen.h>
 
 #include <chrono>
 #include <deque>
@@ -31,6 +30,8 @@
 #include <memory>
 #include <string>
 #include <utility>
+
+#include <nvblox/nvblox.h>
 
 #include "nvblox_ros/conversions.hpp"
 #include "nvblox_ros/transformer.hpp"
@@ -42,6 +43,7 @@ class NvbloxNode : public rclcpp::Node
 {
 public:
   NvbloxNode();
+  virtual ~NvbloxNode() = default;
 
   // Callback functions. These just stick images in a queue.
   void depthImageCallback(
@@ -59,6 +61,14 @@ public:
   // transforms are available.
   void processDepthQueue();
   void processColorQueue();
+
+  // Process a single images
+  virtual bool processDepthImage(
+    sensor_msgs::msg::Image::ConstSharedPtr & depth_img_ptr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg);
+  virtual bool processColorImage(
+    sensor_msgs::msg::Image::ConstSharedPtr & color_img_ptr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg);
 
 private:
   // Helper functions to make the code more readable.

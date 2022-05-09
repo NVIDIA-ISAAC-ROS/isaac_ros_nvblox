@@ -17,6 +17,6 @@ nvblox_node:
     esdf_integrator_min_site_distance_vox: 1.0
     max_tsdf_update_hz: 0.0
     max_color_update_hz: 5.0
-    max_mesh_update_hz: 0.0
-    max_esdf_update_hz: 0.0
+    max_mesh_update_hz: 1.0
+    max_esdf_update_hz: 10.0
     output_dir: /tmp/

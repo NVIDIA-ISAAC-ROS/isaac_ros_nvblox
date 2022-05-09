@@ -74,7 +74,7 @@ class IsaacROSNvBloxTest(IsaacROSBaseTest):
 
     @ IsaacROSBaseTest.for_each_test_case('rosbags')
     def test_nvblox_node(self, test_folder):
-        TIMEOUT = 60
+        TIMEOUT = 50
         received_messages = {}
         self.generate_namespace_lookup(
             ['nvblox_node/mesh', 'nvblox_node/map_slice'], _TEST_CASE_NAMESPACE)

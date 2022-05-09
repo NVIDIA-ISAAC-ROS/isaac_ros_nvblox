@@ -252,7 +252,7 @@ bool RosConverter::depthImageFromImageMessage(
         reinterpret_cast<const uint16_t*>(&image_msg->data[0]);
     const int numel = image_msg->height * image_msg->width;
 
-    bool kUseCuda = true;
+    bool kUseCuda = false;
     if (kUseCuda) {
       // Make sure there's enough output space.
       if (depth_image->numel() < numel) {
