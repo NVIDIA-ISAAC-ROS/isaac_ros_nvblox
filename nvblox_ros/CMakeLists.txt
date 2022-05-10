@@ -35,20 +35,8 @@ find_package(tf2_ros REQUIRED)
 find_package(tf2_eigen REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(libstatistics_collector REQUIRED)
-
-# Process nvblox
-set(NVBLOX_DIR ../nvblox/nvblox)
-
-# Disable tests and experiments
-set(BUILD_EXPERIMENTS OFF)
-set(BUILD_TESTS OFF)
-
-# Direct the child cmake to install eigen to the devel space.
-# Note that we put it in the include/nvblox_ros directory, which should stop it
-# colliding with other versions of eigen used by other catkin packages.
-set(NVBLOX_EIGEN_AMENT_INCLUDE_DESTINATION "${CMAKE_INSTALL_PREFIX}")
-set(EIGEN_INCLUDE_DESTINATION "${NVBLOX_EIGEN_AMENT_INCLUDE_DESTINATION}")
-set(STDGPU_INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX})
+find_package(message_filters REQUIRED)
+find_package(nvblox REQUIRED)
 
 ########
 # CUDA #
@@ -56,28 +44,37 @@ set(STDGPU_INSTALL_DESTINATION ${CMAKE_INSTALL_PREFIX})
 set(CMAKE_CUDA_FLAGS "${CMAKE_CUDA_FLAGS} --expt-relaxed-constexpr -Xcudafe --display_error_number --disable-warnings ")
 set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --compiler-options -fPIC")
 
-##########
-# NVBLOX #
-##########
-add_subdirectory(${NVBLOX_DIR} nvblox)
-
-include_directories(AFTER include)
-
-
 #############
 # LIBRARIES #
 #############
 add_library(${PROJECT_NAME}_lib SHARED
-  src/conversions.cpp
-  src/cuda/conversions.cu
-  src/transformer.cpp
+  src/lib/conversions.cpp
+  src/lib/cuda/conversions.cu
+  src/lib/transformer.cpp
+  src/lib/nvblox_node.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox_interface)
+target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen)
 ament_target_dependencies(${PROJECT_NAME}_lib
-    sensor_msgs
-    geometry_msgs
-    nvblox_msgs
+  nvblox
+  sensor_msgs
+  geometry_msgs
+  nvblox_msgs
+  rclcpp
+  std_msgs
+  std_srvs
+  tf2_ros
+  message_filters
 )
+target_include_directories(${PROJECT_NAME}_lib PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE 
+  $<TARGET_PROPERTY:nvblox::nvblox_eigen,INTERFACE_INCLUDE_DIRECTORIES>)
+
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
+  get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)
+  set_target_properties(${PROJECT_NAME}_lib PROPERTIES CUDA_ARCHITECTURES ${CUDA_ARCHS}) 
+endif()
 
 ############
 # BINARIES #
@@ -86,38 +83,32 @@ add_executable(nvblox_node
   src/nvblox_node.cpp
 )
 target_link_libraries(nvblox_node ${PROJECT_NAME}_lib)
-ament_target_dependencies(nvblox_node rclcpp std_msgs std_srvs sensor_msgs tf2_ros tf2_eigen)
 
 add_executable(3dmatch_node
   src/3dmatch_node.cpp
 )
 target_link_libraries(3dmatch_node ${PROJECT_NAME}_lib)
-ament_target_dependencies(3dmatch_node rclcpp std_msgs sensor_msgs tf2_ros tf2_eigen)
-
 
 ###########
 # INSTALL #
 ###########
-# catkin_simple doesn't manage everything in our case, where we're installing
-# not only the ros package nvblox_ros, but it's dependancies from nvblox.
-# We therefore export the nvblox target along with the nvblox_ros stuff.
-get_target_property(nvblox_INCLUDES nvblox_interface INTERFACE_INCLUDE_DIRECTORIES)
-
+# Install includes.
 install(
   DIRECTORY include/
   DESTINATION include
 )
 
+# Install the library target.
 install(
-  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_gpu_hash nvblox_cuda_check
-  EXPORT nvbloxTargets
+  TARGETS ${PROJECT_NAME}_lib
+  EXPORT ${PROJECT_NAME}Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
   RUNTIME DESTINATION bin
   INCLUDES DESTINATION include
 )
 
-# Install nodes
+# Install nodes which live in lib for some reason.
 install(
   TARGETS nvblox_node 3dmatch_node
   DESTINATION lib/${PROJECT_NAME}
@@ -135,4 +126,21 @@ endif()
 ##########
 # EXPORT #
 ##########
+ament_export_include_directories(
+  include
+)
+ament_export_libraries(
+  ${PROJECT_NAME}_lib
+)
+ament_export_targets(
+  ${PROJECT_NAME}Targets
+)
+
+ament_export_dependencies(
+  nvblox
+  tf2_ros
+  message_filters
+  libstatistics_collector
+)
+
 ament_package()
