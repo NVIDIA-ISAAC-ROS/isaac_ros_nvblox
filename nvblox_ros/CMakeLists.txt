@@ -36,6 +36,7 @@ find_package(tf2_eigen REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
+find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
 
 ########
@@ -63,17 +64,18 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   std_msgs
   std_srvs
   tf2_ros
+  tf2_eigen
   message_filters
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
-target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE 
+target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE
   $<TARGET_PROPERTY:nvblox::nvblox_eigen,INTERFACE_INCLUDE_DIRECTORIES>)
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
   get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)
-  set_target_properties(${PROJECT_NAME}_lib PROPERTIES CUDA_ARCHITECTURES ${CUDA_ARCHS}) 
+  set_target_properties(${PROJECT_NAME}_lib PROPERTIES CUDA_ARCHITECTURES ${CUDA_ARCHS})
 endif()
 
 ############

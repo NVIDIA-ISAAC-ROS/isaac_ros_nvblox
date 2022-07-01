@@ -17,7 +17,7 @@ def load_scenario(simulation_app: SimulationApp, scenario_path: str):
     result, nucleus_server = find_nucleus_server()
     if result is False:
         carb.log_error(
-            "Could not find nucleus server with /Isaac folder, exiting")
+            'Could not find nucleus server with /Isaac folder, exiting')
         simulation_app.close()
         exit()
 
@@ -28,14 +28,14 @@ def load_scenario(simulation_app: SimulationApp, scenario_path: str):
     simulation_app.update()
     simulation_app.update()
 
-    print("Loading stage...")
+    print('Loading stage...')
     from omni.isaac.core.utils.stage import is_stage_loading
     while is_stage_loading():
         simulation_app.update()
-    print("Loading Complete")
+    print('Loading Complete')
 
-    print("Loading stage units")
+    print('Loading stage units')
     from omni.isaac.core.utils.stage import get_stage_units
     stage_units_m = get_stage_units()
-    print(f"stage_units: {stage_units_m}")
+    print(f'stage_units: {stage_units_m}')
     return stage_units_m

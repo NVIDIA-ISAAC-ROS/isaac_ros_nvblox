@@ -11,18 +11,11 @@
 #ifndef NVBLOX_ROS__NVBLOX_NODE_HPP_
 #define NVBLOX_ROS__NVBLOX_NODE_HPP_
 
+#include <nvblox/nvblox.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/sync_policies/exact_time.h>
 #include <message_filters/synchronizer.h>
-
-#include <libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp>
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/camera_info.hpp>
-#include <sensor_msgs/msg/image.hpp>
-#include <std_msgs/msg/string.hpp>
-#include <std_srvs/srv/empty.hpp>
-#include <tf2_eigen/tf2_eigen.h>
 
 #include <chrono>
 #include <deque>
@@ -31,7 +24,13 @@
 #include <string>
 #include <utility>
 
-#include <nvblox/nvblox.h>
+#include <libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <std_srvs/srv/empty.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include "nvblox_ros/conversions.hpp"
 #include "nvblox_ros/transformer.hpp"

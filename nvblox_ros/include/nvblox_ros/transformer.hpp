@@ -12,17 +12,17 @@
 #define NVBLOX_ROS__TRANSFORMER_HPP_
 
 #include <nvblox/core/types.h>
-#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
-
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
 
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
+
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 namespace nvblox
 {
