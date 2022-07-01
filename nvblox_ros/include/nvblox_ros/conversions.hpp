@@ -13,14 +13,14 @@
 
 #include <nvblox/nvblox.h>
 
+#include <string>
+#include <vector>
+
 #include <nvblox_msgs/msg/distance_map_slice.hpp>
 #include <nvblox_msgs/msg/mesh.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-
-#include <string>
-#include <vector>
 
 namespace nvblox
 {

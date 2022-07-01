@@ -39,6 +39,7 @@ public:
     int min_j, int max_i, int max_j) override;
 
   void reset() override {}
+  bool isClearable() override {return true;}
 
   void sliceCallback(
     const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice);

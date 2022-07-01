@@ -10,11 +10,11 @@
 
 #include <glog/logging.h>
 
+#include <nvblox/core/cuda/warmup.h>
+
 #include <memory>
 
 #include <rclcpp/rclcpp.hpp>
-
-#include <nvblox/core/cuda/warmup.h>
 
 #include "nvblox_ros/nvblox_node.hpp"
 

@@ -18,5 +18,5 @@ setup(
     description='Tools for demonstrating nvblox integration with Isaac Sim',
     license='NVIDIA Isaac ROS Software License',
     tests_require=['pytest'],
-    entry_points={ },
+    entry_points={},
 )

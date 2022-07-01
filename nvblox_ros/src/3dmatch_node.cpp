@@ -14,19 +14,18 @@
 #include <nvblox/datasets/parse_3dmatch.h>
 #include <nvblox/nvblox.h>
 #include <nvblox/utils/timing.h>
-
-
-#include <rclcpp/rclcpp.hpp>
-#include <sensor_msgs/msg/camera_info.hpp>
-#include <sensor_msgs/msg/image.hpp>
-#include <std_msgs/msg/string.hpp>
-#include <tf2_eigen/tf2_eigen.h>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
 #include <memory>
 #include <string>
 #include <vector>
+
+#include <rclcpp/rclcpp.hpp>
+#include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <std_msgs/msg/string.hpp>
+#include <tf2_eigen/tf2_eigen.hpp>
 
 #include "nvblox_ros/conversions.hpp"
 
