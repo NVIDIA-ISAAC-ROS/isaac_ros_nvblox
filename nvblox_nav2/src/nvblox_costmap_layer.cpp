@@ -54,6 +54,7 @@ void NvbloxCostmapLayer::onInitialize()
     std::bind(
       &NvbloxCostmapLayer::sliceCallback, this,
       std::placeholders::_1));
+  current_ = true;
 }
 
 // The method is called to ask the plugin: which area of costmap it needs to
@@ -158,6 +159,7 @@ void NvbloxCostmapLayer::updateCosts(
   // the max across all costmaps.
   updateWithMax(master_grid, min_i, min_j, max_i, max_j);
   RCLCPP_DEBUG(node->get_logger(), "Finished updating.");
+  current_ = true;
 }
 
 void NvbloxCostmapLayer::sliceCallback(

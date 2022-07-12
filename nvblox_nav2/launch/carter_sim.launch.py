@@ -19,9 +19,6 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-
-    use_sim_time = LaunchConfiguration('use_sim_time', default='True')
-
     param_dir = LaunchConfiguration(
         'params_file',
         default=os.path.join(
@@ -43,8 +40,6 @@ def generate_launch_description():
     rviz_config_dir = os.path.join(get_package_share_directory(
         'nvblox_nav2'), 'config', 'carter_nvblox_nav2.rviz')
 
-    lifecycle_nodes = ['map_server']
-
     return LaunchDescription(
         [
             DeclareLaunchArgument(
@@ -59,13 +54,6 @@ def generate_launch_description():
             DeclareLaunchArgument(
                 'run_nav2', default_value='True',
                 description='Whether to run nav2'),
-            Node(
-                package='nav2_lifecycle_manager', executable='lifecycle_manager',
-                name='lifecycle_manager_map', output='screen',
-                parameters=[{'use_sim_time': use_sim_time},
-                            {'autostart': True},
-                            {'node_names': lifecycle_nodes}],
-                condition=IfCondition(LaunchConfiguration('run_nav2'))),
             IncludeLaunchDescription(
                 PythonLaunchDescriptionSource(
                     os.path.join(nav2_bringup_launch_dir, 'rviz_launch.py')),
@@ -77,25 +65,24 @@ def generate_launch_description():
                 PythonLaunchDescriptionSource(
                     os.path.join(
                         nav2_bringup_launch_dir, 'navigation_launch.py')),
-                launch_arguments={'use_sim_time': use_sim_time,
-                                  'params_file': param_dir, 'autostart': 'True'}.items(),
-                condition=IfCondition(
-                    LaunchConfiguration('run_nav2')),
-            ),
+                launch_arguments={
+                    'use_sim_time': LaunchConfiguration('use_sim_time'),
+                    'params_file': param_dir, 'autostart': 'True',
+                    'use_composition': 'False'}.items(),
+                condition=IfCondition(LaunchConfiguration('run_nav2')),),
             Node(
                 package='nvblox_ros', executable='nvblox_node',
-                parameters=[nvblox_param_dir, {'use_sim_time': use_sim_time}],
+                parameters=[nvblox_param_dir,
+                            {'use_sim_time': LaunchConfiguration('use_sim_time')}],
                 output='screen',
-                remappings=[('depth/image', '/left/depth'),
-                            ('depth/camera_info', '/left/camera_info'),
-                            ('color/image', '/left/rgb'),
-                            ('color/camera_info', '/left/camera_info'), ]),
+                remappings=[('depth/image', '/depth_left'),
+                            ('depth/camera_info', '/camera_info_left'),
+                            ('color/image', '/rgb_left'),
+                            ('color/camera_info', '/camera_info_left'), ]),
             Node(
                 package='tf2_ros', executable='static_transform_publisher',
-                parameters=[{'use_sim_time': use_sim_time}],
+                parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
                 output='screen',
                 arguments=['0.0', '0.0', '-0.3', '0.0', '0.0', '0.0', 'map',
                            'odom'],
-                condition=IfCondition(
-                    LaunchConfiguration('run_nav2'))),
-        ])
+                condition=IfCondition(LaunchConfiguration('run_nav2'))), ])
