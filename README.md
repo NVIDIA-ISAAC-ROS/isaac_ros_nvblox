@@ -22,6 +22,7 @@ The figure below shows a simple system utilizing nvblox for path planning.
     - [Docker](#docker)
   - [Quickstart](#quickstart)
   - [Next Steps](#next-steps)
+    - [Try More Examples](#try-more-examples)
     - [Customize your Dev Environment](#customize-your-dev-environment)
   - [Package Reference](#package-reference)
     - [`nvblox_nav2`](#nvblox_nav2)
@@ -86,7 +87,7 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
     ```bash
     cd /workspaces/isaac_ros-dev/ && \
-        rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv"
+        rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv nvblox"
     ```
     
 6. Build and source the workspace:  
@@ -115,11 +116,14 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
 10. In the **second terminal**, play the ROS Bag:
     ```bash
-    ros2 bag play src/isaac_ros_nvblox/nvblox_nav2/test/test_cases/rosbags/nvblox_pol
+    ros2 bag play src/isaac_ros_nvblox/nvblox_nav2/test/test_cases/rosbags/nvblox_pol --remap left/depth:=depth_left left/camera_info:=camera_info_left left/rgb:=rgb_left
     ```
 You should see the robot reconstructing a mesh, with a costmap overlaid on top.
 
 ## Next Steps
+### Try More Examples
+To continue your exploration, check out the following suggested examples:
+- [Tutorial with Isaac Sim](./docs/tutorial-isaac-sim.md)
 ### Customize your Dev Environment
 To customize your development environment, reference [this guide](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/modify-dockerfile.md).
 

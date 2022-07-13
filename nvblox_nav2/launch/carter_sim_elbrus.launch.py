@@ -122,7 +122,8 @@ def generate_launch_description():
                     os.path.join(
                         nav2_bringup_launch_dir, 'navigation_launch.py')),
                 launch_arguments={'use_sim_time': use_sim_time,
-                                  'params_file': param_dir, 'autostart': 'True'}.items(),
+                                  'params_file': param_dir,
+                                  'autostart': 'True'}.items(),
                 condition=IfCondition(
                     LaunchConfiguration('run_nav2'))
             ),
