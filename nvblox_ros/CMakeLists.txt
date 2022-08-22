@@ -38,6 +38,7 @@ find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
+find_package(glog REQUIRED)
 
 ########
 # CUDA #
