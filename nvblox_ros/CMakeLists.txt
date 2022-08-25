@@ -39,6 +39,7 @@ find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
 find_package(glog REQUIRED)
+find_package(cuda_image_convert REQUIRED)
 
 ########
 # CUDA #
@@ -55,7 +56,7 @@ add_library(${PROJECT_NAME}_lib SHARED
   src/lib/transformer.cpp
   src/lib/nvblox_node.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen)
+target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen cuda_image_convert)
 ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox
   sensor_msgs
@@ -67,6 +68,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   tf2_ros
   tf2_eigen
   message_filters
+  cuda_image_convert
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
