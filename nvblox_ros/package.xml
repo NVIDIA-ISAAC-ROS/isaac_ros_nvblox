@@ -13,7 +13,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros</name>
-  <version>0.9.3</version>
+  <version>0.11.0</version>
   <description>NVBlox ROS2 interface</description>
 
   <maintainer email="holeynikova@nvidia.com">Helen Oleynikova</maintainer>
@@ -32,14 +32,15 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
   <depend>rclcpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
+  <depend>visualization_msgs</depend>
   <depend>std_srvs</depend>
-  <depend>tf2_eigen</depend>
   <depend>tf2_ros</depend>
   <depend>message_filters</depend>
   <depend>nvblox</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
+  <test_depend>isaac_ros_test</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

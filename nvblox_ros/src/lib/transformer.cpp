@@ -83,17 +83,14 @@ void Transformer::transformCallback(
 {
   rclcpp::Time timestamp = transform_msg->header.stamp;
   transform_queue_[timestamp.nanoseconds()] =
-    tf2::transformToEigen(*transform_msg).matrix().cast<float>();
+    transformToEigen(transform_msg->transform);
 }
 
 void Transformer::poseCallback(
   const geometry_msgs::msg::PoseStamped::ConstSharedPtr transform_msg)
 {
   rclcpp::Time timestamp = transform_msg->header.stamp;
-  Eigen::Affine3d T_G_P_double;
-  Eigen::fromMsg(transform_msg->pose, T_G_P_double);
-  transform_queue_[timestamp.nanoseconds()] =
-    T_G_P_double.matrix().cast<float>();
+  transform_queue_[timestamp.nanoseconds()] = poseToEigen(transform_msg->pose);
 }
 
 bool Transformer::lookupTransformTf(
@@ -113,7 +110,7 @@ bool Transformer::lookupTransformTf(
     return false;
   }
 
-  *transform = tf2::transformToEigen(T_S_C_msg).matrix().cast<float>();
+  *transform = transformToEigen(T_S_C_msg.transform);
   return true;
 }
 
@@ -167,6 +164,27 @@ bool Transformer::lookupSensorTransform(
     *transform = it->second;
     return true;
   }
+}
+
+Transform Transformer::transformToEigen(
+  const geometry_msgs::msg::Transform & msg) const
+{
+  return Transform(
+    Eigen::Translation3f(
+      msg.translation.x, msg.translation.y,
+      msg.translation.z) *
+    Eigen::Quaternionf(
+      msg.rotation.w, msg.rotation.x,
+      msg.rotation.y, msg.rotation.z));
+}
+
+Transform Transformer::poseToEigen(const geometry_msgs::msg::Pose & msg) const
+{
+  return Transform(
+    Eigen::Translation3d(msg.position.x, msg.position.y, msg.position.z) *
+    Eigen::Quaterniond(
+      msg.orientation.w, msg.orientation.x,
+      msg.orientation.y, msg.orientation.z));
 }
 
 }  // namespace nvblox
