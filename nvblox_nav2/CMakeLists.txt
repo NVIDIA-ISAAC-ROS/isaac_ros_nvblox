@@ -65,10 +65,6 @@ install(DIRECTORY
   config
   DESTINATION share/${PROJECT_NAME}
 )
-install(DIRECTORY
-  test
-  DESTINATION share/${PROJECT_NAME}
-)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
@@ -76,9 +72,6 @@ if(BUILD_TESTING)
   # Ignore copyright notices since we use custom NVIDIA Isaac ROS Software License
   set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
-
-  find_package(launch_testing_ament_cmake REQUIRED)
-  add_launch_test(test/isaac_ros_nvblox_pol.py)
 endif()
 
 # === Ament work ===

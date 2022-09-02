@@ -8,13 +8,16 @@
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
 
+#include "nvblox_ros/conversions.hpp"
+
 #include <glog/logging.h>
+
 #include <nvblox/core/bounding_boxes.h>
 
 #include <string>
 #include <vector>
 
-#include "nvblox_ros/conversions.hpp"
+#include <sensor_msgs/point_cloud2_iterator.hpp>
 
 namespace nvblox
 {
@@ -80,7 +83,8 @@ void RosConverter::meshMessageFromMeshLayer(
 void RosConverter::meshMessageFromMeshBlocks(
   const BlockLayer<MeshBlock> & mesh_layer,
   const std::vector<Index3D> & block_indices,
-  nvblox_msgs::msg::Mesh * mesh_msg)
+  nvblox_msgs::msg::Mesh * mesh_msg,
+  const std::vector<Index3D> & block_indices_to_delete)
 {
   // Go through all the blocks, converting each individual one.
   mesh_msg->block_size = mesh_layer.block_size();
@@ -99,6 +103,11 @@ void RosConverter::meshMessageFromMeshBlocks(
 
     // Convert the actual block.
     meshBlockMessageFromMeshBlock(*mesh_block, &mesh_msg->blocks[i]);
+  }
+
+  for (const Index3D & block_index : block_indices_to_delete) {
+    mesh_msg->block_indices.push_back(index3DMessageFromIndex3D(block_index));
+    mesh_msg->blocks.push_back(nvblox_msgs::msg::MeshBlock());
   }
 }
 
@@ -172,6 +181,117 @@ void RosConverter::distanceMapSliceFromLayer(
     cudaMemcpy(
       map_slice->data.data(), image.dataPtr(),
       image.numel() * sizeof(float), cudaMemcpyDefault));
+}
+
+// Convert a mesh to a marker array.
+void RosConverter::markerMessageFromMeshLayer(
+  const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
+  visualization_msgs::msg::MarkerArray * marker_msg)
+{
+  // Get all the mesh blocks.
+  std::vector<Index3D> indices = mesh_layer.getAllBlockIndices();
+
+  marker_msg->markers.resize(indices.size());
+
+  size_t output_index = 0;
+  for (size_t i = 0; i < indices.size(); i++) {
+    MeshBlock::ConstPtr mesh_block = mesh_layer.getBlockAtIndex(indices[i]);
+    if (mesh_block->size() == 0) {
+      continue;
+    }
+    markerMessageFromMeshBlock(
+      mesh_block, frame_id,
+      &marker_msg->markers[output_index]);
+    marker_msg->markers[output_index].id = output_index;
+    std::stringstream ns_stream;
+    ns_stream << indices[i].x() << "_" << indices[i].y() << "_" <<
+      indices[i].z();
+    marker_msg->markers[output_index].ns = ns_stream.str();
+    output_index++;
+  }
+  marker_msg->markers.resize(output_index);
+}
+
+void RosConverter::markerMessageFromMeshBlock(
+  const MeshBlock::ConstPtr & mesh_block, const std::string & frame_id,
+  visualization_msgs::msg::Marker * marker)
+{
+  marker->header.frame_id = frame_id;
+  marker->ns = "mesh";
+  marker->scale.x = 1;
+  marker->scale.y = 1;
+  marker->scale.z = 1;
+  marker->pose.orientation.x = 0;
+  marker->pose.orientation.y = 0;
+  marker->pose.orientation.z = 0;
+  marker->pose.orientation.w = 1;
+  marker->type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+
+  // Assumes UNWELDED mesh: all vertices in order.
+  std::vector<Vector3f> vertices = mesh_block->getVertexVectorOnCPU();
+  std::vector<Color> colors = mesh_block->getColorVectorOnCPU();
+  std::vector<int> triangles = mesh_block->getTriangleVectorOnCPU();
+
+  CHECK_EQ(vertices.size(), colors.size());
+
+  marker->points.reserve(triangles.size());
+  marker->colors.reserve(triangles.size());
+
+  for (size_t i = 0; i < triangles.size(); i++) {
+    int index = triangles[i];
+    if (index >= colors.size() || index >= vertices.size()) {
+      continue;
+    }
+    marker->points.push_back(pointMessageFromVector(vertices[index]));
+    marker->colors.push_back(colorMessageFromColor(colors[index]));
+  }
+}
+
+bool RosConverter::checkLidarPointcloud(
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
+  const Lidar & lidar)
+{
+  // Check the cache
+  if (checked_lidar_models_.find(lidar) != checked_lidar_models_.end()) {
+    return true;
+  }
+
+  // Go through the pointcloud and check that each point projects to a pixel
+  // center.
+  sensor_msgs::PointCloud2ConstIterator<float> iter_xyz(*pointcloud, "x");
+  for (; iter_xyz != iter_xyz.end(); ++iter_xyz) {
+    Vector3f point(iter_xyz[0], iter_xyz[1], iter_xyz[2]);
+    if (point.hasNaN()) {
+      continue;
+    }
+    Vector2f u_C;
+    if (!lidar.project(point, &u_C)) {
+      // Point fell outside the FoV specified in the intrinsics.
+      return false;
+    }
+  }
+  checked_lidar_models_.insert(lidar);
+  return true;
+}
+
+void RosConverter::writeLidarPointcloudToFile(
+  const std::string filepath_prefix,
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud)
+{
+  // Write the dimensions
+  std::ofstream width_file(filepath_prefix + "_dims.txt", std::ofstream::out);
+  width_file << pointcloud->width << ", " << pointcloud->height;
+  width_file.close();
+  // Write the data
+  Eigen::MatrixX3f pointcloud_matrix(pointcloud->width * pointcloud->height, 3);
+  sensor_msgs::PointCloud2ConstIterator<float> iter_xyz(*pointcloud, "x");
+  int idx = 0;
+  for (; iter_xyz != iter_xyz.end(); ++iter_xyz) {
+    Vector3f point(iter_xyz[0], iter_xyz[1], iter_xyz[2]);
+    pointcloud_matrix.row(idx) = point;
+    idx++;
+  }
+  io::writeToCsv(filepath_prefix + ".csv", pointcloud_matrix);
 }
 
 }  // namespace nvblox
