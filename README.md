@@ -1,6 +1,6 @@
 # Isaac ROS Nvblox (Preview)
 
-<div align="center"><img src="docs/images/nvblox_navigation_trim.gif" width=800px/></div>
+<div align="center"><img src="resources/nvblox_navigation_trim.gif" width=800px/></div>
 
 ## Overview
 Nvblox is a package for building a 3D reconstruction of the environment around your robot from sensor observations in real-time. The reconstruction is intended to be used by path planners to generate collision-free paths. Under the hood, nvblox uses NVIDIA CUDA to accelerate this task to allow operation at real-time rates. This repository contains ROS2 integration for the [nvblox core library](https://github.com/nvidia-isaac/nvblox).
@@ -11,7 +11,7 @@ Read more about Nvblox's technical details [here](docs/technical-details.md).
 
 The figure below shows a simple system utilizing nvblox for path planning.
 
-<div align="center"><img src="docs/images/system_diagram.png" width=800px/></div>
+<div align="center"><img src="resources/system_diagram.png" width=800px/></div>
 
 ## Table of Contents
 - [Isaac ROS Nvblox (Preview)](#isaac-ros-nvblox-preview)
@@ -33,18 +33,20 @@ The figure below shows a simple system utilizing nvblox for path planning.
       - [ROS Services Advertised](#ros-services-advertised)
   - [Troubleshooting](#troubleshooting)
     - [Isaac ROS Troubleshooting](#isaac-ros-troubleshooting)
+    - [`realsense-ros` packages don't build with ROS2 Humble](#realsense-ros-packages-dont-build-with-ros2-humble)
   - [Updates](#updates)
 
 ## Latest Update
-Update 2022-06-30: Support for ROS2 Humble and miscellaneous bug fixes.
+Update 2022-08-31: Update to be compatible with JetPack 5.0.2. Serialization of nvblox maps to file. Support for 3D LIDAR input and performace improvements.
 
 ## Supported Platforms
-This package is designed and tested to be compatible with ROS2 Humble running on [Jetson](https://developer.nvidia.com/embedded-computing) or x86_64 systems with NVIDIA GPU. 
+This package is designed and tested to be compatible with ROS2 Humble running on [Jetson](https://developer.nvidia.com/embedded-computing) or an x86_64 system with an NVIDIA GPU.
 
+> **Note**: Versions of ROS2 earlier than Humble are **not** supported. This package depends on specific ROS2 implementation features that were only introduced beginning with the Humble release.
 
 | Platform | Hardware                                                                                                                                                                                                | Software                                                                                                             | Notes                                                                                                                                                                                   |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Jetson   | [Jetson Orin](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/)<br/>[Jetson Xavier](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-agx-xavier/) | [JetPack 5.0.1 DP](https://developer.nvidia.com/embedded/jetpack)                                                    | For best performance, ensure that [power settings](https://docs.nvidia.com/jetson/archives/r34.1/DeveloperGuide/text/SD/PlatformPowerAndPerformance.html) are configured appropriately. |
+| Jetson   | [Jetson Orin](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/)<br/>[Jetson Xavier](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-agx-xavier/) | [JetPack 5.0.2](https://developer.nvidia.com/embedded/jetpack)                                                       | For best performance, ensure that [power settings](https://docs.nvidia.com/jetson/archives/r34.1/DeveloperGuide/text/SD/PlatformPowerAndPerformance.html) are configured appropriately. |
 | x86_64   | NVIDIA GPU                                                                                                                                                                                              | [Ubuntu 20.04+](https://releases.ubuntu.com/20.04/) <br> [CUDA 11.6.1+](https://developer.nvidia.com/cuda-downloads) |
 
 
@@ -65,58 +67,70 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     ```bash
     git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
     ``` 
+
+    ```bash
+    git clone -b ros2 https://github.com/IntelRealSense/realsense-ros
+    ``` 
     
+    > **Note**: As of September 1, 2022, Intel RealSense drivers do not support ROS2 Humble. Please follow the workaround [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md#realsense-driver-doesnt-work-with-ros2-humble). 
+
     ```bash
     git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox && \
         cd isaac_ros_nvblox && git lfs pull
     ```
+    
+3. Configure the container created by `isaac_ros_common/scripts/run_dev.sh` to include `librealsense`. Copy the `isaac_ros_common-config` file to make it active:
+   ```bash
+    cp ~/workspaces/isaac_ros-dev/src/isaac_ros_common/docker/realsense-dockerfile-example/.isaac_ros_common-config ~/workspaces/isaac_ros-dev/src/isaac_ros_common/scripts/
+   ```
 
-3. Pull down a ROS Bag of sample data:
+4. Pull down a ROS Bag of sample data:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
-      git lfs pull -X "" -I "nvblox_nav2/test/test_cases/rosbags/nvblox_pol"
+      git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
     ```
-4. Launch the Docker container using the `run_dev.sh` script:
+
+5. Launch the Docker container using the `run_dev.sh` script:
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
     ```
 
-5. Inside the container, install package-specific dependencies via `rosdep`:
+6. Inside the container, install package-specific dependencies via `rosdep`:
 
     ```bash
     cd /workspaces/isaac_ros-dev/ && \
         rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv nvblox"
     ```
     
-6. Build and source the workspace:  
+7. Build and source the workspace:  
     ```bash
     cd /workspaces/isaac_ros-dev && \
       colcon build --symlink-install && \
       source install/setup.bash
     ```
 
-7. (Optional) Run tests to verify complete and correct installation:  
+8. (Optional) Run tests to verify complete and correct installation:  
     ```bash
     colcon test --executor sequential
     ```
 
-8.  In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+9.  In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
     ```bash
     source /workspaces/isaac_ros-dev/install/setup.bash && \
         ros2 launch nvblox_nav2 carter_sim.launch.py
     ``` 
 
-9.  Open a **second terminal** inside the docker container:
+10. Open a **second terminal** inside the docker container:
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
     ```
 
-10. In the **second terminal**, play the ROS Bag:
+11. In the **second terminal**, play the ROS Bag:
     ```bash
-    ros2 bag play src/isaac_ros_nvblox/nvblox_nav2/test/test_cases/rosbags/nvblox_pol --remap left/depth:=depth_left left/camera_info:=camera_info_left left/rgb:=rgb_left
+    ros2 bag play src/isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol
     ```
 You should see the robot reconstructing a mesh, with a costmap overlaid on top.
 
@@ -124,6 +138,8 @@ You should see the robot reconstructing a mesh, with a costmap overlaid on top.
 ### Try More Examples
 To continue your exploration, check out the following suggested examples:
 - [Tutorial with Isaac Sim](./docs/tutorial-isaac-sim.md)
+- [Tutorial with realsense, VSLAM and nvblox](./docs/tutorial-nvblox-vslam-realsense.md)
+ 
 ### Customize your Dev Environment
 To customize your development environment, reference [this guide](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/modify-dockerfile.md).
 
@@ -186,11 +202,13 @@ ros2 launch nvblox_nav2 carter_sim.launch.py
 ### Isaac ROS Troubleshooting
 For solutions to problems with Isaac ROS, please check [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md).
 
+### `realsense-ros` packages don't build with ROS2 Humble
+Please follow the workaround [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md#realsense-driver-doesnt-work-with-ros2-humble).
 
 ## Updates
 
-| Date       | Changes                                              |
-| ---------- | ---------------------------------------------------- |
-| 2022-06-30 | Support for ROS2 Humble and miscellaneous bug fixes. |
-| 2022-03-21 | Initial version.                                     |
-
+| Date       | Changes                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 2022-08-31 | Update to be compatible with JetPack 5.0.2. Serialization of nvblox maps to file. Support for 3D LIDAR input and performace improvements. |
+| 2022-06-30 | Support for ROS2 Humble and miscellaneous bug fixes.                                                                                      |
+| 2022-03-21 | Initial version.                                                                                                                          |

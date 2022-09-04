@@ -9,7 +9,6 @@
  */
 
 #include <glog/logging.h>
-
 #include <nvblox/core/cuda/warmup.h>
 
 #include <memory>
@@ -31,8 +30,11 @@ int main(int argc, char * argv[])
   // CUDA call.
   nvblox::warmupCuda();
 
+  rclcpp::executors::MultiThreadedExecutor exec;
   std::shared_ptr<nvblox::NvbloxNode> node(new nvblox::NvbloxNode());
-  rclcpp::spin(node);
+  exec.add_node(node);
+  exec.spin();
+
   rclcpp::shutdown();
   return 0;
 }

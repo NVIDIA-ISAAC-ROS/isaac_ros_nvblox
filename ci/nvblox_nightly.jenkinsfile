@@ -1,0 +1,147 @@
+// ISAAC ROS NVBlox nightly pipeline
+//
+// Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+//
+// NVIDIA CORPORATION and its licensors retain all intellectual property
+// and proprietary rights in and to this software, related documentation
+// and any modifications thereto. Any use, reproduction, disclosure or
+// distribution of this software and related documentation without an express
+// license agreement from NVIDIA CORPORATION is strictly prohibited.
+
+// See: https://gitlab-master.nvidia.com/robotics/isaac-pipeline-library
+@Library('ci-groovkins-lib@d3b3733a3ad1de47cfa77ad5d04970ab403da38a')
+
+import com.nvidia.isaac.ci.utils.WorkflowScriptUtil
+import com.nvidia.isaac.ci.isaac_ros.dto.CredentialsConfig
+
+import com.nvidia.isaac.ci.isaac_ros.IsaacRosBuildPipeline
+import com.nvidia.isaac.ci.isaac_ros.VarsDef
+import com.nvidia.isaac.ci.utils.Docker
+import com.nvidia.isaac.ci.utils.dto.BaseCredentialsConfig
+
+Docker docker_utils = new Docker(this,
+    BaseCredentialsConfig.from_default())
+
+
+CredentialsConfig credentials_config = CredentialsConfig.from_default()
+WorkflowScriptUtil utils = new WorkflowScriptUtil(this, credentials_config)
+
+pipeline {
+  agent {
+    label 'isaac && builder'
+  }
+  triggers {
+    // Run at around 1am UTC.
+    cron('0 1 * * *')
+  }
+  environment {
+    NGC_REGISTRY_CREDENTIALS = 'vault-ngc'
+  }
+  options {
+    ansiColor('xterm')
+    timestamps()
+    timeout(time: 2, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '60', daysToKeepStr: '30'))
+    skipDefaultCheckout(true)
+  }
+  parameters {
+    string(
+      name: 'BRANCH_TO_BUILD',
+      description: 'The branch name or commit in ISAAC ROS NVBLOX repository to build.',
+      defaultValue: 'envoy-dev',
+      trim: true
+    )
+  }
+
+  stages {
+    stage('Clone') {
+      steps {
+        cleanWs disableDeferredWipeout: true, deleteDirs: true
+        script {
+          if (!params.BRANCH_TO_BUILD) {
+              error('BRANCH_TO_BUILD pipeline parameter is required, none provided.')
+          }
+
+          sh '''
+            mkdir -p src
+          '''
+          utils.run_with_ssh_key("secrets/account/ssh-key",
+                "${HOME}/.ssh/id_rsa") {
+            utils.prepare_ssh("${HOME}/.ssh")
+            def scmUrl = scm.getUserRemoteConfigs()[0].getUrl()
+            sh """
+            echo Building branch ${params.BRANCH_TO_BUILD}
+            """
+            dir('src/isaac_ros_nvblox') {
+                checkout([$class: 'GitSCM', branches: [[name: params.BRANCH_TO_BUILD]], extensions: [[$class: 'GitLFSPull'], [$class: 'SubmoduleOption', disableSubmodules: false, parentCredentials: true, recursiveSubmodules: true, reference: '', trackingSubmodules: false]], userRemoteConfigs: [[url: 'ssh://git@gitlab-master.nvidia.com:12051/isaac_ros/isaac_ros_nvblox.git']]])
+            }
+
+            dir ('src/nvblox_tools') {
+                checkout([$class: 'GitSCM', branches: [[name: 'main']], extensions: [[$class: 'GitLFSPull'], [$class: 'SubmoduleOption', disableSubmodules: false, parentCredentials: true, recursiveSubmodules: true, reference: '', trackingSubmodules: false]], userRemoteConfigs: [[url: 'ssh://git@gitlab-master.nvidia.com:12051/nvblox/nvblox_tools.git']]])
+            }
+
+            sh """
+            cp src/nvblox_tools/docker_utils/.dockerignore src/
+            """
+          }
+        }
+      }
+    }
+    stage ('Build base docker image') {
+      steps {
+        dir('src') {
+          script {
+            docker.withRegistry('https://nvcr.io',  NGC_REGISTRY_CREDENTIALS) {
+              def baseImage = docker.build("nvcr.io/nvstaging/isaac-amr/nvblox_ros_base:latest",
+                  "-f ./nvblox_tools/docker_utils/Dockerfile.ros_base .")
+              baseImage.push()
+              sh "docker rmi -f ${baseImage.imageName()}"
+            }
+          }
+        }
+      }
+    }
+    stage ('Build isaacsim image') {
+      steps {
+        dir ('src') {
+          script {
+            docker.withRegistry('https://nvcr.io',  NGC_REGISTRY_CREDENTIALS) {
+              def isaacsimImage = docker.build("nvcr.io/nvstaging/isaac-amr/nvblox_isaacsim:latest",
+                  "-f ./nvblox_tools/docker_utils/Dockerfile.nvblox_isaacsim .")
+              isaacsimImage.push()
+              sh "docker rmi -f ${isaacsimImage.imageName()}"
+            }
+          }
+        }
+      }
+    }
+    stage ('Build nvblox image') {
+      steps {
+        dir ('src') {
+          script {
+            docker.withRegistry('https://nvcr.io',  NGC_REGISTRY_CREDENTIALS) {
+                def nvbloxImage = docker.build("nvcr.io/nvstaging/isaac-amr/nvblox_isaac_ros:latest",
+                    "-f ./nvblox_tools/docker_utils/Dockerfile.nvblox_ros .")
+                nvbloxImage.push()
+                sh "docker rmi -f ${nvbloxImage.imageName()}"
+            }
+          }
+        }
+      }
+    }
+
+
+  }
+  post {
+    always {
+      script {
+        utils.prepare_cleanup()
+      }
+    }
+    cleanup {
+      script {
+        cleanWs disableDeferredWipeout: true, deleteDirs: true
+      }
+    }
+  }
+}

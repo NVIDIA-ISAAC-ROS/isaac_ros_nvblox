@@ -13,6 +13,7 @@
 # Documents
 *.pdf filter=lfs diff=lfs merge=lfs -text
 
-# ROS Bag
-nvblox_nav2/test/test_cases/rosbags/** filter=lfs diff=lfs merge=lfs -text
-
+# Ros Bags
+nvblox_nav2/test/test_cases/rosbags/** filter=lfs diff=lfs merge=lfs -text 
+nvblox_ros/test/test_cases/rosbags/** filter=lfs diff=lfs merge=lfs -text
+nvblox_performance_measurement/nvblox_performance_measurement/datasets/** filter=lfs diff=lfs merge=lfs -text

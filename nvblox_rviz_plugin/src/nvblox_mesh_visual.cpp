@@ -7,7 +7,7 @@
  * distribution of this software and related documentation without an express
  * license agreement from NVIDIA CORPORATION is strictly prohibited.
  */
- 
+
 #include <iostream>
 #include <limits>
 
@@ -52,6 +52,48 @@ void NvbloxMeshVisual::setCeilingCutoff(bool cut_ceiling,
       kv.second->setVisible(true);
     }
   }
+}
+
+void NvbloxMeshVisual::setMeshColor(NvbloxMeshVisual::MeshColor mesh_color) {
+  mesh_color_ = mesh_color;
+}
+
+Ogre::Vector3 NvbloxMeshVisual::lambertShading(
+    const Ogre::Vector3& normal, const Ogre::Vector3& light,
+    const Ogre::Vector3& color) const {
+  return std::max<float>(normal.dotProduct(light), 0.0f) * color;
+}
+
+std_msgs::msg::ColorRGBA NvbloxMeshVisual::getMeshColorFromColorAndNormal(
+    const std_msgs::msg::ColorRGBA& color,
+    const geometry_msgs::msg::Point32& normal) const {
+  std_msgs::msg::ColorRGBA output_color;
+  output_color.a = 1.0f;
+  if (mesh_color_ == MeshColor::kColor) {
+    output_color = color;
+  } else if (mesh_color_ == MeshColor::kLambertColor) {
+    // Make up some lights or whatever.
+    const Ogre::Vector3 light_dir =
+        Ogre::Vector3(0.8f, -0.2f, 0.7f).normalisedCopy();
+    const Ogre::Vector3 light_dir2 =
+        Ogre::Vector3(-0.5f, 0.2f, 0.2f).normalisedCopy();
+    const Ogre::Vector3 ambient(0.2f, 0.2f, 0.2f);
+    const Ogre::Vector3 color_pt(color.r, color.g, color.b);
+    const Ogre::Vector3 normal_pt(normal.x, normal.y, normal.z);
+
+    Ogre::Vector3 lambert = lambertShading(normal_pt, light_dir, color_pt) +
+                            lambertShading(normal_pt, light_dir2, color_pt) +
+                            ambient;
+
+    output_color.r = std::min<float>(lambert.x, 1.0f);
+    output_color.g = std::min<float>(lambert.y, 1.0f);
+    output_color.b = std::min<float>(lambert.z, 1.0f);
+  } else if (mesh_color_ == MeshColor::kNormals) {
+    output_color.r = normal.x * 0.5f + 0.5f;
+    output_color.g = normal.y * 0.5f + 0.5f;
+    output_color.b = normal.z * 0.5f + 0.5f;
+  }
+  return output_color;
 }
 
 void NvbloxMeshVisual::setMessage(
@@ -118,14 +160,13 @@ void NvbloxMeshVisual::setMessage(
       ogre_object->normal(mesh_block.normals[i].x, mesh_block.normals[i].y,
                           mesh_block.normals[i].z);
 
-      if (mesh_block.colors.empty()) {
-        ogre_object->colour(mesh_block.normals[i].x * 0.5f + 0.5f,
-                            mesh_block.normals[i].y * 0.5f + 0.5f,
-                            mesh_block.normals[i].z * 0.5f + 0.5f);
-      } else {
-        ogre_object->colour(mesh_block.colors[i].r, mesh_block.colors[i].g,
-                            mesh_block.colors[i].b);
+      std_msgs::msg::ColorRGBA color;
+      if (!mesh_block.colors.empty()) {
+        color = mesh_block.colors[i];
       }
+      color = getMeshColorFromColorAndNormal(color, mesh_block.normals[i]);
+
+      ogre_object->colour(color.r, color.g, color.b);
     }
 
     // needed for anything other than flat rendering

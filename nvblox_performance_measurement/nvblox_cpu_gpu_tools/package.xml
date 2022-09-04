@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+
+<!--
+Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+
+NVIDIA CORPORATION and its licensors retain all intellectual property
+and proprietary rights in and to this software, related documentation
+and any modifications thereto.  Any use, reproduction, disclosure or
+distribution of this software and related documentation without an express
+license agreement from NVIDIA CORPORATION is strictly prohibited.
+-->
+
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>nvblox_cpu_gpu_tools</name>
+  <version>0.11.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="amillane@nvidia.com">alex</maintainer>
+  <license>TODO: License declaration</license>
+
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
