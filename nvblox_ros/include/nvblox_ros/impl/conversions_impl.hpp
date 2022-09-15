@@ -37,10 +37,20 @@ inline void RosConverter::pointcloudFromLayer(
   pointcloudFromLayerInAABB<VoxelType>(layer, aabb, pointcloud_msg);
 }
 
-geometry_msgs::msg::Point32 pointMessageFromVector(
+geometry_msgs::msg::Point32 point32MessageFromVector(
   const Eigen::Vector3f & vector)
 {
   geometry_msgs::msg::Point32 point;
+  point.x = vector.x();
+  point.y = vector.y();
+  point.z = vector.z();
+  return point;
+}
+
+geometry_msgs::msg::Point pointMessageFromVector(
+  const Eigen::Vector3f & vector)
+{
+  geometry_msgs::msg::Point point;
   point.x = vector.x();
   point.y = vector.y();
   point.z = vector.z();

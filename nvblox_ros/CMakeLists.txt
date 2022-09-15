@@ -31,8 +31,8 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(tf2_eigen REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
@@ -40,6 +40,7 @@ find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
 find_package(glog REQUIRED)
 find_package(cuda_image_convert REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 ########
 # CUDA #
@@ -52,11 +53,13 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --compiler-options -fPIC")
 #############
 add_library(${PROJECT_NAME}_lib SHARED
   src/lib/conversions.cpp
+  src/lib/visualization.cpp
   src/lib/cuda/conversions.cu
   src/lib/transformer.cpp
   src/lib/nvblox_node.cpp
+  src/lib/qos.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen cuda_image_convert)
+target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread cuda_image_convert)
 ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox
   sensor_msgs
@@ -64,11 +67,12 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox_msgs
   rclcpp
   std_msgs
+  visualization_msgs
   std_srvs
   tf2_ros
-  tf2_eigen
   message_filters
   cuda_image_convert
+  visualization_msgs
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -85,14 +89,9 @@ endif()
 # BINARIES #
 ############
 add_executable(nvblox_node
-  src/nvblox_node.cpp
+  src/nvblox_node_main.cpp
 )
 target_link_libraries(nvblox_node ${PROJECT_NAME}_lib)
-
-add_executable(3dmatch_node
-  src/3dmatch_node.cpp
-)
-target_link_libraries(3dmatch_node ${PROJECT_NAME}_lib)
 
 ###########
 # INSTALL #
@@ -115,8 +114,14 @@ install(
 
 # Install nodes which live in lib for some reason.
 install(
-  TARGETS nvblox_node 3dmatch_node
+  TARGETS nvblox_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install tests
+install(DIRECTORY
+  test
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
@@ -124,8 +129,10 @@ if(BUILD_TESTING)
 
   # Ignore copyright notices since we use custom NVIDIA Isaac ROS Software License
   set(ament_cmake_copyright_FOUND TRUE)
-
   ament_lint_auto_find_test_dependencies()
+
+  find_package(launch_testing_ament_cmake REQUIRED)
+  add_launch_test(test/isaac_ros_nvblox_pol.py)
 endif()
 
 ##########
@@ -146,6 +153,7 @@ ament_export_dependencies(
   tf2_ros
   message_filters
   libstatistics_collector
+  visualization_msgs
 )
 
 ament_package()

@@ -22,7 +22,6 @@
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
-#include <tf2_eigen/tf2_eigen.hpp>
 
 namespace nvblox
 {
@@ -70,6 +69,9 @@ private:
   bool lookupSensorTransform(
     const std::string & sensor_frame,
     Transform * transform);
+
+  Transform transformToEigen(const geometry_msgs::msg::Transform & transform) const;
+  Transform poseToEigen(const geometry_msgs::msg::Pose & pose) const;
 
   /// ROS State
   rclcpp::Node * node_;
