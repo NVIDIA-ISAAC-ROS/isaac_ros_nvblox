@@ -37,6 +37,7 @@ license agreement from NVIDIA CORPORATION is strictly prohibited.
   <depend>tf2_ros</depend>
   <depend>message_filters</depend>
   <depend>nvblox</depend>
+  <depend>cuda_image_convert</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
