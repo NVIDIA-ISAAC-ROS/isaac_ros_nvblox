@@ -40,14 +40,35 @@ bool RosConverter::colorImageFromImageMessage(
 {
   CHECK_NOTNULL(color_image);
 
-  // First check if we actually have a valid image here.
+  void* final_image = NULL;
+
   if (image_msg->encoding != "rgb8") {
-    return false;
+    if(!cudaAllocMapped(&final_image, image_msg->width, image_msg->height, IMAGE_RGB8)) {
+      return false;
+    }
+
+    auto input_format = imageFormatFromStr(image_msg->encoding.c_str());
+    void* inputCPU = NULL;
+    void* inputGPU = NULL;
+    auto input_size = imageFormatSize(input_format, image_msg->width, image_msg->height);
+
+    if (!cudaAllocMapped((void**)&inputCPU, (void**)&inputGPU, input_size)) {
+      return false;
+    }
+
+    memcpy(inputCPU, image_msg->data.data(), input_size);
+  
+    if(CUDA_FAILED(cudaConvertColor(inputGPU, input_format, final_image, IMAGE_RGB8, image_msg->width, image_msg->height)))	{
+			return false;
+		}
+  } 
+  else {
+    final_image = const_cast<uint8_t*>(&image_msg->data[0]);
   }
 
   color_image->populateFromBuffer(
     image_msg->height, image_msg->width,
-    reinterpret_cast<const Color *>(&image_msg->data[0]), MemoryType::kDevice);
+    reinterpret_cast<const Color *>(final_image), MemoryType::kDevice);
 
   return true;
 }

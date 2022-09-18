@@ -2,3 +2,6 @@
 	path = nvblox
 	url = https://github.com/nvidia-isaac/nvblox.git
 	branch = public
+[submodule "cuda_image_convert"]
+	path = cuda_image_convert
+	url = git@github.com:nakai-omer/cuda_image_convert.git

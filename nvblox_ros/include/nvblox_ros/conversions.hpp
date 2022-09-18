@@ -22,8 +22,9 @@
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <cudaColorspace.h>
+#include <cudaMappedMemory.h>
 #include <visualization_msgs/msg/marker_array.hpp>
-
 
 namespace nvblox
 {

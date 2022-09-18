@@ -38,6 +38,8 @@ find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
+find_package(glog REQUIRED)
+find_package(cuda_image_convert REQUIRED)
 find_package(visualization_msgs REQUIRED)
 
 ########
@@ -57,7 +59,7 @@ add_library(${PROJECT_NAME}_lib SHARED
   src/lib/nvblox_node.cpp
   src/lib/qos.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread)
+target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread cuda_image_convert)
 ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox
   sensor_msgs
@@ -69,6 +71,7 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   std_srvs
   tf2_ros
   message_filters
+  cuda_image_convert
   visualization_msgs
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
