@@ -3,6 +3,7 @@
 <div align="center"><img src="resources/nvblox_navigation_trim.gif" width=800px/></div>
 
 ## Overview
+
 Nvblox is a package for building a 3D reconstruction of the environment around your robot from sensor observations in real-time. The reconstruction is intended to be used by path planners to generate collision-free paths. Under the hood, nvblox uses NVIDIA CUDA to accelerate this task to allow operation at real-time rates. This repository contains ROS2 integration for the [nvblox core library](https://github.com/nvidia-isaac/nvblox).
 
 Given a stream of depth images and the corresponding pose of the depth sensor, Isaac ROS Nvblox produces both a 2D distance map slice, representing the distance from each point to the nearest reconstructed object, and also a 3D mesh for visualization in RVIZ. An optional RGB stream can also be used to color the reconstruction for visualization.
@@ -14,6 +15,7 @@ The figure below shows a simple system utilizing nvblox for path planning.
 <div align="center"><img src="resources/system_diagram.png" width=800px/></div>
 
 ## Table of Contents
+
 - [Isaac ROS Nvblox (Preview)](#isaac-ros-nvblox-preview)
   - [Overview](#overview)
   - [Table of Contents](#table-of-contents)
@@ -37,25 +39,28 @@ The figure below shows a simple system utilizing nvblox for path planning.
   - [Updates](#updates)
 
 ## Latest Update
-Update 2022-08-31: Update to be compatible with JetPack 5.0.2. Serialization of nvblox maps to file. Support for 3D LIDAR input and performace improvements.
+
+Update 2022-10-19: Updated OSS licensing
 
 ## Supported Platforms
+
 This package is designed and tested to be compatible with ROS2 Humble running on [Jetson](https://developer.nvidia.com/embedded-computing) or an x86_64 system with an NVIDIA GPU.
 
 > **Note**: Versions of ROS2 earlier than Humble are **not** supported. This package depends on specific ROS2 implementation features that were only introduced beginning with the Humble release.
 
-| Platform | Hardware                                                                                                                                                                                                | Software                                                                                                             | Notes                                                                                                                                                                                   |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Jetson   | [Jetson Orin](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/)<br/>[Jetson Xavier](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-agx-xavier/) | [JetPack 5.0.2](https://developer.nvidia.com/embedded/jetpack)                                                       | For best performance, ensure that [power settings](https://docs.nvidia.com/jetson/archives/r34.1/DeveloperGuide/text/SD/PlatformPowerAndPerformance.html) are configured appropriately. |
-| x86_64   | NVIDIA GPU                                                                                                                                                                                              | [Ubuntu 20.04+](https://releases.ubuntu.com/20.04/) <br> [CUDA 11.6.1+](https://developer.nvidia.com/cuda-downloads) |
-
+| Platform | Hardware                                                                                                                                                                                                 | Software                                                                                                             | Notes                                                                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Jetson   | [Jetson Orin](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/) <br> [Jetson Xavier](https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-agx-xavier/) | [JetPack 5.0.2](https://developer.nvidia.com/embedded/jetpack)                                                       | For best performance, ensure that [power settings](https://docs.nvidia.com/jetson/archives/r34.1/DeveloperGuide/text/SD/PlatformPowerAndPerformance.html) are configured appropriately. |
+| x86_64   | NVIDIA GPU                                                                                                                                                                                               | [Ubuntu 20.04+](https://releases.ubuntu.com/20.04/) <br> [CUDA 11.6.1+](https://developer.nvidia.com/cuda-downloads) |
 
 ### Docker
+
 To simplify development, we strongly recommend leveraging the Isaac ROS Dev Docker images by following [these steps](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md). This will streamline your development environment setup with the correct versions of dependencies on both Jetson and x86_64 platforms.
 
 > **Note:** All Isaac ROS Quickstarts, tutorials, and examples have been designed with the Isaac ROS Docker images as a prerequisite.
 
 ## Quickstart
+
 1. Set up your development environment by following the instructions [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md).  
 
 2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src`.
@@ -66,23 +71,24 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
     ```bash
     git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
-    ``` 
+    ```
 
     ```bash
-    git clone -b ros2 https://github.com/IntelRealSense/realsense-ros
-    ``` 
-    
-    > **Note**: As of September 1, 2022, Intel RealSense drivers do not support ROS2 Humble. Please follow the workaround [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md#realsense-driver-doesnt-work-with-ros2-humble). 
+    git clone -b ros2-beta https://github.com/IntelRealSense/realsense-ros
+    ```
 
     ```bash
     git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox && \
         cd isaac_ros_nvblox && git lfs pull
     ```
-    
-3. Configure the container created by `isaac_ros_common/scripts/run_dev.sh` to include `librealsense`. Copy the `isaac_ros_common-config` file to make it active:
-   ```bash
-    cp ~/workspaces/isaac_ros-dev/src/isaac_ros_common/docker/realsense-dockerfile-example/.isaac_ros_common-config ~/workspaces/isaac_ros-dev/src/isaac_ros_common/scripts/
-   ```
+
+3. Configure the container created by `isaac_ros_common/scripts/run_dev.sh` to include `librealsense`. Create the `.isaac_ros_common-config` file in the `isaac_ros_common/scripts` directory:
+
+    ```bash
+    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common/scripts && \
+    touch .isaac_ros_common-config && \
+    echo CONFIG_IMAGE_KEY=humble.nav2.realsense > .isaac_ros_common-config
+    ```
 
 4. Pull down a ROS Bag of sample data:
 
@@ -92,6 +98,7 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     ```
 
 5. Launch the Docker container using the `run_dev.sh` script:
+
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
@@ -103,8 +110,9 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     cd /workspaces/isaac_ros-dev/ && \
         rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv nvblox"
     ```
-    
+
 7. Build and source the workspace:  
+
     ```bash
     cd /workspaces/isaac_ros-dev && \
       colcon build --symlink-install && \
@@ -112,39 +120,50 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     ```
 
 8. (Optional) Run tests to verify complete and correct installation:  
+
     ```bash
     colcon test --executor sequential
     ```
 
-9.  In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+9. In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+
     ```bash
     source /workspaces/isaac_ros-dev/install/setup.bash && \
         ros2 launch nvblox_nav2 carter_sim.launch.py
-    ``` 
+    ```
 
 10. Open a **second terminal** inside the docker container:
+
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
     ```
 
 11. In the **second terminal**, play the ROS Bag:
+
     ```bash
     ros2 bag play src/isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol
     ```
+
 You should see the robot reconstructing a mesh, with a costmap overlaid on top.
 
 ## Next Steps
+
 ### Try More Examples
+
 To continue your exploration, check out the following suggested examples:
+
 - [Tutorial with Isaac Sim](./docs/tutorial-isaac-sim.md)
 - [Tutorial with realsense, VSLAM and nvblox](./docs/tutorial-nvblox-vslam-realsense.md)
- 
+
 ### Customize your Dev Environment
+
 To customize your development environment, reference [this guide](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/modify-dockerfile.md).
 
 ## Package Reference
+
 ### `nvblox_nav2`
+
 #### Usage
 
 ```bash
@@ -179,6 +198,7 @@ ros2 launch nvblox_nav2 carter_sim.launch.py
 | `esdf_integrator_max_distance_m`              | `float`  | `10.0`  | Maximum distance to compute the ESDF up to, in meters.                                                                                                                              |
 
 #### ROS Topics Subscribed
+
 | ROS Topic           | Interface                                                                                                      | Description                                                                                                                                                                                   |
 | ------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `depth/image`       | [sensor_msgs/Image](https://github.com/ros2/common_interfaces/blob/humble/sensor_msgs/msg/Image.msg)           | The input depth image to be integrated. Must be paired with a `camera_info` message below. Supports both floating-point (depth in meters) and `uint16` (depth in millimeters, OpenNI format). |
@@ -187,6 +207,7 @@ ros2 launch nvblox_nav2 carter_sim.launch.py
 | `color/camera_info` | [sensor_msgs/CameraInfo](https://github.com/ros2/common_interfaces/blob/master/sensor_msgs/msg/CameraInfo.msg) | Optional topic along with the color image above, contains intrinsics of the color camera.                                                                                                     |
 
 #### ROS Topics Published
+
 | ROS Topic    | Interface                                                                                                                           | Description                                                                                                                                                                          |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `mesh`       | [nvblox_msgs/Mesh](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox/blob/main/nvblox_msgs/msg/Mesh.msg)                         | A visualization topic showing the mesh produced from the TSDF in a form that can be seen in RViz using `nvblox_rviz_plugin`. Set ``max_mesh_update_hz`` to control its update rate.  |
@@ -194,21 +215,26 @@ ros2 launch nvblox_nav2 carter_sim.launch.py
 | `map_slice`  | [nvblox_msgs/DistanceMapSlice](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox/blob/main/nvblox_msgs/msg/DistanceMapSlice.msg) | A 2D slice of the ESDF, to be consumed by `nvblox_nav2` package for interfacing with Nav2. Set ``max_esdf_update_hz`` to control its update rate.                                    |
 
 #### ROS Services Advertised
+
 | ROS Service | Interface                                                                                      | Description                                                                                                                                         |
 | ----------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `save_ply`  | [std_srvs/Empty](https://github.com/ros2/common_interfaces/blob/master/std_srvs/srv/Empty.srv) | This service has an empty request and response. Calling this service will write a mesh to disk at the path specified by the `output_dir` parameter. |
 
 ## Troubleshooting
+
 ### Isaac ROS Troubleshooting
+
 For solutions to problems with Isaac ROS, please check [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md).
 
 ### `realsense-ros` packages don't build with ROS2 Humble
+
 Please follow the workaround [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/troubleshooting.md#realsense-driver-doesnt-work-with-ros2-humble).
 
 ## Updates
 
 | Date       | Changes                                                                                                                                   |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 2022-10-19 | Updated OSS licensing                                                                                                                     |
 | 2022-08-31 | Update to be compatible with JetPack 5.0.2. Serialization of nvblox maps to file. Support for 3D LIDAR input and performace improvements. |
 | 2022-06-30 | Support for ROS2 Humble and miscellaneous bug fixes.                                                                                      |
 | 2022-03-21 | Initial version.                                                                                                                          |
