@@ -1,10 +1,19 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
-# NVIDIA CORPORATION and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from NVIDIA CORPORATION is strictly prohibited.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.10)
 project(nvblox_ros LANGUAGES CXX CUDA)
@@ -79,7 +88,7 @@ target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
   get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)
-  set_target_properties(${PROJECT_NAME}_lib PROPERTIES CUDA_ARCHITECTURES ${CUDA_ARCHS})
+  set_property(TARGET ${PROJECT_NAME}_lib APPEND PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCHS})
 endif()
 
 ############
@@ -123,9 +132,6 @@ install(DIRECTORY
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-
-  # Ignore copyright notices since we use custom NVIDIA Isaac ROS Software License
-  set(ament_cmake_copyright_FOUND TRUE)
   ament_lint_auto_find_test_dependencies()
 
   find_package(launch_testing_ament_cmake REQUIRED)
