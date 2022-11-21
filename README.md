@@ -61,9 +61,11 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
 ## Quickstart
 
-1. Set up your development environment by following the instructions [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md).  
+1. Set up your development environment by following the instructions [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md).
 
-2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src`.
+2. Complete the RealSense setup guide [here](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md).
+
+3. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src`.
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src
@@ -74,15 +76,11 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     ```
 
     ```bash
-    git clone -b ros2-beta https://github.com/IntelRealSense/realsense-ros
-    ```
-
-    ```bash
     git clone --recurse-submodules https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox && \
         cd isaac_ros_nvblox && git lfs pull
     ```
 
-3. Configure the container created by `isaac_ros_common/scripts/run_dev.sh` to include `librealsense`. Create the `.isaac_ros_common-config` file in the `isaac_ros_common/scripts` directory:
+4. Configure the container created by `isaac_ros_common/scripts/run_dev.sh` to include `librealsense`. Create the `.isaac_ros_common-config` file in the `isaac_ros_common/scripts` directory:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common/scripts && \
@@ -90,28 +88,28 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     echo CONFIG_IMAGE_KEY=humble.nav2.realsense > .isaac_ros_common-config
     ```
 
-4. Pull down a ROS Bag of sample data:
+5. Pull down a ROS Bag of sample data:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
       git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
     ```
 
-5. Launch the Docker container using the `run_dev.sh` script:
+6. Launch the Docker container using the `run_dev.sh` script:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
     ```
 
-6. Inside the container, install package-specific dependencies via `rosdep`:
+7. Inside the container, install package-specific dependencies via `rosdep`:
 
     ```bash
     cd /workspaces/isaac_ros-dev/ && \
         rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv nvblox"
     ```
 
-7. Build and source the workspace:  
+8. Build and source the workspace:  
 
     ```bash
     cd /workspaces/isaac_ros-dev && \
@@ -119,27 +117,27 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
       source install/setup.bash
     ```
 
-8. (Optional) Run tests to verify complete and correct installation:  
+9. (Optional) Run tests to verify complete and correct installation:  
 
     ```bash
     colcon test --executor sequential
     ```
 
-9. In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+10. In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
 
     ```bash
     source /workspaces/isaac_ros-dev/install/setup.bash && \
         ros2 launch nvblox_nav2 carter_sim.launch.py
     ```
 
-10. Open a **second terminal** inside the docker container:
+11. Open a **second terminal** inside the docker container:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
       ./scripts/run_dev.sh
     ```
 
-11. In the **second terminal**, play the ROS Bag:
+12. In the **second terminal**, play the ROS Bag:
 
     ```bash
     ros2 bag play src/isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol
