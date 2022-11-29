@@ -1,0 +1,143 @@
+// Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+//
+// NVIDIA CORPORATION and its licensors retain all intellectual property
+// and proprietary rights in and to this software, related documentation
+// and any modifications thereto. Any use, reproduction, disclosure or
+// distribution of this software and related documentation without an express
+// license agreement from NVIDIA CORPORATION is strictly prohibited.
+@Library('ci-groovkins-lib@9729a1fa623eedf0de3f13be8b3bd484adfdec54')
+
+import com.nvidia.isaac.ci.utils.WorkflowScriptUtil
+import com.nvidia.isaac.ci.isaac_ros.dto.CredentialsConfig
+import com.nvidia.isaac.ci.isaac_ros.VarsDef
+
+import com.nvidia.isaac.ci.isaac_ros.IsaacRosBuildPipeline
+
+CredentialsConfig credentials_config = CredentialsConfig.from_default()
+WorkflowScriptUtil utils = new WorkflowScriptUtil(this, credentials_config)
+IsaacRosBuildPipeline pipeline_helper = new IsaacRosBuildPipeline(this, credentials_config, utils)
+
+pipeline {
+
+  agent {
+    docker {
+      label 'isaac-gpu'
+      image 'nvcr.io/nvstaging/isaac-amr/nvblox_ros_base:latest'
+      args '-u root -e NVIDIA_VISIBLE_DEVICES=all -e NVIDIA_DRIVER_CAPABILITIES=all'
+      reuseNode true
+    }
+  }
+
+  options {
+    gitLabConnection('gitlab-master')
+    ansiColor('xterm')
+    timestamps()
+    timeout(time: 2, unit: 'HOURS')
+    buildDiscarder(logRotator(numToKeepStr: '60', daysToKeepStr: '30'))
+  }
+
+  triggers {
+    cron(env.BRANCH_NAME == 'envoy-dev' ? 'H 4 * * *' : '')
+    gitlab(
+        triggerOnPush: true,
+        triggerOnMergeRequest: true,
+        triggerOpenMergeRequestOnPush: 'never',
+        triggerOnNoteRequest: true,
+        noteRegex: 'Jenkins please retry a build',
+        skipWorkInProgressMergeRequest: true,
+        ciSkip: false,
+        setBuildDescription: true,
+        addNoteOnMergeRequest: true,
+        addCiMessage: true,
+        addVoteOnMergeRequest: true,
+        acceptMergeRequestOnSuccess: false,
+        branchFilterType: 'All',
+        pendingBuildName: 'Jenkins',
+        cancelPendingBuildsOnUpdate: true,
+    )
+  }
+
+  stages {
+
+    stage('build') {
+      steps {
+        updateGitlabCommitStatus name: 'build', state: 'running'
+        script {
+          utils.run_with_ssh_key("secrets/account/ssh-key",
+            "/root/.ssh/id_rsa") {
+            utils.prepare_ssh(VarsDef.SSH_FOLDER)
+
+            sh'''
+            cd ${WORKSPACE}
+            git config --global --add safe.directory ${WORKSPACE}
+            git submodule deinit --all -f
+            git submodule update --init --recursive
+            '''
+
+            sh '''
+            mkdir -p /ros/src
+            ln -sT  ${WORKSPACE} /ros/src/isaac_ros_nvblox
+            '''
+
+            sh '''#!/bin/bash
+            source /opt/ros/foxy/setup.bash
+            cd /ros/
+            colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release
+            '''
+
+            sh '''#!/bin/bash
+            source /opt/ros/foxy/setup.bash
+            cd /ros/
+            colcon test --event-handlers console_direct+
+            '''
+
+            sh '''#!/bin/bash
+            source /opt/ros/foxy/setup.bash && \
+            cd /ros/ && \
+            ./src/isaac_ros_nvblox/ci/copy_results.sh
+            '''
+          }
+        }
+      }
+    }
+
+  }
+
+  post {
+    always {
+
+      archiveArtifacts (
+              artifacts: 'test_results/*.xml',
+              fingerprint: true
+            )
+      xunit (
+        testTimeMargin: '3000',
+        thresholdMode: 1,
+        thresholds: [
+          skipped(failureThreshold: '0'),
+          failed(failureThreshold: '16')
+        ],
+      tools: [JUnit(
+          pattern: 'test_results/*.xunit.xml',
+          deleteOutputFiles: true,
+          failIfNotNew: false,
+          skipNoTestFiles: true,
+          stopProcessingIfError: true
+        )]
+      )
+      junit(
+        allowEmptyResults: true,
+        testResults: '**/test-reports/*.xml'
+      )
+      utils.prepare_cleanup()
+      cleanWs disableDeferredWipeout: true, deleteDirs: true
+    }
+    failure {
+      updateGitlabCommitStatus name: 'build', state: 'failed'
+    }
+    success {
+      updateGitlabCommitStatus name: 'build', state: 'success'
+    }
+  }
+
+}

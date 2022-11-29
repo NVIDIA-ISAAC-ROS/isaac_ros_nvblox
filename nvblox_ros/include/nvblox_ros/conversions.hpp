@@ -1,12 +1,19 @@
-/**
- * Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
- *
- * NVIDIA CORPORATION and its licensors retain all intellectual property
- * and proprietary rights in and to this software, related documentation
- * and any modifications thereto.  Any use, reproduction, disclosure or
- * distribution of this software and related documentation without an express
- * license agreement from NVIDIA CORPORATION is strictly prohibited.
- */
+// SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef NVBLOX_ROS__CONVERSIONS_HPP_
 #define NVBLOX_ROS__CONVERSIONS_HPP_
@@ -15,18 +22,24 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 
 #include <nvblox_msgs/msg/distance_map_slice.hpp>
 #include <nvblox_msgs/msg/mesh.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
 
 namespace nvblox
 {
 
 // Convert vectors.
-inline geometry_msgs::msg::Point32 pointMessageFromVector(
+inline geometry_msgs::msg::Point32 point32MessageFromVector(
+  const Eigen::Vector3f & vector);
+
+inline geometry_msgs::msg::Point pointMessageFromVector(
   const Eigen::Vector3f & vector);
 
 // Convert colors.
@@ -39,7 +52,7 @@ inline nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(
 // Helper struct for storing PCL points.
 // 16-byte alignment to match what PCL does internally:
 // https://pointclouds.org/documentation/point__types_8hpp_source.html
-struct alignas (16) PclPoint
+struct alignas (16) PclPointXYZI
 {
   float x;
   float y;
@@ -79,10 +92,21 @@ public:
   void meshMessageFromMeshBlocks(
     const BlockLayer<MeshBlock> & mesh_layer,
     const std::vector<Index3D> & block_indices,
-    nvblox_msgs::msg::Mesh * mesh_msg);
+    nvblox_msgs::msg::Mesh * mesh_msg,
+    const std::vector<Index3D> & deleted_indices = std::vector<Index3D>());
 
   void meshBlockMessageFromMeshBlock(
     const MeshBlock & mesh_block, nvblox_msgs::msg::MeshBlock * mesh_block_msg);
+
+  // Convert a mesh to a marker array.
+  void markerMessageFromMeshLayer(
+    const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
+    visualization_msgs::msg::MarkerArray * marker_msg);
+
+  void markerMessageFromMeshBlock(
+    const MeshBlock::ConstPtr & mesh_block,
+    const std::string & frame_id,
+    visualization_msgs::msg::Marker * marker_msg);
 
   // Convert an SDF to a pointcloud.
   template<typename VoxelType>
@@ -103,6 +127,21 @@ public:
   void distanceMapSliceFromLayer(
     const EsdfLayer & layer, float height,
     nvblox_msgs::msg::DistanceMapSlice * map_slice);
+
+  // Convert pointcloud to depth image.
+  void depthImageFromPointcloudGPU(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
+    const Lidar & lidar, DepthImage * depth_image_ptr);
+
+  // This function returns true if the pointcloud passed in is consistent with
+  // the LiDAR intrinsics model.
+  bool checkLidarPointcloud(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
+    const Lidar & lidar);
+  // Write the pointcloud to file
+  void writeLidarPointcloudToFile(
+    const std::string filepath,
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud);
 
 private:
   // Helper functions for CUDA conversions.
@@ -125,9 +164,14 @@ private:
   cudaStream_t cuda_stream_ = nullptr;
 
   device_vector<Index3D> block_indices_device_;
-  device_vector<PclPoint> pointcloud_device_;
+  device_vector<PclPointXYZI> layer_pointcloud_device_;
   unified_ptr<int> max_index_device_;
   unified_ptr<int> max_index_host_;
+
+  // Pointcloud conversion
+  std::unordered_set<Lidar, Lidar::Hash> checked_lidar_models_;
+  host_vector<Vector3f> lidar_pointcloud_host_;
+  device_vector<Vector3f> lidar_pointcloud_device_;
 };
 
 }  // namespace nvblox

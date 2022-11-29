@@ -1,10 +1,19 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
-# NVIDIA CORPORATION and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from NVIDIA CORPORATION is strictly prohibited.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
 
 import argparse
 import time
@@ -23,150 +32,230 @@ def stage_units_to_camera_units(length_in_stage_units: float) -> float:
     return length_in_stage_units / camera_lengths_in_stage_units
 
 
-def setup_carter_sensors(
-        carter_prim_path: str, camera_focal_length_m: float = 0.009,
-        carter_version: int = 1):
+def setup_carter_sensors(carter_prim_path: str,
+                         camera_focal_length_m: float = 0.009,
+                         carter_version: int = 1):
 
     # Set up variables based on carter version.
-    left_cam = 'ROS_Camera_Stereo_Left'
-    right_cam = 'ROS_Camera_Stereo_Right'
     left_cam_path = 'chassis_link/camera_mount/carter_camera_stereo_left'
     right_cam_path = 'chassis_link/camera_mount/carter_camera_stereo_right'
-    stereo_offset = -32.985  # TODO: double check this one; -41.23125
 
     if carter_version == 2:
-        left_cam = 'ROS_Stereo_Camera_Left'
-        right_cam = 'ROS_Stereo_Camera_Right'
-        left_cam_path = ('chassis_link/stereo_cam_left/stereo_cam_left_sensor_frame/'
-                         'camera_sensor_left')
-        right_cam_path = ('chassis_link/stereo_cam_right/stereo_cam_right_sensor_frame/'
-                          'camera_sensor_right')
-        stereo_offset = -32.985  # TODO: double check this one
+        left_cam_path = (
+            'chassis_link/stereo_cam_left/stereo_cam_left_sensor_frame/'
+            'camera_sensor_left')
+        right_cam_path = (
+            'chassis_link/stereo_cam_right/stereo_cam_right_sensor_frame/'
+            'camera_sensor_right')
 
     import omni
     from pxr import Sdf
-    from pxr import Gf
-    # Enable
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.enabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.enabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/ROS_DifferentialBase.enabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty',
-        prop_path=Sdf.Path(
-            f'{carter_prim_path}/ROS_Carter_Sensors_Broadcaster.enabled'),
-        value=True,
-        prev=None,
-    )
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/ROS_Carter_Broadcaster.enabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute('ChangeProperty', prop_path=Sdf.Path(
-        f'{carter_prim_path}/ROS_Clock.enabled'), value=True, prev=None)
-    # Use LIDAR for the NAv2 Demo
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/ROS_Lidar.enabled'),
-        value=True, prev=None)
-    # Enable RBG on right cam, Depth on left cam
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.rgbEnabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.depthEnabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.rgbEnabled'),
-        value=True, prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.depthEnabled'),
-        value=False, prev=None)
-    # Change the camera resolution to something less high-def
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.resolution'),
-        value=Gf.Vec2i(640, 480),
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.resolution'),
-        value=Gf.Vec2i(640, 480),
-        prev=None)
-    # Change the stereo offset in mystery units of mysteriousness
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.stereoOffset'),
-        value=Gf.Vec2f(stereo_offset, 0.0),
-        prev=None)
-    # Change the output topics of the camera and stuff
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.cameraInfoPubTopic'),
-        value='/left/camera_info',
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.depthPubTopic'),
-        value='/left/depth',
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam}.rgbPubTopic'),
-        value='/left/rgb',
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.cameraInfoPubTopic'),
-        value='/right/camera_info',
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.depthPubTopic'),
-        value='/right/depth',
-        prev=None)
-    omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam}.rgbPubTopic'),
-        value='/right/rgb',
-        prev=None)
 
+    # Enable
     # Change the focal length of the camera (default in the carter model quite narrow).
     camera_focal_length_in_camera_units = stage_units_to_camera_units(
         meters_to_stage_units(camera_focal_length_m))
 
     omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{left_cam_path}.focalLength'),
-        value=camera_focal_length_in_camera_units, prev=None)
+        'ChangeProperty',
+        prop_path=Sdf.Path(f'{carter_prim_path}/{left_cam_path}.focalLength'),
+        value=camera_focal_length_in_camera_units,
+        prev=None)
     omni.kit.commands.execute(
-        'ChangeProperty', prop_path=Sdf.Path(
-            f'{carter_prim_path}/{right_cam_path}.focalLength'),
-        value=camera_focal_length_in_camera_units, prev=None)
+        'ChangeProperty',
+        prop_path=Sdf.Path(f'{carter_prim_path}/{right_cam_path}.focalLength'),
+        value=camera_focal_length_in_camera_units,
+        prev=None)
+
+    # Lidar setup
+    carter_lidar_path = 'chassis_link/carter_lidar'
+
+    # Set up Lidar for a 32 layer like configuration
+    omni.kit.commands.execute(
+        'ChangeProperty',
+        prop_path=Sdf.Path(f'{carter_prim_path}/{carter_lidar_path}.highLod'),
+        value=True,
+        prev=None)
+    omni.kit.commands.execute(
+        'ChangeProperty',
+        prop_path=Sdf.Path(
+            f'{carter_prim_path}/{carter_lidar_path}.horizontalResolution'),
+        value=0.2,
+        prev=None,
+    )
+    omni.kit.commands.execute(
+        'ChangeProperty',
+        prop_path=Sdf.Path(f'{carter_prim_path}/{carter_lidar_path}.minRange'),
+        value=0.7,
+        prev=None,
+    )
+    omni.kit.commands.execute(
+        'ChangeProperty',
+        prop_path=Sdf.Path(
+            f'{carter_prim_path}/{carter_lidar_path}.verticalFov'),
+        value=30.0,
+        prev=None,
+    )
+    omni.kit.commands.execute(
+        'ChangeProperty',
+        prop_path=Sdf.Path(
+            f'{carter_prim_path}/{carter_lidar_path}.verticalResolution'),
+        value=1.0,
+        prev=None,
+    )
+
+    # Modify the omnigraph to get lidar point cloud published
+
+    import omni.graph.core as og
+
+    controller = og.Controller()
+
+    # Create pcl reader node
+    read_pcl_node_path = f'{carter_prim_path}/ActionGraph/isaac_read_lidar_point_cloud_node'
+    read_pcl_node = controller.create_node(
+        read_pcl_node_path,
+        'omni.isaac.range_sensor.IsaacReadLidarPointCloud',
+        True,
+    )
+    # Add relationship to lidar prim
+    import omni.usd
+    stage = omni.usd.get_context().get_stage()
+    read_pcl_prim = stage.GetPrimAtPath(read_pcl_node_path)
+    input_rel = read_pcl_prim.GetRelationship('inputs:lidarPrim')
+    input_rel.SetTargets([f'{carter_prim_path}/{carter_lidar_path}'])
+    # Retrieve on playback node
+    playback_node = controller.node('on_playback_tick',
+                                    f'{carter_prim_path}/ActionGraph')
+    # Connect the tick to the lidar pcl read
+    controller.connect(playback_node.get_attribute('outputs:tick'),
+                       read_pcl_node.get_attribute('inputs:execIn'))
+
+    # Create ros2 publisher node
+    publish_pcl_node = controller.create_node(
+        f'{carter_prim_path}/ActionGraph/ros2_publish_point_cloud',
+        'omni.isaac.ros2_bridge.ROS2PublishPointCloud', True)
+    # Set frame id
+    publish_pcl_node.get_attribute('inputs:frameId').set('carter_lidar')
+    # Connect pcl read to pcl publish
+    controller.connect(read_pcl_node.get_attribute('outputs:execOut'),
+                       publish_pcl_node.get_attribute('inputs:execIn'))
+    controller.connect(read_pcl_node.get_attribute('outputs:pointCloudData'),
+                       publish_pcl_node.get_attribute('inputs:pointCloudData'))
+    # Get timestamp node and connect it
+    timestamp_node = controller.node('isaac_read_simulation_time',
+                                     f'{carter_prim_path}/ActionGraph')
+    controller.connect(timestamp_node.get_attribute('outputs:simulationTime'),
+                       publish_pcl_node.get_attribute('inputs:timeStamp'))
+    # Get context node and connect it
+    context_node = controller.node('ros2_context',
+                                   f'{carter_prim_path}/ActionGraph')
+    controller.connect(context_node.get_attribute('outputs:context'),
+                       publish_pcl_node.get_attribute('inputs:context'))
+    # Get namespace node and connect it
+    namespace_node = controller.node('node_namespace',
+                                     f'{carter_prim_path}/ActionGraph')
+    controller.connect(namespace_node.get_attribute('inputs:value'),
+                       publish_pcl_node.get_attribute('inputs:nodeNamespace'))
+
+    # Configure left camera resolution
+    # Create camera node and set target resolution
+    resolution_node = controller.create_node(
+        f'{carter_prim_path}/ROS_Cameras/isaac_set_viewport_resolution',
+        'omni.isaac.core_nodes.IsaacSetViewportResolution',
+        True,
+    )
+    resolution_node.get_attribute('inputs:width').set(640)
+    resolution_node.get_attribute('inputs:height').set(480)
+    # Get viewport creation node
+    viewport_node = controller.node('isaac_create_viewport_left',
+                                    f'{carter_prim_path}/ROS_Cameras')
+    # Connect it
+    controller.connect(viewport_node.get_attribute('outputs:execOut'),
+                       resolution_node.get_attribute('inputs:execIn'))
+    controller.connect(viewport_node.get_attribute('outputs:viewport'),
+                       resolution_node.get_attribute('inputs:viewport'))
+
+    # Change publication topics
+    left_rgb = controller.node('ros2_create_camera_left_rgb',
+                               f'{carter_prim_path}/ROS_Cameras')
+    left_rgb.get_attribute('inputs:topicName').set('/left/rgb')
+    left_info = controller.node('ros2_create_camera_left_info',
+                                f'{carter_prim_path}/ROS_Cameras')
+    left_info.get_attribute('inputs:topicName').set('/left/camera_info')
+    left_depth = controller.node('ros2_create_camera_left_depth',
+                                 f'{carter_prim_path}/ROS_Cameras')
+    left_depth.get_attribute('inputs:topicName').set('/left/depth')
+
+    # Finally, enable left rgb and depth
+    for enable_name in [
+            'enable_camera_left', 'enable_camera_left_rgb',
+            'enable_camera_left_depth'
+    ]:
+        left_enable = controller.node(enable_name,
+                                      f'{carter_prim_path}/ROS_Cameras')
+        left_enable.get_attribute('inputs:condition').set(True)
 
 
-def main(
-        scenario_path: str, tick_rate_hz: float = 20.0, headless: bool = False,
-        carter_prim_path: str = '/World/Carter_ROS',
-        carter_version: int = 1):
+def setup_forklifts_collision():
+    # Finally forklifts
+
+    import omni.kit.commands
+    from omni.isaac.core.utils.prims import is_prim_path_valid
+    from pxr import Sdf
+
+    for forklift_name in ['Forklift', 'Forklift_01']:
+        forklift_path = f'/World/warehouse_with_forklifts/{forklift_name}'
+        # Ignore if they do not exist
+        if not is_prim_path_valid(forklift_path):
+            continue
+        # Enable collision on main body
+        omni.kit.commands.execute(
+            'ChangeProperty',
+            prop_path=Sdf.Path(
+                f'{forklift_path}/S_ForkliftBody.physics:collisionEnabled'),
+            value=True,
+            prev=None,
+        )
+        # Disable collision on invible main body box
+        omni.kit.commands.execute(
+            'ChangeProperty',
+            prop_path=Sdf.Path(
+                f'{forklift_path}/chassis_collision.physics:collisionEnabled'),
+            value=False,
+            prev=None,
+        )
+        # Enable collision on tine
+        omni.kit.commands.execute(
+            'ChangeProperty',
+            prop_path=Sdf.Path(
+                f'{forklift_path}/S_ForkliftFork/collision_box.physics:collisionEnabled'
+            ),
+            value=False,
+            prev=None,
+        )
+        # Disable collision on tine box
+        omni.kit.commands.execute(
+            'ChangeProperty',
+            prop_path=Sdf.Path(
+                f'{forklift_path}/S_ForkliftFork/S_ForkliftFork.physics:collisionEnabled'
+            ),
+            value=True,
+            prev=None,
+        )
+
+
+def main(scenario_path: str,
+         tick_rate_hz: float = 20.0,
+         headless: bool = False,
+         carter_prim_path: str = '/World/Carter_ROS',
+         carter_version: int = 1):
     # Start up the simulator
-    simulation_app = SimulationApp(
-        {'renderer': 'RayTracedLighting', 'headless': headless})
+    simulation_app = SimulationApp({
+        'renderer': 'RayTracedLighting',
+        'headless': headless
+    })
     import omni
     from omni.isaac.core import SimulationContext
-
     # enable ROS2 bridge extension
     from omni.isaac.core.utils.extensions import enable_extension
     enable_extension('omni.isaac.ros2_bridge')
@@ -180,8 +269,7 @@ def main(
         simulation_app.close()
         exit()
 
-    usd_path = assets_root_path + \
-        '/Isaac/Samples/ROS2/Scenario/carter_warehouse_navigation.usd'
+    usd_path = assets_root_path + scenario_path
     print('------{0} n scenario_path:{1}', usd_path, scenario_path)
 
     # Load the stage
@@ -205,27 +293,13 @@ def main(
 
     # Configure sensors
     print(
-        f'Configuring sensors for Carter {carter_version} at: {carter_prim_path}')
+        f'Configuring sensors for Carter {carter_version} at: {carter_prim_path}'
+    )
     setup_carter_sensors(carter_prim_path, carter_version=carter_version)
-    ros_cameras_graph_path = '/World/Carter_ROS/ROS_Cameras'
-    import omni.graph.core as og
-
-    # Enabling rgb and depth image publishers for left camera.
-    # Cameras will automatically publish images each frame
-    og.Controller.set(og.Controller.attribute(
-        ros_cameras_graph_path + '/enable_camera_left.inputs:condition'), True)
-    og.Controller.set(og.Controller.attribute(
-        ros_cameras_graph_path + '/enable_camera_left_rgb.inputs:condition'), True)
-    og.Controller.set(og.Controller.attribute(
-        ros_cameras_graph_path + '/enable_camera_left_depth.inputs:condition'), True)
+    setup_forklifts_collision()
 
     simulation_context.play()
     simulation_context.step()
-
-    # Tick all of the components once to make sure all of the ROS nodes are initialized
-    # For cameras this also handles viewport initialization etc.
-    omni.kit.commands.execute('Ros2BridgeUseSimTime',
-                              use_sim_time=True)
 
     # Simulate for one second to warm up sim and let everything settle
     # Otherwise the resizes below sometimes don't stick.
@@ -257,21 +331,29 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Sample app for running Carter in a Warehouse for NVblox.')
     parser.add_argument(
-        '--scenario_path', metavar='scenario_path', type=str,
+        '--scenario_path',
+        metavar='scenario_path',
+        type=str,
         help='Path of the scenario to launch relative to the nucleus server '
         'base path. Scenario must contain a carter robot.',
-        default='/Isaac/Samples/ROS/Scenario/carter_warehouse_navigation.usd')
-    parser.add_argument('--tick_rate_hz', metavar='tick_rate_hz', type=int,
-                        help='The rate (in hz) that we step the simulation at.',
-                        default=20)
+        default='/Isaac/Samples/ROS2/Scenario/carter_warehouse_navigation.usd')
     parser.add_argument(
-        '--carter_prim_path', metavar='carter_prim_path', type=str,
-        default='/World/Carter_ROS', help='Path to Carter.')
+        '--tick_rate_hz',
+        metavar='tick_rate_hz',
+        type=int,
+        help='The rate (in hz) that we step the simulation at.',
+        default=20)
+    parser.add_argument('--carter_prim_path',
+                        metavar='carter_prim_path',
+                        type=str,
+                        default='/World/Carter_ROS',
+                        help='Path to Carter.')
     parser.add_argument('--headless', action='store_true')
-    parser.add_argument(
-        '--carter_version', type=int, default=1,
-        help='Version of the Carter robot (1 or 2)')
+    parser.add_argument('--carter_version',
+                        type=int,
+                        default=1,
+                        help='Version of the Carter robot (1 or 2)')
     args, unknown = parser.parse_known_args()
 
-    main(args.scenario_path, args.tick_rate_hz,
-         args.headless, args.carter_prim_path, args.carter_version)
+    main(args.scenario_path, args.tick_rate_hz, args.headless,
+         args.carter_prim_path, args.carter_version)

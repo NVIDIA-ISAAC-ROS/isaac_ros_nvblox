@@ -1,10 +1,19 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
-# NVIDIA CORPORATION and its licensors retain all intellectual property
-# and proprietary rights in and to this software, related documentation
-# and any modifications thereto.  Any use, reproduction, disclosure or
-# distribution of this software and related documentation without an express
-# license agreement from NVIDIA CORPORATION is strictly prohibited.
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
 
 cmake_minimum_required(VERSION 3.10)
 project(nvblox_ros LANGUAGES CXX CUDA)
@@ -31,14 +40,15 @@ find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(visualization_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
-find_package(tf2_eigen REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
 find_package(glog REQUIRED)
+find_package(visualization_msgs REQUIRED)
 
 ########
 # CUDA #
@@ -51,11 +61,13 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --compiler-options -fPIC")
 #############
 add_library(${PROJECT_NAME}_lib SHARED
   src/lib/conversions.cpp
+  src/lib/visualization.cpp
   src/lib/cuda/conversions.cu
   src/lib/transformer.cpp
   src/lib/nvblox_node.cpp
+  src/lib/qos.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen)
+target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread)
 ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox
   sensor_msgs
@@ -63,10 +75,11 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox_msgs
   rclcpp
   std_msgs
+  visualization_msgs
   std_srvs
   tf2_ros
-  tf2_eigen
   message_filters
+  visualization_msgs
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -76,21 +89,16 @@ target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
   get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)
-  set_target_properties(${PROJECT_NAME}_lib PROPERTIES CUDA_ARCHITECTURES ${CUDA_ARCHS})
+  set_property(TARGET ${PROJECT_NAME}_lib APPEND PROPERTY CUDA_ARCHITECTURES ${CUDA_ARCHS})
 endif()
 
 ############
 # BINARIES #
 ############
 add_executable(nvblox_node
-  src/nvblox_node.cpp
+  src/nvblox_node_main.cpp
 )
 target_link_libraries(nvblox_node ${PROJECT_NAME}_lib)
-
-add_executable(3dmatch_node
-  src/3dmatch_node.cpp
-)
-target_link_libraries(3dmatch_node ${PROJECT_NAME}_lib)
 
 ###########
 # INSTALL #
@@ -113,17 +121,22 @@ install(
 
 # Install nodes which live in lib for some reason.
 install(
-  TARGETS nvblox_node 3dmatch_node
+  TARGETS nvblox_node
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install tests
+install(DIRECTORY
+  test
+  DESTINATION share/${PROJECT_NAME}
 )
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
-
-  # Ignore copyright notices since we use custom NVIDIA Isaac ROS Software License
-  set(ament_cmake_copyright_FOUND TRUE)
-
   ament_lint_auto_find_test_dependencies()
+
+  find_package(launch_testing_ament_cmake REQUIRED)
+  add_launch_test(test/isaac_ros_nvblox_pol.py)
 endif()
 
 ##########
@@ -144,6 +157,7 @@ ament_export_dependencies(
   tf2_ros
   message_filters
   libstatistics_collector
+  visualization_msgs
 )
 
 ament_package()

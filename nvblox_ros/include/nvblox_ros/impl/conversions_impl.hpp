@@ -1,12 +1,19 @@
-/**
- * Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
- *
- * NVIDIA CORPORATION and its licensors retain all intellectual property
- * and proprietary rights in and to this software, related documentation
- * and any modifications thereto.  Any use, reproduction, disclosure or
- * distribution of this software and related documentation without an express
- * license agreement from NVIDIA CORPORATION is strictly prohibited.
- */
+// SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+// SPDX-License-Identifier: Apache-2.0
 
 #ifndef NVBLOX_ROS__IMPL__CONVERSIONS_IMPL_HPP_
 #define NVBLOX_ROS__IMPL__CONVERSIONS_IMPL_HPP_
@@ -37,10 +44,20 @@ inline void RosConverter::pointcloudFromLayer(
   pointcloudFromLayerInAABB<VoxelType>(layer, aabb, pointcloud_msg);
 }
 
-geometry_msgs::msg::Point32 pointMessageFromVector(
+geometry_msgs::msg::Point32 point32MessageFromVector(
   const Eigen::Vector3f & vector)
 {
   geometry_msgs::msg::Point32 point;
+  point.x = vector.x();
+  point.y = vector.y();
+  point.z = vector.z();
+  return point;
+}
+
+geometry_msgs::msg::Point pointMessageFromVector(
+  const Eigen::Vector3f & vector)
+{
+  geometry_msgs::msg::Point point;
   point.x = vector.x();
   point.y = vector.y();
   point.z = vector.z();
