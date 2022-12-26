@@ -34,8 +34,8 @@ message( STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" )
 ################
 find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
-
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
@@ -68,6 +68,8 @@ add_library(${PROJECT_NAME}_lib SHARED
 )
 target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread)
 ament_target_dependencies(${PROJECT_NAME}_lib
+  rclcpp
+  rclcpp_components
   nvblox
   sensor_msgs
   geometry_msgs
@@ -85,6 +87,8 @@ target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE
   $<TARGET_PROPERTY:nvblox::nvblox_eigen,INTERFACE_INCLUDE_DIRECTORIES>)
+
+rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::NvbloxNode")
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
   get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)

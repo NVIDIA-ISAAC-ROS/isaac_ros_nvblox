@@ -36,8 +36,8 @@
 namespace nvblox
 {
 
-NvbloxNode::NvbloxNode()
-: Node("nvblox_node"), transformer_(this)
+NvbloxNode::NvbloxNode(const rclcpp::NodeOptions & options)
+: Node("nvblox_node", options), transformer_(this)
 {
   // Declare & initialize the parameters.
   voxel_size_ = declare_parameter<float>("voxel_size", voxel_size_);
@@ -1002,3 +1002,7 @@ void NvbloxNode::loadMap(
 }
 
 }  // namespace nvblox
+
+// Register the node as a component
+#include "rclcpp_components/register_node_macro.hpp"
+RCLCPP_COMPONENTS_REGISTER_NODE(nvblox::NvbloxNode)

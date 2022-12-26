@@ -51,7 +51,7 @@ namespace nvblox
 class NvbloxNode : public rclcpp::Node
 {
 public:
-  NvbloxNode();
+  NvbloxNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   virtual ~NvbloxNode() = default;
 
   // Callback functions. These just stick images in a queue.

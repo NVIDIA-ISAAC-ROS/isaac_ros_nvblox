@@ -75,10 +75,10 @@ def generate_launch_description():
     )
 
     # VSLAM
-    visual_slam_node = Node(
+    visual_slam_node = ComposableNode(
         name='visual_slam_node',
         package='isaac_ros_visual_slam',
-        executable='isaac_ros_visual_slam',
+        plugin='isaac_ros::visual_slam::VisualSlamNode',
         parameters=[{
                     'enable_rectified_pose': True,
                     'denoise_input_images': False,
@@ -91,8 +91,6 @@ def generate_launch_description():
                     'map_frame': 'map',
                     'odom_frame': 'odom',
                     'base_frame': 'base_link',
-                    'input_left_camera_frame': 'camera_infra1_frame',
-                    'input_right_camera_frame': 'camera_infra2_frame',
                     'enable_localization_n_mapping': True,
                     'publish_odom_to_base_tf': True,
                     'publish_map_to_odom_tf': True,
@@ -102,6 +100,17 @@ def generate_launch_description():
                     ('stereo_camera/left/camera_info', '/camera/infra1/camera_info'),
                     ('stereo_camera/right/image', '/camera/realsense_splitter_node/output/infra_2'),
                     ('stereo_camera/right/camera_info', '/camera/infra2/camera_info')]
+    )
+
+    vslam_container = ComposableNodeContainer(
+        name='vslam_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            visual_slam_node
+        ],
+        output='screen'
     )
 
     base_link_tf_node = Node(
@@ -120,11 +129,11 @@ def generate_launch_description():
         )
     )
 
-    nvblox_node = Node(
+    nvblox_node = ComposableNode(
+        name='nvblox_node',
         package='nvblox_ros',
-        executable='nvblox_node',
+        plugin='nvblox::NvbloxNode',
         parameters=[LaunchConfiguration('nvblox_config')],
-        output='screen',
         remappings=[
             ("depth/camera_info", "/camera/depth/camera_info"),
             ("depth/image", "/camera/realsense_splitter_node/output/depth"),
@@ -133,11 +142,20 @@ def generate_launch_description():
         ]
     )
 
+    nvblox_container = ComposableNodeContainer(
+        name='nvblox_container',
+        namespace='',
+        package='rclcpp_components',
+        executable='component_container',
+        composable_node_descriptions=[
+            nvblox_node
+        ],
+        output='screen'
+    )
+
     # RVIZ
     rviz_config_path = os.path.join(get_package_share_directory(
         'nvblox_examples_bringup'), 'config', 'nvblox_vslam_realsense.rviz')
-
-    print(rviz_config_path)
 
     rviz = Node(
         package='rviz2',
@@ -146,10 +164,10 @@ def generate_launch_description():
         output='screen')
 
     return LaunchDescription([
-        realsense_container,
         nvblox_config,
-        visual_slam_node,
-        nvblox_node,
+        realsense_container,
+        vslam_container,
+        nvblox_container,
         base_link_tf_node,
         rviz
     ])

@@ -4,6 +4,24 @@ This tutorial demonstrates how to perform depth-camera based reconstruction usin
 
 > Note: This tutorial has been tested with a Realsense D455/D435 camera connected to an x86 computer with an NVIDIA graphics card, as well as a Jetson Xavier AGX.
 
+## Realsense Camera Firmware
+
+This example is tested and compatible with realsense camera firmware version 5.13.0.50 which is available [here](https://dev.intelrealsense.com/docs/firmware-releases).
+
+> Note: We experienced issues with the latest realsense firmware (version 5.14 at the time of publishing). It's possible at some point that this starts working, but our recommendation is to install *exactly* 5.13.0.50.
+
+## Host System Setup
+
+We have found ROS2 message delivery to be unreliable under high load without some small modifications to the QoS profile (especially on weaker machines). Before running this example run
+```
+sudo sysctl -w net.core.rmem_max=8388608 net.core.rmem_default=8388608
+```
+However this only sets these parameters until reboot. To set them permanently run:
+```
+echo -e "net.core.rmem_max=8388608\nnet.core.rmem_default=8388608\n" | sudo tee /etc/sysctl.d/60-cyclonedds.conf
+```
+More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/How-To-Guides/DDS-tuning.html).
+
 ## Installing the Dependencies  
 
 1. Complete steps 1, 2, and 3 described in the [quickstart guide](../README.md#quickstart) to clone `isaac_ros_common` and
