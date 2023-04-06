@@ -53,39 +53,41 @@ NvbloxPerformanceMeasurementNode::NvbloxPerformanceMeasurementNode()
 }
 
 bool NvbloxPerformanceMeasurementNode::processDepthImage(
-  sensor_msgs::msg::Image::ConstSharedPtr & depth_img_ptr,
-  sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg)
+  const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
+  sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
+  depth_camera_pair)
 {
   // Process as declared in NvbloxNode
   const bool success =
-    NvbloxNode::processDepthImage(depth_img_ptr, camera_info_msg);
+    NvbloxNode::processDepthImage(depth_camera_pair);
   // Indicate success to the outside world
   if (success) {
     nvblox_performance_measurement_msgs::msg::FrameProcessed msg;
-    msg.header = depth_img_ptr->header;
+    msg.header = depth_camera_pair.first->header;
     depth_processed_publisher_->publish(msg);
   }
   return success;
 }
 
 bool NvbloxPerformanceMeasurementNode::processColorImage(
-  sensor_msgs::msg::Image::ConstSharedPtr & color_img_ptr,
-  sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg)
+  const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
+  sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
+  color_camera_pair)
 {
   // Process as declared in NvbloxNode
   const bool success =
-    NvbloxNode::processColorImage(color_img_ptr, camera_info_msg);
+    NvbloxNode::processColorImage(color_camera_pair);
   // Indicate success to the outside world
   if (success) {
     nvblox_performance_measurement_msgs::msg::FrameProcessed msg;
-    msg.header = color_img_ptr->header;
+    msg.header = color_camera_pair.first->header;
     color_processed_publisher_->publish(msg);
   }
   return success;
 }
 
 bool NvbloxPerformanceMeasurementNode::processLidarPointcloud(
-  sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr)
+  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr)
 {
   // Process as declared in NvbloxNode
   const bool success =

@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2021-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(realsense_splitter)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 add_compile_options(-Wall -Wextra -Wpedantic)
 
 # find dependencies
@@ -29,6 +29,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(realsense2_camera_msgs REQUIRED)
+find_package(nvblox_ros_common REQUIRED)
 
 
 #############
@@ -36,7 +37,6 @@ find_package(realsense2_camera_msgs REQUIRED)
 #############
 add_library(realsense_splitter_component
   src/realsense_splitter_node.cpp
-  src/qos.cpp
 )
 target_compile_definitions(realsense_splitter_component
   PRIVATE "COMPOSITION_BUILDING_DLL")
@@ -46,6 +46,7 @@ ament_target_dependencies(realsense_splitter_component
   sensor_msgs
   message_filters
   realsense2_camera_msgs
+  nvblox_ros_common
 )
 target_include_directories(realsense_splitter_component PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

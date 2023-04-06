@@ -62,19 +62,6 @@ include_directories(include)
 install(TARGETS ${lib_name}
         DESTINATION lib)
 
-install(DIRECTORY
-  launch
-  DESTINATION share/${PROJECT_NAME}
-)
-install(DIRECTORY
-  params
-  DESTINATION share/${PROJECT_NAME}
-)
-install(DIRECTORY
-  config
-  DESTINATION share/${PROJECT_NAME}
-)
-
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
@@ -85,4 +72,5 @@ endif()
 # Install the plugin
 pluginlib_export_plugin_description_file(nav2_costmap_2d nvblox_costmap_layer.xml)
 ament_target_dependencies(${lib_name} ${dep_pkgs})
-ament_auto_package(INSTALL_TO_SHARE launch)
+
+ament_package()

@@ -21,8 +21,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_nvblox</name>
-  <version>0.20.0</version>
-  <description>Nvblox ROS2 metapackage</description>
+  <version>0.30.0</version>
+  <description>Nvblox ROS 2 metapackage</description>
 
   <maintainer email="holeynikova@nvidia.com">Helen Oleynikova</maintainer>
   <license>Apache-2.0</license>

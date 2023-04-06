@@ -1,0 +1,66 @@
+/**:
+  ros__parameters:
+    # miscellaneous
+    voxel_size: 0.05
+    use_tf_transforms: true
+    # esdf settings
+    compute_esdf: true
+    esdf_update_rate_hz: 10.0
+    esdf_2d: true
+    esdf_distance_slice: true
+    esdf_slice_height: 0.4
+    esdf_2d_min_height: 0.025
+    esdf_2d_max_height: 0.7
+    # mesh settings
+    compute_mesh: true
+    mesh_update_rate_hz: 5.0
+    # color settings
+    use_color: true
+    max_color_update_hz: 5.0
+    # depth settings
+    use_depth: true
+    max_depth_update_hz: 30.0
+    # lidar settings
+    use_lidar: true
+    max_lidar_update_hz: 100.0
+    lidar_width: 1800
+    lidar_height: 31
+    # static occupancy
+    use_static_occupancy_layer: false # tsdf if false
+    occupancy_publication_rate_hz: 2.0
+    # Input queues
+    max_poll_rate_hz: 100.0
+    maximum_sensor_message_queue_length: 30
+    # Map clearing settings
+    map_clearing_radius_m: -1.0 # no map clearing if < 0.0
+    map_clearing_frame_id: "base_link"
+    clear_outside_radius_rate_hz: 1.0
+    # QoS settings
+    depth_qos: "SYSTEM_DEFAULT"
+    color_qos: "SYSTEM_DEFAULT"
+    # Rviz visualization
+    slice_visualization_attachment_frame_id: "base_link"
+    slice_visualization_side_length: 10.0
+
+    mapper:
+      # tsdf or occupancy integrator
+      projective_integrator_max_integration_distance_m: 7.0
+      projective_integrator_truncation_distance_vox: 4.0
+      lidar_projective_integrator_max_integration_distance_m: 10.0
+      # tsdf integrator
+      weighting_mode: "inverse_square" # applies to color integrator as well
+      tsdf_integrator_max_weight: 5.0
+      # occupancy integrator
+      free_region_occupancy_probability: 0.45
+      occupied_region_occupancy_probability: 0.55
+      unobserved_region_occupancy_probability: 0.5
+      occupied_region_half_width_m: 0.1
+      # esdf integrator
+      esdf_integrator_min_weight: 0.0001
+      esdf_integrator_max_distance_m: 2.0
+      esdf_integrator_max_site_distance_vox: 5.0
+      # mesh integrator
+      mesh_integrator_min_weight: 0.0001
+      mesh_integrator_weld_vertices: true
+      # color integrator
+      color_integrator_max_integration_distance_m: 7.0
