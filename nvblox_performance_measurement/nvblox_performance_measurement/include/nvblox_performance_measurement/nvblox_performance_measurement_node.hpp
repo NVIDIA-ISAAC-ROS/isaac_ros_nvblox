@@ -36,13 +36,15 @@ public:
   // Callback functions. These just stick images in a queue.
   // Process a single images
   virtual bool processDepthImage(
-    sensor_msgs::msg::Image::ConstSharedPtr & depth_img_ptr,
-    sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg) override;
+    const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
+    depth_camera_pair) override;
   virtual bool processColorImage(
-    sensor_msgs::msg::Image::ConstSharedPtr & color_img_ptr,
-    sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg) override;
+    const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
+    color_camera_pair) override;
   virtual bool processLidarPointcloud(
-    sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr) override;
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr) override;
 
   virtual void processMesh() override;
 

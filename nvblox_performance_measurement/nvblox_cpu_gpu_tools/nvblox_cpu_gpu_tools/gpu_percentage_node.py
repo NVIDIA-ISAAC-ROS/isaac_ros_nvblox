@@ -58,6 +58,11 @@ class GpuPercentageNode(Node):
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
                 description='The interval passed to psutil.'))
+        self.declare_parameter(
+            'gpu_index', 0,
+            ParameterDescriptor(
+                type=ParameterType.PARAMETER_INTEGER,
+                description='The index of the GPU to track on a multi GPU system.'))
 
         # Get the initial values
         self._time_between_measurements_s = self.get_parameter(
@@ -65,13 +70,21 @@ class GpuPercentageNode(Node):
         self._measurement_interval_s = self.get_parameter(
             'measurement_interval_s').get_parameter_value().double_value
 
-        # Check we only have a single GPU
+        # Index of the GPU to monitor
+        self._gpu_index = 0
+        # If we have multiple GPUs, read the index to track from ROS
         if self.get_number_of_gpus() != 1:
-            self.get_logger().fatal(
-                f"""Detected {self.get_number_of_gpus()} GPUs. This node (currently) only works on
-                    systems with a single GPU. Failing.""")
-            self._ready = False
-            return
+            self.get_logger().info('Multi GPU system detected.')
+            self._gpu_index = self.get_parameter(
+                'gpu_index').get_parameter_value().integer_value
+            if self._gpu_index >= self.get_number_of_gpus() or self._gpu_index < 0:
+                self.get_logger().fatal(
+                    f"""Detected {self.get_number_of_gpus()} GPUs. Requested to track
+                        GPU index {self._gpu_index}. Not possible. Failing.""")
+                self._ready = False
+                return
+            self.get_logger().info(
+                f'Tracking GPU usage for GPU index: {self._gpu_index}.')
 
         # Indicating that the setup was successful
         self._ready = True

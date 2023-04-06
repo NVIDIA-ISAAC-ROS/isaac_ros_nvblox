@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_examples_bringup</name>
-  <version>0.20.0</version>
+  <version>0.30.0</version>
   <description>Launchfiles for nvblox examples</description>
 
   <maintainer email="holeynikova@nvidia.com">Helen Oleynikova</maintainer>
@@ -33,8 +33,6 @@
   <author>Alexander Millane</author>
   
   <buildtool_depend>ament_cmake</buildtool_depend>
-  <depend>realsense_splitter</depend>
-  <depend>realsense2_camera</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

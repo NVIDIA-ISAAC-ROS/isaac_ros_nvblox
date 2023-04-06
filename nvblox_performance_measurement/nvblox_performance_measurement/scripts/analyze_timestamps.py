@@ -19,10 +19,8 @@
 
 import sys
 import os
-import io
 import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 
 
 def generate_pulses(stamps, pulse_height):
@@ -39,9 +37,10 @@ def generate_pulses(stamps, pulse_height):
     return np.array(pulse_x), np.array(pulse_y)
 
 
-def plot_pulses(stamps, pulse_height, pulse_color_code='b'):
+def get_pulses_plot(stamps, pulse_height, line_name):
+    import plotly.graph_objects as go
     pulse_x, pulse_y = generate_pulses(stamps, pulse_height)
-    plt.plot(pulse_x, pulse_y, pulse_color_code)
+    return go.Scatter(x=pulse_x, y=pulse_y, name=line_name)
 
 
 def make_results_table(topic_to_stamps_map, cpu_percentages=None, gpu_percentages=None):
@@ -97,15 +96,25 @@ def make_results_table(topic_to_stamps_map, cpu_percentages=None, gpu_percentage
     table_string += f"slice:\t\t\t\t\tprocessed Hz:\t{slice_processed_freq:0.1f}\n"
     table_string += f"mesh:\t\t\t\t\tprocessed Hz:\t{mesh_processed_freq:0.1f}\n"
 
+    # Putting the table into a dictionary
+    table_dict = {'depth_released_freq': depth_released_freq,
+                  'depth_processed_freq': depth_processed_freq,
+                  'color_released_freq': color_released_freq,
+                  'color_processed_freq': color_processed_freq,
+                  'pointcloud_released_freq': lidar_released_freq,
+                  'pointcloud_processed_freq': lidar_processed_freq}
+
     if cpu_percentages is not None:
         table_string += "\n"
         table_string += f"Mean CPU usage: {np.mean(cpu_percentages):0.1f}%\n"
+        table_dict['cpu_usage'] = np.mean(cpu_percentages)
     if gpu_percentages is not None:
         table_string += f"Mean GPU usage: {np.mean(gpu_percentages):0.1f}%\n"
+        table_dict['gpu_usage'] = np.mean(gpu_percentages)
 
     table_string += "\n\n"
 
-    return table_string
+    return table_string, table_dict
 
 
 def main():

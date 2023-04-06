@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,13 +17,13 @@
 
 #include "realsense_splitter/realsense_splitter_node.hpp"
 
-#include "realsense_splitter/qos.hpp"
+#include <nvblox_ros_common/qos.hpp>
 
 namespace nvblox
 {
 
 RealsenseSplitterNode::RealsenseSplitterNode(const rclcpp::NodeOptions & options)
-: Node("odometry_flattener_node", options)
+: Node("realsense_splitter_node", options)
 {
   RCLCPP_INFO(get_logger(), "Creating a RealsenseSplitterNode().");
 
@@ -102,8 +102,19 @@ int RealsenseSplitterNode::getEmitterModeFromMetadataMsg(
   constexpr size_t field_name_length =
     sizeof(frame_emitter_mode_str) / sizeof(frame_emitter_mode_str[0]);
   // Find the field
-  size_t field_location =
-    metadata->json_data.find(frame_emitter_mode_str) + field_name_length - 1;
+  const size_t frame_emitter_mode_start_location =
+    metadata->json_data.find(frame_emitter_mode_str);
+  // If the emitter mode is not found, return unknown and warn the user.
+  if (frame_emitter_mode_start_location == metadata->json_data.npos) {
+    constexpr int kPublishPeriodMs = 1000;
+    auto & clk = *get_clock();
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), clk, kPublishPeriodMs,
+      "Realsense frame metadata did not contain \"frame_emitter_mode\". Splitter will not work.");
+    return static_cast<int>(EmitterMode::kUnknown);
+  }
+  // If it is found, parse the field.
+  const size_t field_location = frame_emitter_mode_start_location + field_name_length - 1;
   const int emitter_mode =
     static_cast<int>(metadata->json_data[field_location]) -
     static_cast<int>('0');

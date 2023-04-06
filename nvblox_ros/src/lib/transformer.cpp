@@ -21,6 +21,7 @@
 #include <memory>
 #include <string>
 
+
 namespace nvblox
 {
 
@@ -106,18 +107,29 @@ bool Transformer::lookupTransformTf(
   const rclcpp::Time & timestamp,
   Transform * transform)
 {
-  geometry_msgs::msg::TransformStamped T_S_C_msg;
+  geometry_msgs::msg::TransformStamped T_L_C_msg;
   try {
-    if (tf_buffer_->canTransform(from_frame, to_frame, timestamp)) {
-      T_S_C_msg = tf_buffer_->lookupTransform(from_frame, to_frame, timestamp);
+    std::string error_string;
+    if (tf_buffer_->canTransform(
+        from_frame, to_frame, timestamp,
+        rclcpp::Duration::from_nanoseconds(0), &error_string))
+    {
+      T_L_C_msg = tf_buffer_->lookupTransform(from_frame, to_frame, timestamp);
     } else {
+      RCLCPP_DEBUG_STREAM(
+        node_->get_logger(),
+        "Cant transform: from:" << from_frame << " to " << to_frame << ". Error string: " <<
+          error_string);
       return false;
     }
   } catch (tf2::TransformException & e) {
+    RCLCPP_DEBUG_STREAM(
+      node_->get_logger(),
+      "Cant transform: from:" << from_frame << " to " << to_frame << ". Error: " << e.what());
     return false;
   }
 
-  *transform = transformToEigen(T_S_C_msg.transform);
+  *transform = transformToEigen(T_L_C_msg.transform);
   return true;
 }
 
@@ -125,24 +137,35 @@ bool Transformer::lookupTransformQueue(
   const rclcpp::Time & timestamp,
   Transform * transform)
 {
-  uint64_t timestamp_ns = timestamp.nanoseconds();
+  // Get latest transform
+  if (timestamp == rclcpp::Time(0)) {
+    if (transform_queue_.empty()) {
+      return false;
+    }
 
-  auto closest_match = transform_queue_.lower_bound(timestamp_ns);
-  if (closest_match == transform_queue_.end()) {
-    return false;
+    *transform = transform_queue_.rbegin()->second;
+    return true;
+  } else {
+    // Get closest transform
+    uint64_t timestamp_ns = timestamp.nanoseconds();
+
+    auto closest_match = transform_queue_.lower_bound(timestamp_ns);
+    if (closest_match == transform_queue_.end()) {
+      return false;
+    }
+
+    // If we're too far off on the timestamp:
+    uint64_t distance = std::max(closest_match->first, timestamp_ns) -
+      std::min(closest_match->first, timestamp_ns);
+    if (distance > timestamp_tolerance_ns_) {
+      return false;
+    }
+
+    // We just do nearest neighbor here.
+    // TODO(holeynikova): add interpolation!
+    *transform = closest_match->second;
+    return true;
   }
-
-  // If we're too far off on the timestamp:
-  uint64_t distance = std::max(closest_match->first, timestamp_ns) -
-    std::min(closest_match->first, timestamp_ns);
-  if (distance > timestamp_tolerance_ns_) {
-    return false;
-  }
-
-  // We just do nearest neighbor here.
-  // TODO(holeynikova): add interpolation!
-  *transform = closest_match->second;
-  return true;
 }
 
 bool Transformer::lookupSensorTransform(

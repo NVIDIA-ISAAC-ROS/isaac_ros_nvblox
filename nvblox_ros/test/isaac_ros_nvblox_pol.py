@@ -17,6 +17,7 @@
 
 import os
 import pathlib
+import subprocess
 import time
 
 from isaac_ros_test import IsaacROSBaseTest
@@ -45,15 +46,15 @@ _TEST_CASE_NAMESPACE = 'nvblox_test'
 
 @pytest.mark.rostest
 def generate_test_description():
+    # Fetch git-lfs files
+    print(subprocess.getoutput('git lfs pull -X ""'))
+
     nvblox_node = Node(
         package='nvblox_ros',
         executable='nvblox_node',
         namespace=IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE),
         parameters=[{'global_frame': 'odom'}, {'use_sim_time': True}],
-        remappings=[('depth/image', 'left/depth'),
-                    ('depth/camera_info', 'left/camera_info'),
-                    ('color/image', 'left/rgb'),
-                    ('color/camera_info', 'left/camera_info')],
+        remappings=[('depth/camera_info', 'color/camera_info')],
         output='screen'
     )
 
@@ -65,12 +66,12 @@ def generate_test_description():
              IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/cmd_vel',
              'clock:=' +
              IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/clock',
-             'left/depth:=' +
-             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/left/depth',
-             'left/camera_info:=' +
-             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/left/camera_info',
-             'left/rgb:=' +
-             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/left/rgb'],
+             'front/stereo_camera/left/depth:=' +
+             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/depth/image',
+             'front/stereo_camera/left/camera_info:=' +
+             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/color/camera_info',
+             'front/stereo_camera/left/rgb:=' +
+             IsaacROSNvBloxTest.generate_namespace(_TEST_CASE_NAMESPACE) + '/color/image'],
         output='screen')
 
     return IsaacROSNvBloxTest.generate_test_description(
@@ -82,7 +83,7 @@ class IsaacROSNvBloxTest(IsaacROSBaseTest):
 
     @ IsaacROSBaseTest.for_each_test_case('rosbags')
     def test_nvblox_node(self, test_folder):
-        TIMEOUT = 50
+        TIMEOUT = 10
         received_messages = {}
         self.generate_namespace_lookup(
             ['nvblox_node/mesh', 'nvblox_node/map_slice'], _TEST_CASE_NAMESPACE)

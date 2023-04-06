@@ -17,7 +17,7 @@
 
 #include "nvblox_performance_measurement/results_collector_node.hpp"
 
-#include <nvblox_ros/qos.hpp>
+#include <nvblox_ros_common/qos.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -46,13 +46,13 @@ ResultsCollectorNode::ResultsCollectorNode()
   // Subscriptions (through MessageStampRecorder objects)
   recorders_.push_back(
     std::make_unique<MessageStampRecorder<sensor_msgs::msg::Image>>(
-      this, color_image_topic_name_, parseQoSString(color_qos_str)));
+      this, color_image_topic_name_, parseQosString(color_qos_str)));
   recorders_.push_back(
     std::make_unique<MessageStampRecorder<sensor_msgs::msg::Image>>(
-      this, depth_image_topic_name_, parseQoSString(depth_qos_str)));
+      this, depth_image_topic_name_, parseQosString(depth_qos_str)));
   recorders_.push_back(
     std::make_unique<MessageStampRecorder<sensor_msgs::msg::PointCloud2>>(
-      this, pointcloud_topic_name_, parseQoSString(pointcloud_qos_str)));
+      this, pointcloud_topic_name_, parseQosString(pointcloud_qos_str)));
 
   recorders_.push_back(
     std::make_unique<
@@ -78,7 +78,7 @@ ResultsCollectorNode::ResultsCollectorNode()
 
   // Subscribing to CPU/GPU usage
   constexpr size_t kQueueSize = 10;
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(kQueueSize), parseQoSString(kDefaultQoS));
+  const auto qos = rclcpp::QoS(rclcpp::KeepLast(kQueueSize), parseQosString(kDefaultQoS));
   cpu_percentage_sub_ = this->create_subscription<std_msgs::msg::Float32>(
     cpu_topic_name_, qos,
     std::bind(&ResultsCollectorNode::cpuMessageCallback, this, _1));

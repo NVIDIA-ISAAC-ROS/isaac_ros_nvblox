@@ -25,6 +25,7 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+import math
 
 import numpy as np
 import rclpy
@@ -123,66 +124,6 @@ class ResultsGetter(Node):
             print('Didn\'t hear back yet...')
 
 
-def save_isaac_ros_benchmark_results(
-        stamps_dict, log_dir, heading, log_file=None, timestr=None):
-
-    # Capturing metrics in the dictionary to be forwarded for json dump.
-    performance_data = {}
-
-    def get_performance_data(stamps_ns: np.array, message_name_str: str,
-                             messages_name_str: str):
-        def ns_to_ms(stamps): return stamps / 1e6
-        def ns_to_s(stamps): return stamps / 1e9
-        slice_intervals_ms = ns_to_ms(np.diff(stamps_ns))
-        if len(slice_intervals_ms) > 0:
-            performance_data[f'Number of {messages_name_str} received'] = len(
-                stamps_ns)
-            performance_data[
-                f'First {message_name_str} to {message_name_str} Latency (ms)'] = slice_intervals_ms[0]
-            performance_data[f'{message_name_str} Maximum Latency (ms)'] = max(
-                slice_intervals_ms)
-            performance_data[f'{message_name_str} Minimum Latency (ms)'] = min(
-                slice_intervals_ms)
-            performance_data[f'{message_name_str} Average Latency (ms)'] = sum(
-                slice_intervals_ms) / len(slice_intervals_ms)
-            performance_data[f'{message_name_str} Average FPS (s)'] = 1 / \
-                ns_to_s((stamps_ns[-1] - stamps_ns[0]) / len(stamps_ns))
-        return performance_data
-
-    performance_data.update(
-        get_performance_data(
-            stamps_dict['/nvblox_node/map_slice'],
-            'Slice', 'Slices'))
-    performance_data.update(
-        get_performance_data(
-            stamps_dict['/nvblox_node/depth_processed'],
-            'DepthProcessed', 'DepthProcessed'))
-    performance_data.update(
-        get_performance_data(
-            stamps_dict['/nvblox_node/color_processed'],
-            'ColorProcessed', 'ColorsProcessed'))
-    if '/nvblox_node/mesh' in stamps_dict:
-        performance_data.update(
-            get_performance_data(
-                stamps_dict['/nvblox_node/mesh'],
-                'Mesh', 'Meshes'))
-
-    # Dump JSON
-    for key, val in performance_data.items():
-        performance_data[key] = float(val)
-    performance_data['name'] = heading
-    if not log_file:
-        if timestr is None:
-            timestr = time.strftime('%Y%m%d-%H%M%S')
-        log_file = os.path.join(log_dir, f'isaac-ros-log-{timestr}.json')
-    else:
-        log_file = os.path.join(log_dir, log_file)
-    print(f'Writing results in Isaac ROS format to: {log_file}')
-
-    with open(log_file, 'x') as f:
-        f.write(json.dumps(performance_data))
-
-
 def save_results_files(stamps_dict: dict, cpu_samples: np.ndarray, gpu_samples: np.ndarray, timers_string: str, results_table: str, output_dir: Path, timestr: str = None):
     if timestr is None:
         timestr = time.strftime('%Y%m%d-%H%M%S')
@@ -194,6 +135,45 @@ def save_results_files(stamps_dict: dict, cpu_samples: np.ndarray, gpu_samples: 
     np.savetxt(output_dir / f"gpu_samples_{timestr}.txt", gpu_samples)
     np.save(output_dir / f"message_stamps_{timestr}", stamps_dict)
     print(f"Wrote results in directory: {output_dir}")
+
+
+def save_pulse_figure(stamps_dict: dict, filepath: Path):
+    from plotly.subplots import make_subplots
+
+    if len(stamps_dict['pointcloud']) > 0:
+        pointclouds_present = True
+    else:
+        pointclouds_present = False
+
+    if pointclouds_present:
+        fig = make_subplots(rows=3, cols=1)
+    else:
+        fig = make_subplots(rows=2, cols=1)
+
+    fig.add_trace(analyze_timestamps.get_pulses_plot(
+        stamps_dict['/nvblox_node/depth_processed'], 2.0, line_name='depth processed'), row=1, col=1)
+    fig.add_trace(analyze_timestamps.get_pulses_plot(
+        stamps_dict['depth/image'], 1.0, line_name='depth released'), row=1, col=1)
+    fig.add_trace(analyze_timestamps.get_pulses_plot(
+        stamps_dict['/nvblox_node/color_processed'], 2.0, line_name='color processed'), row=2, col=1)
+    fig.add_trace(analyze_timestamps.get_pulses_plot(
+        stamps_dict['color/image'], 1.0, line_name='color released'), row=2, col=1)
+
+    if pointclouds_present:
+        fig.add_trace(analyze_timestamps.get_pulses_plot(
+            stamps_dict['/nvblox_node/pointcloud_processed'], 2.0, line_name='pointcloud processed'), row=3, col=1)
+        fig.add_trace(analyze_timestamps.get_pulses_plot(
+            stamps_dict['pointcloud'], 1.0, line_name='pointcloud released'), row=3, col=1)
+
+    fig.write_html(str(filepath))
+    print(f'Wrote pulse figure to: {filepath}')
+
+
+def remove_nan_values_from_dict(input: dict) -> dict:
+    keys_to_delete = [key for key, value in input.items() if math.isnan(value)]
+    for key in keys_to_delete:
+        input.pop(key)
+    return input
 
 
 def main(args=None):
@@ -211,48 +191,56 @@ def main(args=None):
         "--output_dir",
         help="Directory in which to save the results files.")
     parser.add_argument(
-        "--json_file_name",
-        help="Exact name of the file where the results will be dumped. If not specified, file name \
-            will have the form isaac-ros-log-timestr.json"
-    )
-    parser.add_argument(
-        "--save_json", action='store_const', const=True,
-        default=False,
-        help="Flag indicating if we should save the isaac ros benchmarking json object.")
-    parser.add_argument(
         "--save_results_files", action='store_const', const=True,
         default=False,
         help="Flag indicating if we should save the results to files.")
+    parser.add_argument(
+        "--save_pulse_plot", action='store_const', const=True,
+        default=False,
+        help="Flag indicating if we should save the pulse plot.")
+    parser.add_argument(
+        "--save_kpi_json", action='store_const', const=True,
+        default=False,
+        help="Flag indicating if we should save the KPI table as a json.")
 
     args = parser.parse_args()
 
-    # If no bag provided, use the POL bag in {ROS2_WORKSPACE}/isaac_ros_nvblox/nvblox_nav2/...
-    # NOTE(alexmillane): Getting the dataset path here is kinda ugly, but I can't see a better way in ROS2
+    # If no bag provided, use bags that come with the repo.
+    # NOTE(alexmillane): Getting the dataset path here is kinda ugly, but I can't see a better way in ROS 2
     if args.bag_filepath is None:
         print("No bagfile provided. Using the bag distributed with this package (nvblox_performance_measurement).")
         nvblox_performance_measurement_share_dir = Path(
             get_package_share_directory('nvblox_performance_measurement'))
         workspace_dir = nvblox_performance_measurement_share_dir.parents[3]
         workspace_src_dir = workspace_dir / 'src'
-        
-        # Fetch git-lfs files
-        print(subprocess.getoutput(f'git lfs -X ""'))        
+
+        # Default bag locations (delivered via git lfs)
         if args.realsense:
             args.bag_filepath = workspace_src_dir / \
                 Path('isaac_ros_nvblox/nvblox_performance_measurement/nvblox_performance_measurement/datasets/realsense_office')
         else:
             args.bag_filepath = workspace_src_dir / \
-                Path('isaac_ros_nvblox/nvblox_performance_measurement/nvblox_performance_measurement/datasets/isaac_sim_warehouse')
+                Path('isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol')
 
     # Check the bag exists
     if not os.path.exists(args.bag_filepath):
-        sys.exit(f"Bagfile at path: {args.bag_filepath} does not exist.")
+        sys.exit(
+            f"Bagfile at path: {args.bag_filepath} does not exist. \n\
+                Either specify your own bag as an argument, or run \
+                    git lfs pull to download the default bag.")
+
+    print(f"Going to run performance test with bag: {args.bag_filepath}")
 
     # Run the test
     try:
 
+        nvblox_startup_wait_time_s = 20.0
+        print("Stating nvblox")
         nvblox_runner = NvbloxRunner()
         nvblox_runner.launch(args.realsense)
+        print(
+            f"Waiting for: {nvblox_startup_wait_time_s} for nvblox to start up before launching bag.")
+        time.sleep(nvblox_startup_wait_time_s)
 
         print("Starting the bag")
         bag_launcher = BagLauncher()
@@ -265,7 +253,7 @@ def main(args=None):
 
         print(
             f"\n\n{timers_string}\n\nBenchmarking Results\n-------------------------------------\n")
-        results_table = analyze_timestamps.make_results_table(
+        results_table, results_table_dict = analyze_timestamps.make_results_table(
             stamps_dict, cpu_samples, gpu_samples)
         print(results_table)
 
@@ -274,22 +262,30 @@ def main(args=None):
             args.output_dir = '/tmp'
         output_dir = Path(args.output_dir)
         timestr = time.strftime('%Y%m%d-%H%M%S')
+        print(f'Output directory is: {output_dir}')
 
-        # Creating a JSON object used by isaac_ros_benchmarking
-        if args.save_json:
-            # JSON dump params
-            # NOTE(alexmillane): These are copied from isaac_ros-benchmark
-            HEADER = 'Nvblox performance metrics'
-            LOG_FILE = args.json_file_name
-            LOGS_FOLDER = args.output_dir
-            save_isaac_ros_benchmark_results(
-                stamps_dict, log_dir=LOGS_FOLDER, heading=HEADER,
-                log_file=LOG_FILE, timestr=timestr)
+        # Create the output dir if it doesn't exist already
+        if not os.path.exists(output_dir):
+            print(f'Output directory doesn\'t exist so creating it')
+            os.makedirs(output_dir, exist_ok=True)
 
         # Saving the collected results
         if args.save_results_files:
             save_results_files(stamps_dict, cpu_samples, gpu_samples,
                                timers_string, results_table, output_dir, timestr=timestr)
+
+        # Saving a plot
+        if args.save_pulse_plot:
+            save_pulse_figure(stamps_dict, output_dir / 'pulses.html')
+
+        # Save results table as json
+        if args.save_kpi_json:
+            results_table_dict = remove_nan_values_from_dict(
+                results_table_dict)
+            timings_table_file = output_dir / 'ros_performance_kpis.json'
+            print(f"Writing the timings table to: {timings_table_file}")
+            with open(timings_table_file, "w") as timings_file:
+                json.dump(results_table_dict, timings_file, indent=4)
 
     finally:
         # Kill

@@ -33,7 +33,7 @@ def generate_launch_description():
     nvblox_param_dir_arg = DeclareLaunchArgument(
         'nvblox_params_file',
         default_value=os.path.join(
-            get_package_share_directory('nvblox_nav2'), 'params', 'nvblox.yaml'
+            get_package_share_directory('nvblox_examples_bringup'), 'config', 'nvblox', 'nvblox_base.yaml'
         ),
     )
 
@@ -42,10 +42,10 @@ def generate_launch_description():
         description='Use realsense data (otherwise use Omniverse Isaac Sim data)')
 
     # Carter Sim Remaps
-    carter_sim_remaps = [('depth/image', '/left/depth'),
-                         ('depth/camera_info', '/left/camera_info'),
-                         ('color/image', '/left/rgb'),
-                         ('color/camera_info', '/left/camera_info'),
+    carter_sim_remaps = [('depth/image', '/front/stereo_camera/left/depth'),
+                         ('depth/camera_info', '/front/stereo_camera/left/camera_info'),
+                         ('color/image', '/front/stereo_camera/left/rgb'),
+                         ('color/camera_info', '/front/stereo_camera/left/camera_info'),
                          ('pointcloud', '/point_cloud')]
     realsense_remaps = [('depth/image', '/camera/depth/image_rect_raw'),
                         ('depth/camera_info', '/camera/depth/camera_info'),

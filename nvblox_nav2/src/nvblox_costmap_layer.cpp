@@ -74,11 +74,26 @@ void NvbloxCostmapLayer::updateBounds(
 {
   // We give the full AABB of the map that we have available to the
   // upstream controller.
+  // According to nav2 the bounds can only grow bigger. So we only update the
+  // bounds if it grows bigger or we keep the old values
   if (slice_ != nullptr) {
-    *min_x = slice_->origin.x;
-    *max_x = *min_x + slice_->width * slice_->resolution;
-    *min_y = slice_->origin.y;
-    *max_y = *min_y + slice_->height * slice_->resolution;
+    const double current_plugin_min_x = slice_->origin.x;
+    const double current_plugin_min_y = slice_->origin.y;
+    const double current_plugin_max_x = current_plugin_min_x + slice_->width * slice_->resolution;
+    const double current_plugin_max_y = current_plugin_min_y + slice_->height * slice_->resolution;
+
+    if (current_plugin_min_x < *min_x) {
+      *min_x = current_plugin_min_x;
+    }
+    if (current_plugin_max_x > *max_x) {
+      *max_x = current_plugin_max_x;
+    }
+    if (current_plugin_min_y < *min_y) {
+      *min_y = current_plugin_min_y;
+    }
+    if (current_plugin_max_y > *max_y) {
+      *max_y = current_plugin_max_y;
+    }
   }
 
   auto node = node_.lock();

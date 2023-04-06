@@ -40,11 +40,12 @@ find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Index3D.msg"
+  "srv/FilePath.srv"
+  "msg/SemanticLabelsStamped.msg"
   "msg/MeshBlock.msg"
   "msg/Mesh.msg"
+  "msg/Index3D.msg"
   "msg/DistanceMapSlice.msg"
-  "srv/FilePath.srv"
   DEPENDENCIES std_msgs geometry_msgs
 )
 

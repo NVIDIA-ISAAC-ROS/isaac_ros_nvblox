@@ -1,0 +1,19 @@
+/**:
+  ros__parameters:
+    camera_1_enabled: true
+    camera_1_name: front/stereo_camera/left
+    camera_2_enabled: false
+    camera_2_name: front/stereo_camera/right
+
+    labels:
+      # Semantic label names defined in Isaac Sim
+      names: ["unlabelled", "person"]
+      
+      # Definition of how the label names are converted
+      # to IDs on the mask image and color on the colorized mask
+      unlabelled:
+        output_id: 0
+        output_color: [0, 0, 0]
+      person:
+        output_id: 1
+        output_color: [255, 0, 0] 

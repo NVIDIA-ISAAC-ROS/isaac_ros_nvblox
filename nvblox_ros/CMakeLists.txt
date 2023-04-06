@@ -48,6 +48,8 @@ find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
 find_package(nvblox REQUIRED)
 find_package(visualization_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(nvblox_ros_common REQUIRED)
 
 ########
 # CUDA #
@@ -59,12 +61,16 @@ set(CUDA_NVCC_FLAGS "${CUDA_NVCC_FLAGS} --compiler-options -fPIC")
 # LIBRARIES #
 #############
 add_library(${PROJECT_NAME}_lib SHARED
-  src/lib/conversions.cpp
+  src/lib/conversions/image_conversions.cu
+  src/lib/conversions/layer_conversions.cu
+  src/lib/conversions/mesh_conversions.cpp
+  src/lib/conversions/pointcloud_conversions.cu
+  src/lib/conversions/esdf_slice_conversions.cu
   src/lib/visualization.cpp
-  src/lib/cuda/conversions.cu
   src/lib/transformer.cpp
+  src/lib/mapper_initialization.cpp
   src/lib/nvblox_node.cpp
-  src/lib/qos.cpp
+  src/lib/nvblox_human_node.cpp
 )
 target_link_libraries(${PROJECT_NAME}_lib nvblox::nvblox_lib nvblox::nvblox_eigen pthread)
 ament_target_dependencies(${PROJECT_NAME}_lib
@@ -81,6 +87,8 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   tf2_ros
   message_filters
   visualization_msgs
+  cv_bridge
+  nvblox_ros_common
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -89,6 +97,7 @@ target_include_directories(${PROJECT_NAME}_lib BEFORE PRIVATE
   $<TARGET_PROPERTY:nvblox::nvblox_eigen,INTERFACE_INCLUDE_DIRECTORIES>)
 
 rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::NvbloxNode")
+rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::NvbloxHumanNode")
 
 if(CMAKE_VERSION VERSION_GREATER_EQUAL 3.18)
   get_target_property(CUDA_ARCHS nvblox::nvblox_lib CUDA_ARCHITECTURES)
@@ -102,6 +111,11 @@ add_executable(nvblox_node
   src/nvblox_node_main.cpp
 )
 target_link_libraries(nvblox_node ${PROJECT_NAME}_lib)
+
+add_executable(nvblox_human_node
+  src/nvblox_human_node_main.cpp
+)
+target_link_libraries(nvblox_human_node ${PROJECT_NAME}_lib)
 
 ###########
 # INSTALL #
@@ -124,7 +138,7 @@ install(
 
 # Install nodes which live in lib for some reason.
 install(
-  TARGETS nvblox_node
+  TARGETS nvblox_node nvblox_human_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -161,6 +175,8 @@ ament_export_dependencies(
   message_filters
   libstatistics_collector
   visualization_msgs
+  cv_bridge
+  nvblox_ros_common
 )
 
 ament_package()

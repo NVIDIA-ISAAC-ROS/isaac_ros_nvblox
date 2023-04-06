@@ -40,6 +40,14 @@ class Transformer
 public:
   explicit Transformer(rclcpp::Node * node);
 
+  /// @brief Looks up the transform between the frame with the passed name and the global frame
+  ///        (which is set by the setters below). We either use tf2 or a stored queue of
+  ///         transforms from messages.
+  /// @param sensor_frame The frame name.
+  /// @param timestamp Time of the transform. Passing rclcpp::Time(0) will return the latest
+  ///                  transform in the queue.
+  /// @param transform The output transform.
+  /// @return true if the lookup was successful.
   bool lookupTransformToGlobalFrame(
     const std::string & sensor_frame,
     const rclcpp::Time & timestamp,
@@ -91,12 +99,14 @@ private:
   /// Use this as the "pose" frame that's coming in. Needs to be set.
   std::string pose_frame_;
 
-  /// Whether to use TF at all. If set to false, sensor_frame and pose_frame
-  /// *need* to be set.
+  /// Whether to use TF transforms at all.
+  /// If set to false, use_topic_transforms_ must be true
+  /// and pose_frame *needs* to be set.
   bool use_tf_transforms_ = true;
-  /// Whether to listen to topics for transforms. If set to true, will get
-  /// at least global -> pose frame from the topics. If set to false, everything
-  /// will be resolved through TF.
+  /// Whether to listen to topics for transforms.
+  /// If set to true, will try to get `global_frame` to `pose_frame`
+  /// transform from the topics. If set to false,
+  /// everything will be resolved through TF.
   bool use_topic_transforms_ = false;
   /// Timestamp tolerance to use for transform *topics* only.
   uint64_t timestamp_tolerance_ns_ = 1e8;  // 100 milliseconds
