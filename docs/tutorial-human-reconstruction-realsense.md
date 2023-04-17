@@ -23,10 +23,6 @@ Refer to [this](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_segmentation
    ```
 
    ```bash
-   git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros
-   ```
-
-   ```bash
    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_segmentation
    ```
 
