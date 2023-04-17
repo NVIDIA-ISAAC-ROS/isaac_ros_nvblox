@@ -6,7 +6,7 @@
 
 This tutorial walks you through generating a 3D reconstruction with nvblox using image and LiDAR data from Isaac Sim. The reconstruction is displayed as a 3D mesh in RVIZ. Nvblox also converts the reconstruction into a 2D costmap, which is fed into the Nav2 stack for path planning.
 
-Last validated with [Isaac Sim 2022.1.0](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/release_notes.html#id10).
+Last validated with [Isaac Sim 2022.2.1](https://docs.omniverse.nvidia.com/app_isaacsim/app_isaacsim/release_notes.html#id1).
 
 ## Tutorial Walkthrough
 
@@ -31,11 +31,11 @@ Last validated with [Isaac Sim 2022.1.0](https://docs.omniverse.nvidia.com/app_i
 The start_isaac_sim script is explained in detail [here](../nvblox_examples/nvblox_isaac_sim/omniverse_scripts/README.md).
 
     ```bash
-    alias omni_python='~/.local/share/ov/pkg/isaac_sim-2022.2.1-rc.3/python.sh' && \
+    alias omni_python='~/.local/share/ov/pkg/isaac_sim-2022.2.1/python.sh' && \
       omni_python ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox/nvblox_examples/nvblox_isaac_sim/omniverse_scripts/start_isaac_sim.py
     ```
 
-    > **Note**: If you are using a different version of Isaac Sim, replace `isaac_sim-2022.2.1-rc.3` with your version found at `'~/.local/share/ov/pkg/`.
+    > **Note**: If you are using a different version of Isaac Sim, replace `isaac_sim-2022.2.1` with your version found at `'~/.local/share/ov/pkg/`.
 
 6. Launch the pre-composed graph launchfile:
 

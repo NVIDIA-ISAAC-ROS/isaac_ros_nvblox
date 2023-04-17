@@ -39,11 +39,15 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 
 3. Complete the [realsense setup tutorial](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md) to set up `librealsense` *outside of the isaac_ros_common* docker, clone `realsense_ros`, and to configure the container for use with realsense.
 
-4. Download the code for [Isaac ROS Visual SLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git).
+4. Download the code for [Isaac ROS Visual SLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git) and [Isaac ROS NITROS](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros).
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src && \
       git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git
+    ```
+
+    ```bash
+    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros
     ```
 
 5. Launch the Docker container using the `run_dev.sh` script:
@@ -68,23 +72,42 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
       source install/setup.bash
     ```
 
-## Running the Example
+## Example with Realsense Live Data
 
-To run the example, source the workspace:
+1. Complete the sections above.
 
-```bash
-source /workspaces/isaac_ros-dev/install/setup.bash
-```
+2. Connect the RealSense device to your machine.
 
-Then run the launch file, which launches the example:
+3. Run the ROS Docker container using the `run_dev.sh` script:
 
-```bash
-ros2 launch nvblox_examples_bringup realsense_example.launch.py
-```
+    ```bash
+    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
+      ./scripts/run_dev.sh
+    ```
+
+4. Source the workspace:
+
+    ```bash
+    source /workspaces/isaac_ros-dev/install/setup.bash
+    ```
+
+5. At this point, you can check that the RealSense camera is connected by running realsense-viewer:
+
+    ```bash
+    realsense-viewer
+    ```
+
+6. If successful, run the launch file to spin up the example:
+
+    ```bash
+    ros2 launch nvblox_examples_bringup realsense_example.launch.py
+    ```
 
 Here is a few seconds of the result from running the example:
 
 <div align="center"><img src="../resources/realsense_example.gif"/></div>
+
+## Example with Realsense Recorded Data
 
 If you want to run the realsense example on recorded data refer to the [realsense recording tutorial](./tutorial-realsense-record.md).
 
