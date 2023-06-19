@@ -1,4 +1,13 @@
-# Isaac ROS Nvblox
+# nvblox_ROS1
+
+This is the ROS1 wrapper of nvblox, intended to make nvblox usable for the wider robotics community (especially for research).
+This is a work in progress by [Turcan Tuna](https://github.com/tutunarsl) and [Helen Oleynikova](https://github.com/helenol).
+
+Everything below this line still needs to be cleaned up/edited.
+
+See the [TODO](TODO.md) list for a complete list.
+
+---
 
 <div align="center"><img src="resources/isaac_sim_nvblox_humans.gif" width=400px/></div>
 

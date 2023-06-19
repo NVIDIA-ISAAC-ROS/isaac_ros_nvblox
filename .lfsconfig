@@ -1,2 +1,0 @@
-[lfs]
-	fetchexclude = nvblox_performance_measurement/nvblox_performance_measurement/datasets/**
