@@ -17,6 +17,7 @@ Please try to update this in the PR where the appropriate changes are made. :)
 
 ## Porting Documentation
 [ ] Update README to actually reflect repo status
+[ ] Update/remove docs
 
 ## Testing
 [ ] Realsense Bags
