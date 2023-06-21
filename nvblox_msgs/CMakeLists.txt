@@ -21,10 +21,11 @@ project(nvblox_msgs)
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 endif()
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-  add_compile_options(-Wall -Wextra -Wpedantic)
+  add_compile_options(-Wall -Wextra -Wpedantic -O3)
 endif()
 
 # Default to release build
@@ -33,27 +34,45 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 message( STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" )
 
-# find dependencies
-find_package(ament_cmake REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
-find_package(std_msgs REQUIRED)
-find_package(geometry_msgs REQUIRED)
+set(BUILD_EXPERIMENTS OFF)
+set(BUILD_TESTS OFF)
+set(BUILD_TESTING OFF)
 
-rosidl_generate_interfaces(${PROJECT_NAME}
-  "srv/FilePath.srv"
-  "msg/SemanticLabelsStamped.msg"
-  "msg/MeshBlock.msg"
-  "msg/Mesh.msg"
-  "msg/Index3D.msg"
-  "msg/DistanceMapSlice.msg"
-  DEPENDENCIES std_msgs geometry_msgs
+# find dependencies
+find_package(catkin REQUIRED
+  COMPONENTS
+    geometry_msgs
+    message_generation
+    std_msgs
 )
 
-ament_export_dependencies(rosidl_default_runtime std_msgs geometry_msgs)
+# Msg Definitions
+add_message_files(
+  FILES
+    Index3D.msg
+    MeshBlock.msg
+    Mesh.msg
+    DistanceMapSlice.msg
+    SemanticLabelsStamped.msg
+)
 
-if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
-  ament_lint_auto_find_test_dependencies()
-endif()
+# Srv Definitions
+add_service_files(
+  FILES
+  FilePath.srv
+)
 
-ament_package()
+# Runtime
+generate_messages(
+  DEPENDENCIES
+    geometry_msgs
+    std_msgs
+)
+
+ # Package Definitions.
+catkin_package(
+  CATKIN_DEPENDS
+    geometry_msgs
+    message_runtime
+    std_msgs
+)
