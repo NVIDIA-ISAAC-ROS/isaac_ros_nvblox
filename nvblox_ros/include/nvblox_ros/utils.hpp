@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
+#include <ros/ros.h>
 
 namespace nvblox
 {
@@ -28,12 +28,12 @@ namespace nvblox
 template<typename ParameterType>
 void inline declareParameterWithoutDefault(
   const std::string & name,
-  rclcpp::Node * node_ptr)
+  ros::Node * node_ptr)
 {
   try {
     node_ptr->declare_parameter<ParameterType>(name);
   } catch (
-    const rclcpp::exceptions::UninitializedStaticallyTypedParameterException & ex)
+    ros::Exception("Attempted null pointer operation"))
   {
   }
 }

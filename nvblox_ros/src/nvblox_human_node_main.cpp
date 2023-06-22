@@ -20,7 +20,7 @@
 
 #include <memory>
 
-#include <rclcpp/rclcpp.hpp>
+#include <ros/ros.h>
 
 #include "nvblox_ros/nvblox_human_node.hpp"
 
@@ -31,17 +31,19 @@ int main(int argc, char * argv[])
   google::InitGoogleLogging(argv[0]);
   FLAGS_alsologtostderr = true;
   google::InstallFailureSignalHandler();
-  rclcpp::init(argc, argv);
+  ros::init(argc, argv, "nvblox_human_node");
+  ros::NodeHandle nh("~");
 
   // Warmup CUDA so it doesn't affect our timings *as* much for the first
   // CUDA call.
   nvblox::warmupCuda();
 
-  rclcpp::executors::MultiThreadedExecutor exec;
-  std::shared_ptr<nvblox::NvbloxHumanNode> node(new nvblox::NvbloxHumanNode());
-  exec.add_node(node);
-  exec.spin();
+  //std::shared_ptr<nvblox::NvbloxNode> node(new nvblox::NvbloxNode());
+  nvblox::NvbloxNode NvbloxNode(nh);
 
-  rclcpp::shutdown();
+  ros::MultiThreadedSpinner spinner(4);
+  spinner.spin();
+
+  ros::shutdown();
   return 0;
 }

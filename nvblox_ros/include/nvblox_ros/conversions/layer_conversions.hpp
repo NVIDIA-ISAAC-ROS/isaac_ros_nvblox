@@ -37,14 +37,14 @@ public:
   template<typename VoxelType>
   void pointcloudMsgFromLayer(
     const VoxelBlockLayer<VoxelType> & layer,
-    sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+    sensor_msgs::PointCloud2 * pointcloud_msg);
 
   // Convert a layer in AABB to a pointcloud.
   template<typename VoxelType>
   void pointcloudMsgFromLayerInAABB(
     const VoxelBlockLayer<VoxelType> & layer,
     const AxisAlignedBoundingBox & aabb,
-    sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+    sensor_msgs::PointCloud2 * pointcloud_msg);
 
 private:
   cudaStream_t cuda_stream_ = nullptr;

@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
+#include <ros/ros.h>
 
 namespace nvblox
 {

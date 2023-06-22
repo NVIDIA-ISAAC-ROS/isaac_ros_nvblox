@@ -20,15 +20,15 @@
 
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
-#include <visualization_msgs/msg/marker.hpp>
+#include <ros/ros.h>
+#include <visualization_msgs/Marker.h>
 
 namespace nvblox
 {
 
-visualization_msgs::msg::Marker sliceLimitsToMarker(
+visualization_msgs::Marker sliceLimitsToMarker(
   const Transform & T_G_PB, const float slice_visualization_side_length,
-  const rclcpp::Time & timestamp, const std::string & global_frame_id,
+  const ros::Time & timestamp, const std::string & global_frame_id,
   const float min_height, const float max_height);
 
 }  // namespace nvblox

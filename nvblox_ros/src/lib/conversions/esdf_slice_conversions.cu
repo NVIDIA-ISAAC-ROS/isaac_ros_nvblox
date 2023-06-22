@@ -151,7 +151,7 @@ void EsdfSliceConverter::distanceMapSliceImageFromLayer(
 void EsdfSliceConverter::distanceMapSliceImageToMsg(
   const Image<float> & map_slice_image, const AxisAlignedBoundingBox & aabb,
   float z_slice_level, float voxel_size,
-  nvblox_msgs::msg::DistanceMapSlice * map_slice)
+  nvblox_msgs::DistanceMapSlice * map_slice)
 {
   CHECK_NOTNULL(map_slice);
 
@@ -211,7 +211,7 @@ AxisAlignedBoundingBox EsdfSliceConverter::getBoundingBoxOfLayerAtHeight(
 
 void EsdfSliceConverter::distanceMapSliceFromLayer(
   const EsdfLayer & layer, float z_slice_level,
-  nvblox_msgs::msg::DistanceMapSlice * map_slice)
+  nvblox_msgs::DistanceMapSlice * map_slice)
 {
   CHECK_NOTNULL(map_slice);
 
@@ -307,7 +307,7 @@ __global__ void sliceImageToPointcloudKernel(
 void EsdfSliceConverter::sliceImageToPointcloud(
     const Image<float>& map_slice_image, const AxisAlignedBoundingBox& aabb,
     float z_slice_level, float voxel_size,
-    sensor_msgs::msg::PointCloud2* pointcloud_msg) {
+    sensor_msgs::PointCloud2* pointcloud_msg) {
   CHECK_NOTNULL(pointcloud_msg);
 
   // Allocate max space we could take up

@@ -22,13 +22,15 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 
+#include <ros/time.h>
+
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-#include <geometry_msgs/msg/pose_stamped.hpp>
-#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 
 namespace nvblox
 {
@@ -38,27 +40,27 @@ namespace nvblox
 class Transformer
 {
 public:
-  explicit Transformer(rclcpp::Node * node);
+  explicit Transformer(ros::Node * node);
 
   /// @brief Looks up the transform between the frame with the passed name and the global frame
   ///        (which is set by the setters below). We either use tf2 or a stored queue of
   ///         transforms from messages.
   /// @param sensor_frame The frame name.
-  /// @param timestamp Time of the transform. Passing rclcpp::Time(0) will return the latest
+  /// @param timestamp Time of the transform. Passing ros::Time(0) will return the latest
   ///                  transform in the queue.
   /// @param transform The output transform.
   /// @return true if the lookup was successful.
   bool lookupTransformToGlobalFrame(
     const std::string & sensor_frame,
-    const rclcpp::Time & timestamp,
+    const ros::Time & timestamp,
     Transform * transform);
 
   /// Assumes these transforms are from GLOBAL frame to POSE frame. Ignores
   /// frame_id.
   void transformCallback(
-    const geometry_msgs::msg::TransformStamped::ConstSharedPtr transform_msg);
+    const geometry_msgs::TransformStamped::ConstPtr transform_msg);
   void poseCallback(
-    const geometry_msgs::msg::PoseStamped::ConstSharedPtr transform_msg);
+    const geometry_msgs::PoseStamped::ConstPtr transform_msg);
 
   /// Set the names of the frames.
   void set_global_frame(const std::string & global_frame)
@@ -75,21 +77,21 @@ private:
   bool lookupTransformTf(
     const std::string & from_frame,
     const std::string & to_frame,
-    const rclcpp::Time & timestamp, Transform * transform);
+    const ros::Time & timestamp, Transform * transform);
 
   bool lookupTransformQueue(
-    const rclcpp::Time & timestamp,
+    const ros::Time & timestamp,
     Transform * transform);
 
   bool lookupSensorTransform(
     const std::string & sensor_frame,
     Transform * transform);
 
-  Transform transformToEigen(const geometry_msgs::msg::Transform & transform) const;
-  Transform poseToEigen(const geometry_msgs::msg::Pose & pose) const;
+  Transform transformToEigen(const geometry_msgs::Transform & transform) const;
+  Transform poseToEigen(const geometry_msgs::Pose & pose) const;
 
   /// ROS State
-  rclcpp::Node * node_;
+  ros::Node * node_;
   std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
 

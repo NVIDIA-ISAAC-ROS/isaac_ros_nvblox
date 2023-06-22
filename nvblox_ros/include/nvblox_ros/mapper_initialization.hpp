@@ -22,23 +22,23 @@
 
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
+#include <ros/ros.h>
 
 #include "nvblox_ros/utils.hpp"
 
 namespace nvblox
 {
 
-void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * node);
+void declareMapperParameters(const std::string & mapper_name, ros::Node * node);
 
 template<typename T>
 void set_mapper_parameter(
   const std::string & mapper_name,
   const std::string & parameter_name,
   std::function<void(T)> parameter_setter,
-  rclcpp::Node * node);
+  ros::Node * node);
 
-void initializeMapper(const std::string & mapper_name, Mapper * mapper_ptr, rclcpp::Node * node);
+void initializeMapper(const std::string & mapper_name, Mapper * mapper_ptr, ros::Node * node);
 
 }  // namespace nvblox
 

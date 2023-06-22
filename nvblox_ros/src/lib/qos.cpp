@@ -47,8 +47,8 @@ rmw_qos_profile_t parseQoSString(const std::string & str)
   if (profile == "SENSOR_DATA") {
     return rmw_qos_profile_sensor_data;
   }
-  RCLCPP_WARN_STREAM(
-    rclcpp::get_logger("parseQoSString"),
+  ros_WARN_STREAM(
+    ros::get_logger("parseQoSString"),
     "Unknown QoS profile: " << profile << ". Returning profile: DEFAULT");
   return rmw_qos_profile_default;
 }

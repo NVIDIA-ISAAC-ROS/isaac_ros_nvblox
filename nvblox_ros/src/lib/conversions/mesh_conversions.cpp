@@ -17,34 +17,38 @@
 
 #include "nvblox_ros/conversions/mesh_conversions.hpp"
 
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/Point.h>
+#include <std_msgs/ColorRGBA.h>
+
 namespace nvblox
 {
 namespace conversions
 {
 
-geometry_msgs::msg::Point32 point32MessageFromVector(
+geometry_msgs::Point32 point32MessageFromVector(
   const Eigen::Vector3f & vector)
 {
-  geometry_msgs::msg::Point32 point;
+  geometry_msgs::Point32 point;
   point.x = vector.x();
   point.y = vector.y();
   point.z = vector.z();
   return point;
 }
 
-geometry_msgs::msg::Point pointMessageFromVector(
+geometry_msgs::Point pointMessageFromVector(
   const Eigen::Vector3f & vector)
 {
-  geometry_msgs::msg::Point point;
+  geometry_msgs::Point point;
   point.x = vector.x();
   point.y = vector.y();
   point.z = vector.z();
   return point;
 }
 
-std_msgs::msg::ColorRGBA colorMessageFromColor(const Color & color)
+std_msgs::ColorRGBA colorMessageFromColor(const Color & color)
 {
-  std_msgs::msg::ColorRGBA color_msg;
+  std_msgs::ColorRGBA color_msg;
   color_msg.r = static_cast<float>(color.r) / 255.0f;
   color_msg.g = static_cast<float>(color.g) / 255.0f;
   color_msg.b = static_cast<float>(color.b) / 255.0f;
@@ -52,9 +56,9 @@ std_msgs::msg::ColorRGBA colorMessageFromColor(const Color & color)
   return color_msg;
 }
 
-nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(const Index3D & index)
+nvblox_msgs::Index3D index3DMessageFromIndex3D(const Index3D & index)
 {
-  nvblox_msgs::msg::Index3D index_msg;
+  nvblox_msgs::Index3D index_msg;
   index_msg.x = index.x();
   index_msg.y = index.y();
   index_msg.z = index.z();
@@ -63,14 +67,14 @@ nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(const Index3D & index)
 
 void meshMessageFromMeshLayer(
   const BlockLayer<MeshBlock> & mesh_layer,
-  nvblox_msgs::msg::Mesh * mesh_msg)
+  nvblox_msgs::Mesh * mesh_msg)
 {
   std::vector<Index3D> block_indices = mesh_layer.getAllBlockIndices();
   meshMessageFromMeshBlocks(mesh_layer, block_indices, mesh_msg);
 }
 
 void meshBlockMessageFromMeshBlock(
-  const MeshBlock & mesh_block, nvblox_msgs::msg::MeshBlock * mesh_block_msg)
+  const MeshBlock & mesh_block, nvblox_msgs::MeshBlock * mesh_block_msg)
 {
   CHECK_NOTNULL(mesh_block_msg);
 
@@ -102,7 +106,7 @@ void meshBlockMessageFromMeshBlock(
 
 void meshMessageFromMeshBlocks(
   const BlockLayer<MeshBlock> & mesh_layer,
-  const std::vector<Index3D> & block_indices, nvblox_msgs::msg::Mesh * mesh_msg,
+  const std::vector<Index3D> & block_indices, nvblox_msgs::Mesh * mesh_msg,
   const std::vector<Index3D> & block_indices_to_delete)
 {
   // Go through all the blocks, converting each individual one.
@@ -126,14 +130,14 @@ void meshMessageFromMeshBlocks(
 
   for (const Index3D & block_index : block_indices_to_delete) {
     mesh_msg->block_indices.push_back(index3DMessageFromIndex3D(block_index));
-    mesh_msg->blocks.push_back(nvblox_msgs::msg::MeshBlock());
+    mesh_msg->blocks.push_back(nvblox_msgs::MeshBlock());
   }
 }
 
 void markerMessageFromMeshBlock(
   const MeshBlock::ConstPtr & mesh_block,
   const std::string & frame_id,
-  visualization_msgs::msg::Marker * marker)
+  visualization_msgs::Marker * marker)
 {
   marker->header.frame_id = frame_id;
   marker->ns = "mesh";
@@ -144,7 +148,7 @@ void markerMessageFromMeshBlock(
   marker->pose.orientation.y = 0;
   marker->pose.orientation.z = 0;
   marker->pose.orientation.w = 1;
-  marker->type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+  marker->type = visualization_msgs::Marker::TRIANGLE_LIST;
 
   // Assumes UNWELDED mesh: all vertices in order.
   std::vector<Vector3f> vertices = mesh_block->getVertexVectorOnCPU();
@@ -169,7 +173,7 @@ void markerMessageFromMeshBlock(
 // Convert a mesh to a marker array.
 void markerMessageFromMeshLayer(
   const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
-  visualization_msgs::msg::MarkerArray * marker_msg)
+  visualization_msgs::MarkerArray * marker_msg)
 {
   // Get all the mesh blocks.
   std::vector<Index3D> indices = mesh_layer.getAllBlockIndices();

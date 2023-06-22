@@ -24,9 +24,8 @@
 #include <vector>
 #include <unordered_set>
 
-#include <sensor_msgs/msg/point_cloud2.hpp>
-#include <visualization_msgs/msg/marker.hpp>
-
+#include <sensor_msgs/PointCloud2.h>
+#include <visualization_msgs/Marker.h>
 namespace nvblox
 {
 namespace conversions
@@ -45,7 +44,7 @@ struct alignas (16) PclPointXYZI
 
 void copyDevicePointcloudToMsg(
   const device_vector<PclPointXYZI> & pcl_pointcloud_device,
-  sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+  sensor_msgs::PointCloud2 * pointcloud_msg);
 
 // Helper class to store all the buffers.
 class PointcloudConverter
@@ -56,23 +55,23 @@ public:
   // Internal pointcloud representation to a ROS pointcloud
   void pointcloudMsgFromPointcloud(
     const Pointcloud & pointcloud,
-    sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+    sensor_msgs::PointCloud2 * pointcloud_msg);
 
   // Convert pointcloud to depth image.
   void depthImageFromPointcloudGPU(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
+    const sensor_msgs::PointCloud2::ConstPtr & pointcloud,
     const Lidar & lidar, DepthImage * depth_image_ptr);
 
   // This function returns true if the pointcloud passed in is consistent with
   // the LiDAR intrinsics model.
   bool checkLidarPointcloud(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
+    const sensor_msgs::PointCloud2::ConstPtr & pointcloud,
     const Lidar & lidar);
 
   // Write the pointcloud to file
   void writeLidarPointcloudToFile(
     const std::string filepath,
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud);
+    const sensor_msgs::PointCloud2::ConstPtr & pointcloud);
 
   /// Generates a marker with a bunch of cubes in it. Note that the resultant
   /// marker has does not have a frame or timestamp set (this is left to
@@ -85,7 +84,7 @@ public:
   void pointsToCubesMarkerMsg(
     const std::vector<Vector3f> & points,
     const float cube_size, const Color & color,
-    visualization_msgs::msg::Marker * marker_ptr);
+    visualization_msgs::Marker * marker_ptr);
 
 private:
   std::unordered_set<Lidar, Lidar::Hash> checked_lidar_models_;

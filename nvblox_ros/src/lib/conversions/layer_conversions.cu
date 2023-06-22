@@ -120,7 +120,7 @@ __global__ void copyLayerToPCLKernel(
 template <typename VoxelType>
 void LayerConverter::pointcloudMsgFromLayerInAABB(
     const VoxelBlockLayer<VoxelType>& layer, const AxisAlignedBoundingBox& aabb,
-    sensor_msgs::msg::PointCloud2* pointcloud) {
+    sensor_msgs::PointCloud2* pointcloud) {
   CHECK_NOTNULL(pointcloud);
 
   constexpr int kVoxelsPerSide = VoxelBlock<TsdfVoxel>::kVoxelsPerSide;
@@ -180,16 +180,16 @@ void LayerConverter::pointcloudMsgFromLayerInAABB(
 // Template specializations.
 template void LayerConverter::pointcloudMsgFromLayerInAABB<TsdfVoxel>(
     const VoxelBlockLayer<TsdfVoxel>& layer, const AxisAlignedBoundingBox& aabb,
-    sensor_msgs::msg::PointCloud2* pointcloud);
+    sensor_msgs::PointCloud2* pointcloud);
 
 template void LayerConverter::pointcloudMsgFromLayerInAABB<EsdfVoxel>(
     const VoxelBlockLayer<EsdfVoxel>& layer, const AxisAlignedBoundingBox& aabb,
-    sensor_msgs::msg::PointCloud2* pointcloud);
+    sensor_msgs::PointCloud2* pointcloud);
 
 template void LayerConverter::pointcloudMsgFromLayerInAABB<OccupancyVoxel>(
     const VoxelBlockLayer<OccupancyVoxel>& layer,
     const AxisAlignedBoundingBox& aabb,
-    sensor_msgs::msg::PointCloud2* pointcloud);
+    sensor_msgs::PointCloud2* pointcloud);
 
 }  // namespace conversions
 }  // namespace nvblox

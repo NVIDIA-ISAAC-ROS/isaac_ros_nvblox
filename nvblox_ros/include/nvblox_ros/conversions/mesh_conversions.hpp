@@ -23,9 +23,9 @@
 #include <string>
 #include <vector>
 
-#include <nvblox_msgs/msg/mesh.hpp>
-#include <visualization_msgs/msg/marker.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
+#include <nvblox_msgs/Mesh.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 
 
 namespace nvblox
@@ -36,18 +36,18 @@ namespace conversions
 // Convert a mesh to a message.
 void meshMessageFromMeshLayer(
   const BlockLayer<MeshBlock> & mesh_layer,
-  nvblox_msgs::msg::Mesh * mesh_msg);
+  nvblox_msgs::Mesh * mesh_msg);
 
 void meshMessageFromMeshBlocks(
   const BlockLayer<MeshBlock> & mesh_layer,
   const std::vector<Index3D> & block_indices,
-  nvblox_msgs::msg::Mesh * mesh_msg,
+  nvblox_msgs::Mesh * mesh_msg,
   const std::vector<Index3D> & deleted_indices = std::vector<Index3D>());
 
 // Convert a mesh to a marker array.
 void markerMessageFromMeshLayer(
   const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
-  visualization_msgs::msg::MarkerArray * marker_msg);
+  visualization_msgs::MarkerArray * marker_msg);
 
 }  // namespace conversions
 }  // namespace nvblox

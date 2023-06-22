@@ -24,7 +24,7 @@ namespace conversions {
 
 // Convert camera info message to NVBlox camera object
 Camera cameraFromMessage(
-    const sensor_msgs::msg::CameraInfo& camera_info) {
+    const sensor_msgs::CameraInfo& camera_info) {
   Camera camera(camera_info.k[0], camera_info.k[4], camera_info.k[2],
                 camera_info.k[5], camera_info.width, camera_info.height);
   return camera;
@@ -32,7 +32,7 @@ Camera cameraFromMessage(
 
 // Convert image to GPU image
 bool colorImageFromImageMessage(
-    const sensor_msgs::msg::Image::ConstSharedPtr& image_msg,
+    const sensor_msgs::ImageConstPtr& image_msg,
     ColorImage* color_image) {
   CHECK_NOTNULL(color_image);
 
@@ -50,7 +50,7 @@ bool colorImageFromImageMessage(
 
 // Convert image to GPU image
 bool monoImageFromImageMessage(
-    const sensor_msgs::msg::Image::ConstSharedPtr& image_msg,
+    const sensor_msgs::ImageConstPtr& image_msg,
     MonoImage* mono_image) {
   CHECK_NOTNULL(mono_image);
 
@@ -67,7 +67,7 @@ bool monoImageFromImageMessage(
 
 void imageMessageFromDepthImage(
     const DepthImage& depth_image, const std::string& frame_id,
-    sensor_msgs::msg::Image* image_msg) {
+    sensor_msgs::Image* image_msg) {
   CHECK_NOTNULL(image_msg);
   size_t image_size =
       depth_image.width() * depth_image.height() * sizeof(float);
@@ -86,7 +86,7 @@ void imageMessageFromDepthImage(
 
 void imageMessageFromColorImage(
     const ColorImage& color_image, const std::string& frame_id,
-    sensor_msgs::msg::Image* image_msg) {
+    sensor_msgs::Image* image_msg) {
   CHECK_NOTNULL(image_msg);
   constexpr int num_channels = 4;
   size_t image_size = color_image.width() * color_image.height() *
@@ -112,7 +112,7 @@ struct DivideBy1000 : public thrust::unary_function<uint16_t, float> {
 
 // Convert image to depth frame object
 bool depthImageFromImageMessage(
-    const sensor_msgs::msg::Image::ConstSharedPtr& image_msg,
+    const sensor_msgs::ImageConstPtr& image_msg,
     DepthImage* depth_image) {
   CHECK_NOTNULL(depth_image);
   // If the image is a float, we can just copy it over directly.

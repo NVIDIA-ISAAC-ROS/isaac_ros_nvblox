@@ -25,7 +25,7 @@ namespace nvblox
 {
 
 WeightingFunctionType weighting_function_type_from_string(
-  const std::string & weighting_function_str, rclcpp::Node * node)
+  const std::string & weighting_function_str, ros::Node * node)
 {
   if (weighting_function_str == "constant") {
     return WeightingFunctionType::kConstantWeight;
@@ -36,9 +36,7 @@ WeightingFunctionType weighting_function_type_from_string(
   } else if (weighting_function_str == "inverse_square_dropoff") {
     return WeightingFunctionType::kInverseSquareDropoffWeight;
   } else {
-    RCLCPP_WARN_STREAM(
-      node->get_logger(),
-      "Requested weighting function: \"" <<
+    ROS_WARN_STREAM("Requested weighting function: \"" <<
         weighting_function_str <<
         "\" not recognized. Defaulting to: " <<
         kDefaultWeightingFunctionType);
@@ -48,7 +46,7 @@ WeightingFunctionType weighting_function_type_from_string(
 
 void declareMapperParameters(
   const std::string & mapper_name,
-  rclcpp::Node * node)
+  ros::Node * node)
 {
   // Declare parameters
   // NOTE(alexmillane): We have to use the insane syntax in
@@ -100,9 +98,9 @@ void declareMapperParameters(
 
 void initializeMapper(
   const std::string & mapper_name, Mapper * mapper_ptr,
-  rclcpp::Node * node)
+  ros::Node * node)
 {
-  RCLCPP_INFO_STREAM(node->get_logger(), "Initialize Mapper:");
+  ROS_INFO_STREAM(node-> , "Initialize Mapper:");
 
   // tsdf or occupancy integrator
   set_mapper_parameter<float>(

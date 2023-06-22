@@ -77,8 +77,7 @@ void NvbloxNode::processMessageQueue(
       const int num_messages_lost = num_messages_deleted - num_messages_processed;
       constexpr int kLostMessagesPublishPeriodMs = 1000;
       auto & clk = *get_clock();
-      RCLCPP_WARN_STREAM_THROTTLE(
-        get_logger(), clk, kLostMessagesPublishPeriodMs,
+      ROS_WARN_STREAM_THROTTLE(clk, kLostMessagesPublishPeriodMs,
         "Deleted " << num_messages_lost << "because we could not interpolate transforms.");
     }
   }
@@ -88,7 +87,7 @@ void NvbloxNode::processMessageQueue(
   if (items_to_process.empty()) {
     return;
   }
-  rclcpp::Time last_timestamp;
+  ros::Time last_timestamp;
   for (auto image_pair : items_to_process) {
     callback(image_pair);
   }
@@ -96,8 +95,7 @@ void NvbloxNode::processMessageQueue(
   // nvblox statistics
   constexpr int kPublishPeriodMs = 10000;
   auto & clk = *get_clock();
-  RCLCPP_INFO_STREAM_THROTTLE(
-    get_logger(), clk, kPublishPeriodMs,
+  ROS_INFO_STREAM_THROTTLE(clk, kPublishPeriodMs,
     "Timing statistics: \n" <<
       nvblox::timing::Timing::Print());
 }
@@ -131,13 +129,12 @@ void NvbloxNode::limitQueueSizeByDeletingOldestMessages(
       queue_ptr->begin() + num_elements_to_delete);
     constexpr int kPublishPeriodMs = 1000;
     auto & clk = *get_clock();
-    RCLCPP_INFO_STREAM_THROTTLE(
-      get_logger(), clk, kPublishPeriodMs,
+    ROS_INFO_STREAM_THROTTLE(clk, kPublishPeriodMs,
       queue_name << " queue was longer than " << max_num_messages <<
         " deleted " << num_elements_to_delete << " messages.");
   }
 }
-
+/*
 template<typename MessageType>
 void NvbloxNode::printMessageArrivalStatistics(
   const MessageType & message, const std::string & output_prefix,
@@ -151,13 +148,15 @@ void NvbloxNode::printMessageArrivalStatistics(
   // Print statistics
   constexpr int kPublishPeriodMs = 10000;
   auto & clk = *get_clock();
-  RCLCPP_INFO_STREAM_THROTTLE(
-    get_logger(), clk, kPublishPeriodMs,
+  
+  ROS_INFO_STREAM_THROTTLE(clk, kPublishPeriodMs,
     output_prefix << ": \n" <<
       libstatistics_collector::moving_average_statistics::
       StatisticsDataToString(
       statistics_collector->GetStatisticsResults()));
+      
 }
+*/
 
 }  // namespace nvblox
 

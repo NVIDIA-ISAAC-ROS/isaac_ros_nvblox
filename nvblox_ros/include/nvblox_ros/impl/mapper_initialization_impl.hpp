@@ -20,7 +20,7 @@
 
 #include <string>
 
-#include <rclcpp/rclcpp.hpp>
+#include <ros/ros.h>
 
 namespace nvblox
 {
@@ -30,14 +30,14 @@ void set_mapper_parameter(
   const std::string & mapper_name,
   const std::string & parameter_name,
   std::function<void(T)> parameter_setter,
-  rclcpp::Node * node)
+  ros::Node * node)
 {
   T parameter_value;
   const std::string full_name = mapper_name + "." + parameter_name;
   if (node->get_parameter<T>(full_name, parameter_value)) {
     // Print non default values
-    RCLCPP_INFO_STREAM(
-      node->get_logger(),
+    ROS_INFO_STREAM(
+      node-> ,
       full_name << ": " << parameter_value);
     // Set the mapper parameter
     parameter_setter(parameter_value);

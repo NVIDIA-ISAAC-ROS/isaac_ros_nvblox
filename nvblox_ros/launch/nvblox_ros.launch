@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<launch>
+ <arg name="use_sim_time"                    default="true" doc="Path to the ROS bag dataset to run SLAM on."/>
+
+  <arg name="default_param_file"     value="$(find nvblox_ros)/config/parameters.yaml"/>
+  <arg name="output"                 default="screen"                    doc="Output target: screen or log."/>
+
+  <env name="ROSCONSOLE_CONFIG_FILE" value="$(find nvblox_ros)/config/rosconsole.config"/>
+
+  <!-- Node name -->
+  <arg name="node_name"                       default="nvblox_ros"/>
+
+  <!--<node type="rviz" name="rviz" pkg="rviz" args="-d $(find nvblox_ros)/rviz/rviz.rviz"/> -->
+
+  <!-- Launch loop_detector_manager_ros node. --> 
+  <node pkg="nvblox_ros" type="nvblox_node" name="$(arg node_name)" respawn="true" output="$(arg output)" >
+    <rosparam command="load" file="$(arg default_param_file)"/> 
+
+    <param name="use_sim_time"               value="$(arg use_sim_time)"/>
+
+  </node>
+
+</launch>

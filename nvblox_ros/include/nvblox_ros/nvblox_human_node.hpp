@@ -22,6 +22,11 @@
 #include <nvblox/sensors/pointcloud.h>
 #include <nvblox/semantics/image_projector.h>
 
+#include <message_filters/subscriber.h>
+#include <message_filters/sync_policies/approximate_time.h>
+#include <message_filters/synchronizer.h>
+#include <message_filters/time_synchronizer.h>
+
 #include <deque>
 #include <memory>
 #include <tuple>
@@ -34,7 +39,7 @@ namespace nvblox
 class NvbloxHumanNode : public NvbloxNode
 {
 public:
-  explicit NvbloxHumanNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit NvbloxHumanNode(const ros::NodeOptions & options = ros::NodeOptions());
   virtual ~NvbloxHumanNode() = default;
 
   // Setup. These are called by the constructor.
@@ -46,23 +51,23 @@ public:
 
   // Callbacks for Sensor + Mask
   void depthPlusMaskImageCallback(
-    const sensor_msgs::msg::Image::ConstSharedPtr & depth_img_ptr,
-    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg,
-    const sensor_msgs::msg::Image::ConstSharedPtr & mask_img_ptr,
-    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & mask_camera_info_msg);
+    const sensor_msgs::ImageConstPtr & depth_img_ptr,
+    const sensor_msgs::CameraInfo::ConstPtr & camera_info_msg,
+    const sensor_msgs::ImageConstPtr & mask_img_ptr,
+    const sensor_msgs::CameraInfo::ConstPtr & mask_camera_info_msg);
   void colorPlusMaskImageCallback(
-    const sensor_msgs::msg::Image::ConstSharedPtr & color_img_ptr,
-    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg,
-    const sensor_msgs::msg::Image::ConstSharedPtr & mask_img_ptr,
-    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & mask_camera_info_msg);
+    const sensor_msgs::ImageConstPtr & color_img_ptr,
+    const sensor_msgs::CameraInfo::ConstPtr & camera_info_msg,
+    const sensor_msgs::ImageConstPtr & mask_img_ptr,
+    const sensor_msgs::CameraInfo::ConstPtr & mask_camera_info_msg);
 
   // This is our internal type for passing around images, their matching
   // segmentation masks, as well as the camera intrinsics.
   using ImageSegmentationMaskMsgTuple =
-    std::tuple<sensor_msgs::msg::Image::ConstSharedPtr,
-      sensor_msgs::msg::CameraInfo::ConstSharedPtr,
-      sensor_msgs::msg::Image::ConstSharedPtr,
-      sensor_msgs::msg::CameraInfo::ConstSharedPtr>;
+    std::tuple<sensor_msgs::ImageConstPtr,
+      sensor_msgs::CameraInfo::ConstPtr,
+      sensor_msgs::ImageConstPtr,
+      sensor_msgs::CameraInfo::ConstPtr>;
 
   // Override the depth processing from the base node
   void processDepthQueue() override;
@@ -93,8 +98,8 @@ protected:
 
   // Synchronize: Depth + CamInfo + SegmentationMake + CamInfo
   typedef message_filters::sync_policies::ApproximateTime<
-      sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo,
-      sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>
+      sensor_msgs::Image, sensor_msgs::CameraInfo,
+      sensor_msgs::Image, sensor_msgs::CameraInfo>
     mask_time_policy_t;
   std::shared_ptr<message_filters::Synchronizer<mask_time_policy_t>>
   timesync_depth_mask_;
@@ -102,33 +107,33 @@ protected:
   timesync_color_mask_;
 
   // Segmentation mask sub.
-  message_filters::Subscriber<sensor_msgs::msg::Image> segmentation_mask_sub_;
-  message_filters::Subscriber<sensor_msgs::msg::CameraInfo>
+  message_filters::Subscriber<sensor_msgs::Image> segmentation_mask_sub_;
+  message_filters::Subscriber<sensor_msgs::CameraInfo>
   segmentation_camera_info_sub_;
 
   // Publishers
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+  ros::Publisher<sensor_msgs::PointCloud2>::SharedPtr
     human_pointcloud_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+  ros::Publisher<sensor_msgs::PointCloud2>::SharedPtr
     human_esdf_pointcloud_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+  ros::Publisher<sensor_msgs::PointCloud2>::SharedPtr
     combined_esdf_pointcloud_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
+  ros::Publisher<visualization_msgs::Marker>::SharedPtr
     human_voxels_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+  ros::Publisher<sensor_msgs::PointCloud2>::SharedPtr
     human_occupancy_publisher_;
-  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+  ros::Publisher<nvblox_msgs::DistanceMapSlice>::SharedPtr
     human_map_slice_publisher_;
-  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+  ros::Publisher<nvblox_msgs::DistanceMapSlice>::SharedPtr
     combined_map_slice_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
+  ros::Publisher<sensor_msgs::Image>::SharedPtr
     depth_frame_overlay_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
+  ros::Publisher<sensor_msgs::Image>::SharedPtr
     color_frame_overlay_publisher_;
 
   // Timers
-  rclcpp::TimerBase::SharedPtr human_occupancy_decay_timer_;
-  rclcpp::TimerBase::SharedPtr human_esdf_processing_timer_;
+  ros::TimerBase::SharedPtr human_occupancy_decay_timer_;
+  ros::TimerBase::SharedPtr human_esdf_processing_timer_;
 
   // Rates.
   float human_occupancy_decay_rate_hz_ = 10.0f;

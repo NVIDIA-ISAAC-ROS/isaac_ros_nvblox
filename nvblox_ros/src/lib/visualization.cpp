@@ -25,9 +25,9 @@
 namespace nvblox
 {
 
-visualization_msgs::msg::Marker sliceLimitsToMarker(
+visualization_msgs::Marker sliceLimitsToMarker(
   const Transform & T_G_PB, const float slice_visualization_side_length,
-  const rclcpp::Time & timestamp, const std::string & global_frame_id,
+  const ros::Time & timestamp, const std::string & global_frame_id,
   const float min_height, const float max_height)
 {
   // Corners of the plane in the plane-body frame.
@@ -60,20 +60,20 @@ visualization_msgs::msg::Marker sliceLimitsToMarker(
     vertices_G_vec.push_back(vertex_G);
   }
 
-  visualization_msgs::msg::Marker marker;
+  visualization_msgs::Marker marker;
   marker.header.frame_id = global_frame_id;
   marker.header.stamp = timestamp;
   marker.ns = "slice_limits";
   marker.id = 0;
-  marker.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
-  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.type = visualization_msgs::Marker::TRIANGLE_LIST;
+  marker.action = visualization_msgs::Marker::ADD;
   marker.scale.x = 1.0;
   marker.scale.y = 1.0;
   marker.scale.z = 1.0;
   marker.color.a = 0.25;
 
   for (const Vector3f p_G : vertices_G_vec) {
-    geometry_msgs::msg::Point msg;
+    geometry_msgs::Point msg;
     msg.x = p_G.x();
     msg.y = p_G.y();
     msg.z = p_G.z();
@@ -82,7 +82,7 @@ visualization_msgs::msg::Marker sliceLimitsToMarker(
 
   // Bottom color
   for (int i = 0; i < 6; i++) {
-    std_msgs::msg::ColorRGBA color_msg;
+    std_msgs::ColorRGBA color_msg;
     color_msg.a = 0.8;
     color_msg.g = 1.0;
     marker.colors.push_back(color_msg);
@@ -90,7 +90,7 @@ visualization_msgs::msg::Marker sliceLimitsToMarker(
 
   // Top color
   for (int i = 0; i < 6; i++) {
-    std_msgs::msg::ColorRGBA color_msg;
+    std_msgs::ColorRGBA color_msg;
     color_msg.a = 0.8;
     color_msg.r = 1.0;
     marker.colors.push_back(color_msg);

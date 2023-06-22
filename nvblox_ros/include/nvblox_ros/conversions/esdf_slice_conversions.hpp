@@ -20,7 +20,7 @@
 
 #include <nvblox/nvblox.h>
 
-#include <nvblox_msgs/msg/distance_map_slice.hpp>
+#include <nvblox_msgs/DistanceMapSlice.h>
 
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
 
@@ -41,7 +41,7 @@ public:
   // slices for now.
   void distanceMapSliceFromLayer(
     const EsdfLayer & layer, float z_slice_level,
-    nvblox_msgs::msg::DistanceMapSlice * map_slice);
+    nvblox_msgs::DistanceMapSlice * map_slice);
 
   void distanceMapSliceFromLayers(
     const EsdfLayer & layer_1,
@@ -64,13 +64,13 @@ public:
   void distanceMapSliceImageToMsg(
     const Image<float> & map_slice_image, const AxisAlignedBoundingBox & aabb,
     float z_slice_level, float voxel_size,
-    nvblox_msgs::msg::DistanceMapSlice * map_slice);
+    nvblox_msgs::DistanceMapSlice * map_slice);
 
   void sliceImageToPointcloud(
     const Image<float> & map_slice_image,
     const AxisAlignedBoundingBox & aabb,
     float z_slice_level, float voxel_size,
-    sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+    sensor_msgs::PointCloud2 * pointcloud_msg);
 
   AxisAlignedBoundingBox getBoundingBoxOfLayerAtHeight(
     const EsdfLayer & layer, const float z_slice_level);

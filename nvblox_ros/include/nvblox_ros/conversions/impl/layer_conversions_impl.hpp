@@ -27,7 +27,7 @@ namespace conversions
 template<typename VoxelType>
 inline void LayerConverter::pointcloudMsgFromLayer(
   const VoxelBlockLayer<VoxelType> & layer,
-  sensor_msgs::msg::PointCloud2 * pointcloud_msg)
+  sensor_msgs::PointCloud2 * pointcloud_msg)
 {
   AxisAlignedBoundingBox aabb;
   aabb.setEmpty();

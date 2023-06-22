@@ -31,14 +31,11 @@
   <author>Helen Oleynikova</author>
   <author>Alexander Millane</author>
   
-  <buildtool_depend>ament_cmake</buildtool_depend>
-  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>catkin</buildtool_depend>
 
   <depend>geometry_msgs</depend>
-  <depend>libstatistics_collector</depend>
   <depend>nvblox_msgs</depend>
-  <depend>rclcpp</depend>
-  <depend>rclcpp_components</depend>
+  <depend>roscpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
@@ -47,13 +44,12 @@
   <depend>message_filters</depend>
   <depend>cv_bridge</depend>
   <depend>nvblox</depend>
-  <depend>nvblox_ros_common</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
   <test_depend>isaac_ros_test</test_depend>
 
   <export>
-    <build_type>ament_cmake</build_type>
+    <build_type>catkin</build_type>
   </export>
 </package>
