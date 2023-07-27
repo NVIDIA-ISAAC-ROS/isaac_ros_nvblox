@@ -89,12 +89,17 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
         cd isaac_ros_nvblox && git lfs pull
     ```
 
-3. Pull down a ROS Bag of sample data:
+3. Pull down a ROS Bag of sample data appropriately depending upon SD card or SSD setup:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
       git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
     ```
+    > **Note**: For Jetson setup with SSD as optional storage:
+    >  ```bash
+    >  cd /ssd/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
+    >    git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
+    >  ```
 
 4. Launch the Docker container using the `run_dev.sh` script:
 
