@@ -42,12 +42,9 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 4. Download the code for [Isaac ROS Visual SLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git) and [Isaac ROS NITROS](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros).
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src && \
-      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git
-    ```
-
-    ```bash
-    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros
+    cd ${ISAAC_ROS_WS}/src && \
+      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
     ```
 
 5. Launch the Docker container using the `run_dev.sh` script:
