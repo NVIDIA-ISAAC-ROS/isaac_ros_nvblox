@@ -77,13 +77,13 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 
 2. Connect the RealSense device to your machine.
 
-3. At this point, check that the RealSense camera device is properly connected and streaming by running `realsense-viewer`:
+3. At this point, verify that the RealSense camera device is properly connected and streaming by running `realsense-viewer` as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md):
 
     ```bash
     realsense-viewer
     ```
 
-4. If successful exit `realsense-viewer` and run the launch file to spin up the example:
+4. If successful, exit `realsense-viewer` and run the launch file to spin up the example:
 
     ```bash
     ros2 launch nvblox_examples_bringup realsense_example.launch.py
