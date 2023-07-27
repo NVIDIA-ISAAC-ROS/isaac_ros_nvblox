@@ -47,11 +47,13 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
       git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
     ```
 
-5. Launch the Docker container using the `run_dev.sh` script:
+5. Launch the Docker container using the `run_dev.sh` script (`ISAAC_ROS_WS` environment variable will take care of the correct path depending upon SD card or SSD setup as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md)):
+
+   > **Note**: This step requires access to the internet to be able to build and launch the Docker container properly!
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
 6. Inside the container, install package-specific dependencies via `rosdep`:
