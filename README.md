@@ -70,11 +70,15 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
 1. Set up your development environment by following the instructions [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md).
 
-2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src`.
+2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src` or `/ssd/workspaces/isaac_ros-dev/src` depending upon SD card or SSD setup.
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src
     ```
+    > **Note**: For Jetson setup with SSD as optional storage:
+    >  ```bash
+    >  cd /ssd/workspaces/isaac_ros-dev/src
+    >  ```
 
     ```bash
     git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
