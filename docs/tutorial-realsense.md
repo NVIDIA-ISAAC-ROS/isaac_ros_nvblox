@@ -77,26 +77,13 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 
 2. Connect the RealSense device to your machine.
 
-3. Run the ROS Docker container using the `run_dev.sh` script:
-
-    ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
-    ```
-
-4. Source the workspace:
-
-    ```bash
-    source /workspaces/isaac_ros-dev/install/setup.bash
-    ```
-
-5. At this point, you can check that the RealSense camera is connected by running realsense-viewer:
+3. At this point, check that the RealSense camera device is properly connected and streaming by running `realsense-viewer`:
 
     ```bash
     realsense-viewer
     ```
 
-6. If successful, run the launch file to spin up the example:
+4. If successful exit `realsense-viewer` and run the launch file to spin up the example:
 
     ```bash
     ros2 launch nvblox_examples_bringup realsense_example.launch.py
