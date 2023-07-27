@@ -101,11 +101,11 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     >    git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
     >  ```
 
-4. Launch the Docker container using the `run_dev.sh` script:
+4. Launch the Docker container using the `run_dev.sh` script (`ISAAC_ROS_WS` environment variable will take care of the correct path depending upon SD card or SSD setup as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md)):
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
 5. Inside the container, install package-specific dependencies via `rosdep`:
