@@ -30,7 +30,7 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 2. Stop git tracking the `COLCON_IGNORE` file in the `realsense_splitter` package and remove it.
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter && \
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter && \
       git update-index --assume-unchanged COLCON_IGNORE && \
       rm COLCON_IGNORE
     ```
