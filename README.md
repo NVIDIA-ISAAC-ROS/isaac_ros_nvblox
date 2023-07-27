@@ -136,7 +136,7 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
         ros2 launch nvblox_examples_bringup isaac_sim_example.launch.py
     ```
 
-10. Open a **second terminal** inside the docker container:
+10. Open a **second terminal** inside the Docker container:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
