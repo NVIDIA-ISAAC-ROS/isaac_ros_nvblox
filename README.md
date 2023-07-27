@@ -129,27 +129,26 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     colcon test --executor sequential
     ```
 
-9. In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+9. In the **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
 
     ```bash
-    source /workspaces/isaac_ros-dev/install/setup.bash && \
-        ros2 launch nvblox_examples_bringup isaac_sim_example.launch.py
+    ros2 launch nvblox_examples_bringup isaac_sim_example.launch.py
     ```
 
-10. Open a **second terminal** inside the Docker container:
+10. Open a **second terminal** and enter inside the running Docker container (similar to Step 4):
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
-11. In the **second terminal**, play the ROS Bag:
+11. In the **second terminal** inside the Docker container, play the ROS Bag:
 
     ```bash
     ros2 bag play src/isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol
     ```
 
-You should see the robot reconstructing a mesh, with the 2d esdf slice overlaid on top.
+You should see the robot reconstructing a mesh, with the 2D ESDF slice overlaid on top.
 
 <div align="center"><img src="resources/basic_example_rviz.png" width=500px/></div>
 
