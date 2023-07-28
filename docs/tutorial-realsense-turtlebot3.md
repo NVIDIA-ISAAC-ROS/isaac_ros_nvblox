@@ -1,1 +1,1 @@
-# ISAAC-ROS-NVBLOX tutorial using Intel Realsense Camera and Turtlebot3 Burger
+# Tutorial for RealSense Camera based Reconstruction using Turtlebot3 Burger
