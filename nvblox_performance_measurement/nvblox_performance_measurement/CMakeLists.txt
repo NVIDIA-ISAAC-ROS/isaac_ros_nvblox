@@ -43,6 +43,7 @@ find_package(std_srvs REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(nvblox_ros REQUIRED)
 find_package(nvblox_performance_measurement_msgs REQUIRED)
+find_package(glog REQUIRED)
 find_package(CUDA REQUIRED) # Should probably be replaced with CUDAToolkit when available.
 
 # include
