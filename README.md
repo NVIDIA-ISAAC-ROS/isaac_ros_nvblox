@@ -70,11 +70,15 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
 
 1. Set up your development environment by following the instructions [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md).
 
-2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src`.
+2. Clone this repository and its dependencies under `~/workspaces/isaac_ros-dev/src` or `/ssd/workspaces/isaac_ros-dev/src` depending upon SD card or SSD setup.
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src
     ```
+    > **Note**: For Jetson setup with SSD as optional storage:
+    >  ```bash
+    >  cd /ssd/workspaces/isaac_ros-dev/src
+    >  ```
 
     ```bash
     git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common
@@ -85,28 +89,35 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
         cd isaac_ros_nvblox && git lfs pull
     ```
 
-3. Pull down a ROS Bag of sample data:
+3. Pull down a ROS Bag of sample data appropriately depending upon SD card or SSD setup:
 
     ```bash
     cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
       git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
     ```
+    > **Note**: For Jetson setup with SSD as optional storage:
+    >  ```bash
+    >  cd /ssd/workspaces/isaac_ros-dev/src/isaac_ros_nvblox && \ 
+    >    git lfs pull -X "" -I "nvblox_ros/test/test_cases/rosbags/nvblox_pol"
+    >  ```
 
-4. Launch the Docker container using the `run_dev.sh` script:
+4. Launch the Docker container using the `run_dev.sh` script (`ISAAC_ROS_WS` environment variable will take care of the correct path depending upon SD card or SSD setup as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md)):
+
+   > **Note**: This step requires access to the internet to be able to build and launch the Docker container properly!
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
-5. Inside the container, install package-specific dependencies via `rosdep`:
+6. Inside the container, install package-specific dependencies via `rosdep`:
 
     ```bash
     cd /workspaces/isaac_ros-dev/ && \
         rosdep install -i -r --from-paths src --rosdistro humble -y --skip-keys "libopencv-dev libopencv-contrib-dev libopencv-imgproc-dev python-opencv python3-opencv nvblox"
     ```
 
-6. Build and source the workspace:  
+7. Build and source the workspace:  
 
     ```bash
     cd /workspaces/isaac_ros-dev && \
@@ -120,27 +131,26 @@ To simplify development, we strongly recommend leveraging the Isaac ROS Dev Dock
     colcon test --executor sequential
     ```
 
-9. In a **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
+9. In the **current terminal** inside the Docker container, run the launch file for Nvblox with `nav2`:
 
     ```bash
-    source /workspaces/isaac_ros-dev/install/setup.bash && \
-        ros2 launch nvblox_examples_bringup isaac_sim_example.launch.py
+    ros2 launch nvblox_examples_bringup isaac_sim_example.launch.py
     ```
 
-10. Open a **second terminal** inside the docker container:
+10. Open a **second terminal** and enter inside the running Docker container (similar to Step 4):
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
-11. In the **second terminal**, play the ROS Bag:
+11. In the **second terminal** inside the Docker container, play the ROS Bag:
 
     ```bash
     ros2 bag play src/isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol
     ```
 
-You should see the robot reconstructing a mesh, with the 2d esdf slice overlaid on top.
+You should see the robot reconstructing a mesh, with the 2D ESDF slice overlaid on top.
 
 <div align="center"><img src="resources/basic_example_rviz.png" width=500px/></div>
 

@@ -30,7 +30,7 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 2. Stop git tracking the `COLCON_IGNORE` file in the `realsense_splitter` package and remove it.
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter && \
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_nvblox/nvblox_examples/realsense_splitter && \
       git update-index --assume-unchanged COLCON_IGNORE && \
       rm COLCON_IGNORE
     ```
@@ -42,19 +42,18 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 4. Download the code for [Isaac ROS Visual SLAM](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git) and [Isaac ROS NITROS](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros).
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src && \
-      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git
+    cd ${ISAAC_ROS_WS}/src && \
+      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git && \
+      git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
     ```
 
-    ```bash
-    git clone https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros
-    ```
+5. Launch the Docker container using the `run_dev.sh` script (`ISAAC_ROS_WS` environment variable will take care of the correct path depending upon SD card or SSD setup as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common/blob/main/docs/dev-env-setup.md)):
 
-5. Launch the Docker container using the `run_dev.sh` script:
+   > **Note**: This step requires access to the internet to be able to build and launch the Docker container properly!
 
     ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
+    cd ${ISAAC_ROS_WS}/src/isaac_ros_common && \
+      ./scripts/run_dev.sh ${ISAAC_ROS_WS}
     ```
 
 6. Inside the container, install package-specific dependencies via `rosdep`:
@@ -78,26 +77,13 @@ More details on DDS tuning can be found [here](https://docs.ros.org/en/rolling/H
 
 2. Connect the RealSense device to your machine.
 
-3. Run the ROS Docker container using the `run_dev.sh` script:
-
-    ```bash
-    cd ~/workspaces/isaac_ros-dev/src/isaac_ros_common && \
-      ./scripts/run_dev.sh
-    ```
-
-4. Source the workspace:
-
-    ```bash
-    source /workspaces/isaac_ros-dev/install/setup.bash
-    ```
-
-5. At this point, you can check that the RealSense camera is connected by running realsense-viewer:
+3. At this point, verify that the RealSense camera device is properly connected and streaming by running `realsense-viewer` as mentioned [here](https://github.com/NVIDIA-ISAAC-ROS/.github/blob/main/profile/realsense-setup.md):
 
     ```bash
     realsense-viewer
     ```
 
-6. If successful, run the launch file to spin up the example:
+4. If successful, exit `realsense-viewer` and run the launch file to spin up the example:
 
     ```bash
     ros2 launch nvblox_examples_bringup realsense_example.launch.py
