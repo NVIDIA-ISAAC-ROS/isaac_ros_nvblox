@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,8 +19,8 @@
 #define NVBLOX_ROS__NVBLOX_HUMAN_NODE_HPP_
 
 #include <nvblox/mapper/multi_mapper.h>
-#include <nvblox/sensors/pointcloud.h>
 #include <nvblox/semantics/image_projector.h>
+#include <nvblox/sensors/pointcloud.h>
 
 #include <deque>
 #include <memory>
@@ -34,12 +34,12 @@ namespace nvblox
 class NvbloxHumanNode : public NvbloxNode
 {
 public:
-  explicit NvbloxHumanNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit NvbloxHumanNode(
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
   virtual ~NvbloxHumanNode() = default;
 
   // Setup. These are called by the constructor.
   void getParameters();
-  void initializeMultiMapper();
   void subscribeToTopics();
   void setupTimers();
   void advertiseTopics();
@@ -74,31 +74,26 @@ public:
   virtual bool processColorImage(
     const ImageSegmentationMaskMsgTuple & color_mask_msg);
 
-  // Publish human data on fixed frequency
-  void processHumanEsdf();
-
-  // Decay the human occupancy grid on fixed frequency
-  void decayHumanOccupancy();
-
 protected:
   // Publish human data (if any subscribers) that helps
   // visualization and debugging.
   void publishHumanDebugOutput();
 
-  // Mapper
-  // Holds the map layers and their associated integrators
-  // - TsdfLayer, ColorLayer, OccupancyLayer, EsdfLayer, MeshLayer
-  std::shared_ptr<MultiMapper> multi_mapper_;
-  std::shared_ptr<Mapper> human_mapper_;
-
-  // Synchronize: Depth + CamInfo + SegmentationMake + CamInfo
+  // Approx Synchronize: Depth + CamInfo + SegmentationMake + CamInfo
   typedef message_filters::sync_policies::ApproximateTime<
       sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo,
       sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>
-    mask_time_policy_t;
-  std::shared_ptr<message_filters::Synchronizer<mask_time_policy_t>>
+    mask_approximate_time_policy_t;
+
+  // Exact Synchronize: Color + CamInfo + SegmentationMake + CamInfo
+  typedef message_filters::sync_policies::ExactTime<
+      sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo,
+      sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>
+    mask_exact_time_policy_t;
+
+  std::shared_ptr<message_filters::Synchronizer<mask_approximate_time_policy_t>>
   timesync_depth_mask_;
-  std::shared_ptr<message_filters::Synchronizer<mask_time_policy_t>>
+  std::shared_ptr<message_filters::Synchronizer<mask_exact_time_policy_t>>
   timesync_color_mask_;
 
   // Segmentation mask sub.
@@ -107,32 +102,18 @@ protected:
   segmentation_camera_info_sub_;
 
   // Publishers
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    human_pointcloud_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    human_esdf_pointcloud_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    combined_esdf_pointcloud_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
     human_voxels_publisher_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    human_occupancy_publisher_;
-  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
-    human_map_slice_publisher_;
-  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
-    combined_map_slice_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
     depth_frame_overlay_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
     color_frame_overlay_publisher_;
 
   // Timers
-  rclcpp::TimerBase::SharedPtr human_occupancy_decay_timer_;
-  rclcpp::TimerBase::SharedPtr human_esdf_processing_timer_;
+  rclcpp::TimerBase::SharedPtr human_debug_publish_timer__;
 
   // Rates.
-  float human_occupancy_decay_rate_hz_ = 10.0f;
-  float human_esdf_update_rate_hz_ = 10.0f;
+  float human_debug_publish_rate_hz_ = 10.0f;
 
   // Image queues.
   // Note these differ from the base class image queues because they also
@@ -142,14 +123,11 @@ protected:
   std::deque<ImageSegmentationMaskMsgTuple> color_mask_image_queue_;
 
   // Cache for GPU image
-  MonoImage mask_image_;
+  MonoImage mask_image_{MemoryType::kDevice};
 
   // Image queue mutexes.
   std::mutex depth_mask_queue_mutex_;
   std::mutex color_mask_queue_mutex_;
-
-  // Object for back projecting image to a pointcloud.
-  DepthImageBackProjector image_back_projector_;
 
   // Device caches
   Pointcloud human_pointcloud_C_device_;

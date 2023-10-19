@@ -20,10 +20,10 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import GroupAction
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
+from launch_ros.actions import LoadComposableNodes, Node
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import (ComposableNodeContainer, SetParameter,
-                                SetParametersFromFile, SetRemap)
+from launch_ros.actions import (SetParameter, SetParametersFromFile, SetRemap)
 from launch_ros.descriptions import ComposableNode
 
 
@@ -46,21 +46,29 @@ def generate_launch_description():
         LaunchConfiguration('setup_for_isaac_sim', default='False'))
     setup_for_realsense = IfCondition(
         LaunchConfiguration('setup_for_realsense', default='False'))
+    
+    # Option to attach the nodes to a shared component container for speed ups through intra process communication.
+    # Make sure to set the 'component_container_name' to the name of the component container you want to attach to.
+    attach_to_shared_component_container_arg = LaunchConfiguration('attach_to_shared_component_container', default=False)
+    component_container_name_arg = LaunchConfiguration('component_container_name', default='nvblox_human_container')
 
-    # Nvblox node
-    node = ComposableNode(
-        name='nvblox_human_node',
-        package='nvblox_ros',
-        plugin='nvblox::NvbloxHumanNode')
-
-    # Nvblox node container
-    nvblox_human_container = ComposableNodeContainer(
-        name='nvblox_human_container',
-        namespace='',
+    # If we do not attach to a shared component container we have to create our own container.
+    nvblox_human_container = Node(
+        name=component_container_name_arg,
         package='rclcpp_components',
-        executable='component_container',
-        composable_node_descriptions=[node],
-        output='screen')
+        executable='component_container_mt',
+        output='screen',
+        condition=UnlessCondition(attach_to_shared_component_container_arg)
+    )
+
+    load_composable_nodes = LoadComposableNodes(
+        target_container=component_container_name_arg,
+        composable_node_descriptions=[
+            #Nvblox node
+            ComposableNode(
+            name='nvblox_human_node',
+            package='nvblox_ros',
+            plugin='nvblox::NvbloxHumanNode')])
 
     group_action = GroupAction([
 
@@ -118,7 +126,7 @@ def generate_launch_description():
                  condition=setup_for_isaac_sim),
 
         # Include the node container
-        nvblox_human_container
+        load_composable_nodes
     ])
 
-    return LaunchDescription([group_action])
+    return LaunchDescription([nvblox_human_container, group_action])

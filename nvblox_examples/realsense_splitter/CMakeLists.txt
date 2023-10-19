@@ -30,6 +30,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(realsense2_camera_msgs REQUIRED)
 find_package(nvblox_ros_common REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 
 #############

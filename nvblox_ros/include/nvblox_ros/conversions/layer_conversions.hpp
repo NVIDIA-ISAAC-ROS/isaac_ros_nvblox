@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,8 @@
 
 #include <nvblox/nvblox.h>
 
+#include <memory>
+
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
 
 namespace nvblox
@@ -32,6 +34,7 @@ class LayerConverter
 {
 public:
   LayerConverter();
+  explicit LayerConverter(std::shared_ptr<CudaStream> cuda_stream);
 
   // Convert a layer to a pointcloud.
   template<typename VoxelType>
@@ -47,7 +50,7 @@ public:
     sensor_msgs::msg::PointCloud2 * pointcloud_msg);
 
 private:
-  cudaStream_t cuda_stream_ = nullptr;
+  std::shared_ptr<CudaStream> cuda_stream_;
 
   // Buffers
   device_vector<PclPointXYZI> pcl_pointcloud_device_;

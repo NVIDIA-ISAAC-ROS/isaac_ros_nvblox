@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,7 +23,11 @@
 namespace nvblox {
 namespace conversions {
 
-LayerConverter::LayerConverter() { cudaStreamCreate(&cuda_stream_); }
+LayerConverter::LayerConverter()
+    : LayerConverter(std::make_shared<CudaStreamOwning>()) {}
+
+LayerConverter::LayerConverter(std::shared_ptr<CudaStream> cuda_stream)
+    : cuda_stream_(cuda_stream) {}
 
 template <typename VoxelType>
 __device__ bool getVoxelIntensity(const VoxelType& voxel, float voxel_size,
@@ -53,6 +57,14 @@ __device__ bool getVoxelIntensity(const TsdfVoxel& voxel, float voxel_size,
   constexpr float kMinWeight = 0.1f;
   *intensity = voxel.distance;
   return voxel.weight > kMinWeight;
+}
+
+template <>
+__device__ bool getVoxelIntensity(const FreespaceVoxel& voxel, float voxel_size,
+                                  float* intensity) {
+  *intensity = voxel.is_high_confidence_freespace;
+  // Only show non high confidence freespace
+  return !voxel.is_high_confidence_freespace;
 }
 
 // Inputs: GPU hash for the E/TSDF.
@@ -99,7 +111,8 @@ __global__ void copyLayerToPCLKernel(
   const VoxelType& voxel =
       block_ptr->voxels[voxel_index.x()][voxel_index.y()][voxel_index.z()];
   float intensity = 0.0f;
-  if (!getVoxelIntensity<VoxelType>(voxel, voxel_size, &intensity)) {
+  if (!getVoxelIntensity<VoxelType>(voxel, voxel_size, 
+                                    &intensity)) {
     return;
   }
 
@@ -139,7 +152,7 @@ void LayerConverter::pointcloudMsgFromLayerInAABB(
   std::vector<Index3D> block_indices =
       getAllocatedBlocksWithinAABB(layer, aabb_intersect);
   // Copy to device memory.
-  block_indices_device_ = block_indices;
+  block_indices_device_.copyFromAsync(block_indices, *cuda_stream_);
 
   if (block_indices.empty()) {
     return;
@@ -162,11 +175,11 @@ void LayerConverter::pointcloudMsgFromLayerInAABB(
   int dim_block = block_indices.size();
   dim3 dim_threads(kVoxelsPerSide, kVoxelsPerSide, kVoxelsPerSide);
 
-  copyLayerToPCLKernel<VoxelType><<<dim_block, dim_threads, 0, cuda_stream_>>>(
+  copyLayerToPCLKernel<VoxelType><<<dim_block, dim_threads, 0, *cuda_stream_>>>(
       gpu_layer_view.getHash().impl_, block_indices_device_.data(),
       block_indices.size(), num_voxels, aabb_intersect, layer.block_size(),
       pcl_pointcloud_device_.data(), max_index_device_.get());
-  checkCudaErrors(cudaStreamSynchronize(cuda_stream_));
+  checkCudaErrors(cudaStreamSynchronize(*cuda_stream_));
   checkCudaErrors(cudaPeekAtLastError());
 
   // Copy the pointcloud out.
@@ -180,6 +193,11 @@ void LayerConverter::pointcloudMsgFromLayerInAABB(
 // Template specializations.
 template void LayerConverter::pointcloudMsgFromLayerInAABB<TsdfVoxel>(
     const VoxelBlockLayer<TsdfVoxel>& layer, const AxisAlignedBoundingBox& aabb,
+    sensor_msgs::msg::PointCloud2* pointcloud);
+
+template void LayerConverter::pointcloudMsgFromLayerInAABB<FreespaceVoxel>(
+    const VoxelBlockLayer<FreespaceVoxel>& layer,
+    const AxisAlignedBoundingBox& aabb,
     sensor_msgs::msg::PointCloud2* pointcloud);
 
 template void LayerConverter::pointcloudMsgFromLayerInAABB<EsdfVoxel>(

@@ -22,6 +22,7 @@ usb_port_id: ''
 
 rgb_camera:
   profile: '640x480x15'
+color_info_qos: "SENSOR_DATA"
 color_qos: "SENSOR_DATA"
 
 depth_module:
@@ -29,7 +30,7 @@ depth_module:
   emitter_enabled: 1
   emitter_on_off: true
 depth_qos: "SENSOR_DATA"
-depth_info_qos: "SYSTEM_DEFAULT"
+depth_info_qos: "SENSOR_DATA"
 
 infra_qos: "SENSOR_DATA"
 

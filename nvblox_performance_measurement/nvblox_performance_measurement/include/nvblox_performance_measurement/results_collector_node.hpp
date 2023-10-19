@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,6 +51,9 @@ public:
   void cpuMessageCallback(const std_msgs::msg::Float32::ConstSharedPtr msg_ptr);
   void gpuMessageCallback(const std_msgs::msg::Float32::ConstSharedPtr msg_ptr);
 
+  // Network performance callback
+  void NetMeanIoUMessageCallback(const std_msgs::msg::Float32::ConstSharedPtr msg_ptr);
+
   // Nvblox timers callback
   void timersMessageCallback(const std_msgs::msg::String::ConstSharedPtr msg_ptr);
 
@@ -61,6 +64,9 @@ private:
   // Samples of CPU/GPU percentage
   std::vector<float> cpu_percentages_;
   std::vector<float> gpu_percentages_;
+
+  // Samples of network performance measurements
+  std::vector<float> network_mean_iou_percentages_;
 
   // The last timing results received
   std::string nvblox_timers_string_;
@@ -73,6 +79,9 @@ private:
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr cpu_percentage_sub_;
   rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr gpu_percentage_sub_;
 
+  // Subscribe to network mean IoU
+  rclcpp::Subscription<std_msgs::msg::Float32>::SharedPtr network_mean_iou_percentage_sub_;
+
   // Subscription to the nvblox internal timing results
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr timers_sub_;
 
@@ -81,14 +90,17 @@ private:
   // that they can be interpreted consistently in spite of remapping.
   const std::string color_image_topic_name_ = "color/image";
   const std::string depth_image_topic_name_ = "depth/image";
+  const std::string semantic_image_topic_name_ = "/unet/raw_segmentation_mask";
   const std::string pointcloud_topic_name_ = "pointcloud";
-  const std::string color_image_processed_topic_name_ = "/nvblox_node/color_processed";
-  const std::string depth_image_processed_topic_name_ = "/nvblox_node/depth_processed";
-  const std::string pointcloud_processed_topic_name_ = "/nvblox_node/pointcloud_processed";
-  const std::string slice_topic_name_ = "/nvblox_node/map_slice";
-  const std::string mesh_processed_name_ = "/nvblox_node/mesh_processed";
+  const std::string color_image_processed_topic_name_ = "/nvblox_human_node/color_processed";
+  const std::string depth_image_processed_topic_name_ = "/nvblox_human_node/depth_processed";
+  const std::string pointcloud_processed_topic_name_ = "/nvblox_human_node/pointcloud_processed";
+  const std::string base_slice_topic_name_ = "/nvblox_human_node/static_map_slice";
+  const std::string human_slice_topic_name_ = "/nvblox_human_node/dynamic_map_slice";
+  const std::string mesh_processed_name_ = "/nvblox_human_node/mesh_processed";
   const std::string cpu_topic_name_ = "cpu_percentage_node/cpu_percent";
   const std::string gpu_topic_name_ = "gpu_percentage_node/gpu_percent";
+  const std::string network_mean_iou_topic_name_ = "/network_performance_node/iou";
 
 };
 

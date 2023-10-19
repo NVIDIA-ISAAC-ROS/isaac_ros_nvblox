@@ -102,6 +102,25 @@ controller_server:
       stateful: True
     # DWB parameters
     FollowPath:
+      # NOTE(remos): 
+      #   The RotationShimController did not work for Isaac Sim 2023.1.0 at the time of the release.
+      #   Therefore we comment it here and use the DWBLocalPlanner for the moment.
+      # TODO(remos):
+      #   Bring back the RotationShimController when the issue is fixed
+      #   as it offers better navigation performance when doing narrow turns.
+
+      # Rotation Shim Controller params
+      # This will turn the robot in place when the heading difference between the robot
+      # and the path is too big. 
+      # plugin: "nav2_rotation_shim_controller::RotationShimController"
+      # primary_controller: "dwb_core::DWBLocalPlanner"
+      # angular_dist_threshold: 0.3 # ~= 17 degree
+      # forward_sampling_distance: 1.0
+      # rotate_to_heading_angular_vel: 1.8
+      # max_angular_accel: 3.2
+      # simulate_ahead_time: 1.0
+
+      # Primary controller params (DWBLocalPlanner)
       plugin: "dwb_core::DWBLocalPlanner"
       debug_trajectory_details: True
       min_vel_x: 0.0
@@ -182,13 +201,13 @@ local_costmap:
         enabled: True
         max_obstacle_distance: 1.0
         inflation_distance: 0.4
-        nvblox_map_slice_topic: "/nvblox_node/map_slice"
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
       nvblox_human_layer:
         plugin: "nvblox::nav2::NvbloxCostmapLayer"
         enabled: True
         max_obstacle_distance: 1.0
         inflation_distance: 0.4
-        nvblox_map_slice_topic: "/nvblox_human_node/human_map_slice"
+        nvblox_map_slice_topic: "/nvblox_human_node/dynamic_map_slice"
       always_send_full_costmap: True
   local_costmap_client:
     ros__parameters:
@@ -218,13 +237,13 @@ global_costmap:
         enabled: True
         max_obstacle_distance: 1.0
         inflation_distance: 0.4
-        nvblox_map_slice_topic: "/nvblox_node/map_slice"
+        nvblox_map_slice_topic: "/nvblox_node/static_map_slice"
       nvblox_human_layer:
         plugin: "nvblox::nav2::NvbloxCostmapLayer"
         enabled: True
         max_obstacle_distance: 1.0
         inflation_distance: 0.4
-        nvblox_map_slice_topic: "/nvblox_human_node/human_map_slice"
+        nvblox_map_slice_topic: "/nvblox_human_node/dynamic_map_slice"
       always_send_full_costmap: True
   global_costmap_client:
     ros__parameters:

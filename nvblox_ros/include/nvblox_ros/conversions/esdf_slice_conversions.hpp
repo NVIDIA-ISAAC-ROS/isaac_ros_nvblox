@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,6 +20,8 @@
 
 #include <nvblox/nvblox.h>
 
+#include <memory>
+
 #include <nvblox_msgs/msg/distance_map_slice.hpp>
 
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
@@ -29,63 +31,47 @@ namespace nvblox
 namespace conversions
 {
 
-constexpr float kDistanceMapSliceUnknownValue = 1000.0f;
-
-// Helper class to store all the buffers.
 class EsdfSliceConverter
 {
 public:
   EsdfSliceConverter();
+  explicit EsdfSliceConverter(std::shared_ptr<CudaStream> cuda_stream);
 
-  // Create a distance map slice from an ESDF layer. Only works with z-axis
-  // slices for now.
-  void distanceMapSliceFromLayer(
-    const EsdfLayer & layer, float z_slice_level,
-    nvblox_msgs::msg::DistanceMapSlice * map_slice);
+  // ------------- WRAPPING ESDF SLICER FUNCTIONS -------------
 
-  void distanceMapSliceFromLayers(
+  // Slicing an esdf layer (using EsdfSlicer)
+  void sliceLayerToDistanceImage(
+    const EsdfLayer & layer, float slice_height,
+    Image<float> * output_image,
+    AxisAlignedBoundingBox * aabb);
+
+  // Slicing multiple esdf layer (using EsdfSlicer)
+  void sliceLayersToCombinedDistanceImage(
     const EsdfLayer & layer_1,
-    const EsdfLayer & layer_2, float z_slice_level,
-    Image<float> * map_slice_image_ptr,
-    AxisAlignedBoundingBox * aabb_ptr);
+    const EsdfLayer & layer_2,
+    float slice_height,
+    Image<float> * output_image,
+    AxisAlignedBoundingBox * aabb);
 
-  void distanceMapSliceImageFromLayer(
-    const EsdfLayer & layer,
-    float z_slice_level,
-    const AxisAlignedBoundingBox & aabb,
-    Image<float> * map_slice_image_ptr);
+  // ------------- CONVERSIONS TO ROS MESSAGES -------------
 
-  void distanceMapSliceImageFromLayer(
-    const EsdfLayer & layer,
-    float z_slice_level,
-    Image<float> * map_slice_image_ptr,
-    AxisAlignedBoundingBox * aabb_ptr);
-
-  void distanceMapSliceImageToMsg(
-    const Image<float> & map_slice_image, const AxisAlignedBoundingBox & aabb,
-    float z_slice_level, float voxel_size,
+  // Convert slice image to distance map message
+  void distanceMapSliceMsgFromSliceImage(
+    const Image<float> & slice_image, const AxisAlignedBoundingBox & aabb,
+    float slice_height, float voxel_size,
     nvblox_msgs::msg::DistanceMapSlice * map_slice);
 
-  void sliceImageToPointcloud(
-    const Image<float> & map_slice_image,
-    const AxisAlignedBoundingBox & aabb,
-    float z_slice_level, float voxel_size,
+  // Convert slice image to pointcloud
+  void pointcloudMsgFromSliceImage(
+    const Image<float> & slice_image, const AxisAlignedBoundingBox & aabb,
+    float slice_height, float voxel_size,
     sensor_msgs::msg::PointCloud2 * pointcloud_msg);
 
-  AxisAlignedBoundingBox getBoundingBoxOfLayerAtHeight(
-    const EsdfLayer & layer, const float z_slice_level);
-
 private:
-  // Output methods to access GPU layer *slice* in a more efficient way.
-  // The output is a float image whose size *should* match the AABB with
-  // a given resolution (in meters). Otherwise behavior is undefined.
-  void populateSliceFromLayer(
-    const EsdfLayer & layer,
-    const AxisAlignedBoundingBox & aabb,
-    float z_slice_height, float resolution,
-    float unobserved_value, Image<float> * image);
+  // Slicer that does the work
+  EsdfSlicer esdf_slicer_;
 
-  cudaStream_t cuda_stream_ = nullptr;
+  std::shared_ptr<CudaStream> cuda_stream_;
 
   // Buffers
   unified_ptr<int> max_index_device_;

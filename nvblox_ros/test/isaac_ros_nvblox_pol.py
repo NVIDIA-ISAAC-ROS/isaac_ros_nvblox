@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,7 +40,7 @@ _TEST_CASE_NAMESPACE = 'nvblox_test'
     2. Nvblox node consumes the data and produces 3d Mesh
        and Map slice which is used as a costmap.
     3. This test expect the data to be available on topic nvblox_node/mesh
-       and nvblox_node/map_slice.
+       and nvblox_node/static_map_slice.
 """
 
 
@@ -86,9 +86,9 @@ class IsaacROSNvBloxTest(IsaacROSBaseTest):
         TIMEOUT = 10
         received_messages = {}
         self.generate_namespace_lookup(
-            ['nvblox_node/mesh', 'nvblox_node/map_slice'], _TEST_CASE_NAMESPACE)
+            ['nvblox_node/mesh', 'nvblox_node/static_map_slice'], _TEST_CASE_NAMESPACE)
         subs = self.create_logging_subscribers(
-            [('nvblox_node/mesh', Mesh), ('nvblox_node/map_slice', DistanceMapSlice)],
+            [('nvblox_node/mesh', Mesh), ('nvblox_node/static_map_slice', DistanceMapSlice)],
             received_messages,
             use_namespace_lookup=True, accept_multiple_messages=True)
 
@@ -100,11 +100,12 @@ class IsaacROSNvBloxTest(IsaacROSBaseTest):
                 rclpy.spin_once(self.node, timeout_sec=0.1)
 
             if len(received_messages['nvblox_node/mesh']) > 0 and \
-                    len(received_messages['nvblox_node/map_slice']) > 0:
+                    len(received_messages['nvblox_node/static_map_slice']) > 0:
                 done = True
 
             self.assertTrue(
-                done, 'Didnt recieve output on nvblox_node/mesh or nvblox_node/map_slice topic')
+                done, 'Didnt recieve output on nvblox_node/mesh '
+                      'or nvblox_node/static_map_slice topic')
 
         finally:
             [self.node.destroy_subscription(sub) for sub in subs]

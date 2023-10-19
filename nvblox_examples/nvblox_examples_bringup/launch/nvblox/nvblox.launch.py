@@ -20,10 +20,10 @@ import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import GroupAction
-from launch.conditions import IfCondition
+from launch.conditions import IfCondition, UnlessCondition
+from launch_ros.actions import LoadComposableNodes, Node
 from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import (ComposableNodeContainer, SetParameter,
-                                SetParametersFromFile, SetRemap)
+from launch_ros.actions import (SetParameter, SetParametersFromFile, SetRemap)
 from launch_ros.descriptions import ComposableNode
 
 
@@ -35,36 +35,54 @@ def generate_launch_description():
 
     # Config files
     base_config = os.path.join(base_config_dir, 'nvblox_base.yaml')
+    dynamics_config = os.path.join(specialization_dir, 'nvblox_dynamics.yaml')
     realsense_config = os.path.join(
         specialization_dir, 'nvblox_realsense.yaml')
+    zed_config = os.path.join(
+        specialization_dir, 'nvblox_zed.yaml')
     simulation_config = os.path.join(
         specialization_dir, 'nvblox_isaac_sim.yaml')
 
     # Conditionals for setup
+    setup_for_dynamics = IfCondition(
+        LaunchConfiguration('setup_for_dynamics', default='False'))
     setup_for_isaac_sim = IfCondition(
         LaunchConfiguration('setup_for_isaac_sim', default='False'))
     setup_for_realsense = IfCondition(
         LaunchConfiguration('setup_for_realsense', default='False'))
+    setup_for_zed = IfCondition(
+        LaunchConfiguration('setup_for_zed', default='False'))
+    
+    # Option to attach the nodes to a shared component container for speed ups through intra process communication.
+    # Make sure to set the 'component_container_name' to the name of the component container you want to attach to.
+    attach_to_shared_component_container_arg = LaunchConfiguration('attach_to_shared_component_container', default=False)
+    component_container_name_arg = LaunchConfiguration('component_container_name', default='nvblox_container')
 
-    # Nvblox node
-    node = ComposableNode(
-        name='nvblox_node',
-        package='nvblox_ros',
-        plugin='nvblox::NvbloxNode')
-
-    # Nvblox node container
-    nvblox_container = ComposableNodeContainer(
-        name='nvblox_container',
-        namespace='',
+    # If we do not attach to a shared component container we have to create our own container.
+    nvblox_container = Node(
+        name=component_container_name_arg,
         package='rclcpp_components',
-        executable='component_container',
-        composable_node_descriptions=[node],
-        output='screen')
+        executable='component_container_mt',
+        output='screen',
+        condition=UnlessCondition(attach_to_shared_component_container_arg)
+    )
+    
+    load_composable_nodes = LoadComposableNodes(
+        target_container=component_container_name_arg,
+        composable_node_descriptions=[
+            ComposableNode(
+            name='nvblox_node',
+            package='nvblox_ros',
+            plugin='nvblox::NvbloxNode')])
 
     group_action = GroupAction([
 
         # Set parameters with specializations
         SetParametersFromFile(base_config),
+        SetParametersFromFile(dynamics_config,
+                              condition=setup_for_dynamics),
+        SetParametersFromFile(zed_config,
+                              condition=setup_for_zed),
         SetParametersFromFile(realsense_config,
                               condition=setup_for_realsense),
         SetParametersFromFile(simulation_config,
@@ -86,6 +104,23 @@ def generate_launch_description():
                  dst=['/camera/color/camera_info'],
                  condition=setup_for_realsense),
 
+        # Remappings for zed
+	    SetRemap(src=['depth/image'],
+                 dst=['/zed2/zed_node/depth/depth_registered'],
+                 condition=setup_for_zed),
+        SetRemap(src=['depth/camera_info'],
+                 dst=['/zed2/zed_node/depth/camera_info'],
+                 condition=setup_for_zed),
+        SetRemap(src=['color/image'],
+                 dst=['/zed2/zed_node/rgb/image_rect_color'],
+                 condition=setup_for_zed),
+        SetRemap(src=['color/camera_info'],
+                 dst=['/zed2/zed_node/rgb/camera_info'],
+                 condition=setup_for_zed),
+        SetRemap(src=['pose'],
+                 dst=['/zed2/zed_node/pose'],
+                 condition=setup_for_zed),
+
         # Remappings for isaac sim data
         SetRemap(src=['depth/image'],
                  dst=['/front/stereo_camera/left/depth'],
@@ -104,7 +139,7 @@ def generate_launch_description():
                  condition=setup_for_isaac_sim),
 
         # Include the node container
-        nvblox_container
+        load_composable_nodes
     ])
 
-    return LaunchDescription([group_action])
+    return LaunchDescription([nvblox_container, group_action])
