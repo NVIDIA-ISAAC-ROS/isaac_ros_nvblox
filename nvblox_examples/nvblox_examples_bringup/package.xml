@@ -21,17 +21,16 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_examples_bringup</name>
-  <version>0.31.0</version>
+  <version>2.0.0</version>
   <description>Launchfiles for nvblox examples</description>
 
-  <maintainer email="holeynikova@nvidia.com">Helen Oleynikova</maintainer>
-  <maintainer email="amillane@nvidia.com">Alexader Millane</maintainer> 
+  <maintainer email="amillane@nvidia.com">Alexander Millane</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
 
   <author>Helen Oleynikova</author>
   <author>Alexander Millane</author>
-  
+
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>

@@ -151,7 +151,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/esdf_pointcloud
+            Value: /nvblox_human_node/static_esdf_pointcloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
@@ -185,7 +185,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/occupancy
+            Value: /nvblox_human_node/static_occupancy
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
@@ -201,7 +201,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/color_frame_overlay
+            Value: /nvblox_human_node/dynamic_color_frame_overlay
           Value: true
         - Class: rviz_default_plugins/Image
           Enabled: true
@@ -215,7 +215,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/depth_frame_overlay
+            Value: /nvblox_human_node/dynamic_depth_frame_overlay
           Value: true
       Enabled: true
       Name: Nvblox
@@ -264,7 +264,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/human_occupancy
+            Value: /nvblox_human_node/dynamic_occupancy
           Use Fixed Frame: true
           Use rainbow: false
           Value: true
@@ -298,7 +298,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_human_node/human_esdf_pointcloud
+            Value: /nvblox_human_node/dynamic_esdf_pointcloud
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
@@ -417,9 +417,43 @@ Visualization Manager:
             Depth: 5
             Durability Policy: Volatile
             History Policy: Keep Last
-            Reliability Policy: Reliable
+            Reliability Policy: Best Effort
             Value: /unet/colored_segmentation_mask
           Value: true
+        - Alpha: 1
+          Autocompute Intensity Bounds: true
+          Autocompute Value Bounds:
+            Max Value: 10
+            Min Value: -10
+            Value: true
+          Axis: Z
+          Channel Name: intensity
+          Class: rviz_default_plugins/PointCloud2
+          Color: 255; 255; 255
+          Color Transformer: Intensity
+          Decay Time: 0
+          Enabled: false
+          Invert Rainbow: false
+          Max Color: 255; 255; 255
+          Max Intensity: 1
+          Min Color: 0; 0; 0
+          Min Intensity: 1
+          Name: Back Projected Depth Image
+          Position Transformer: XYZ
+          Selectable: true
+          Size (Pixels): 3
+          Size (m): 0.019999999552965164
+          Style: Flat Squares
+          Topic:
+            Depth: 5
+            Durability Policy: Volatile
+            Filter size: 10
+            History Policy: Keep Last
+            Reliability Policy: Reliable
+            Value: /nvblox_human_node/back_projected_depth
+          Use Fixed Frame: true
+          Use rainbow: true
+          Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:

@@ -19,6 +19,7 @@ import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
+from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
@@ -36,30 +37,67 @@ def generate_launch_description():
     run_nav2_arg = DeclareLaunchArgument(
         'run_nav2', default_value='True',
         description='Whether to run nav2')
+    # NOTE(remos): When running Vslam make sure to set the global frame 
+    #              to e.g. 'odom_vslam' to not clash with the Isaac Sim odometry frame
+    run_vslam_arg = DeclareLaunchArgument(
+        'run_vslam', default_value='False',
+        description='Whether to run vslam')
+    global_frame = LaunchConfiguration('global_frame',
+                                       default='odom')
 
+    # Create a shared container to hold composable nodes 
+    # for speed ups through intra process communication.
+    shared_container_name = "shared_nvblox_container"
+    shared_container = Node(
+        name=shared_container_name,
+        package='rclcpp_components',
+        executable='component_container_mt',
+        output='screen')
+    
     # Nav2
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(os.path.join(
             bringup_dir, 'launch', 'nav2', 'nav2_isaac_sim.launch.py')),
+        launch_arguments={'global_frame': global_frame}.items(),
         condition=IfCondition(LaunchConfiguration('run_nav2')))
+
+    # Vslam
+    vslam_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            bringup_dir, 'launch', 'perception', 'vslam.launch.py')]),
+        launch_arguments={'output_odom_frame_name': global_frame,
+                          'setup_for_isaac_sim': 'True',
+                          # Flatten VIO to 2D (assuming the robot only moves horizontally).
+                          # This is needed to prevent vertical odometry drift.
+                          'run_odometry_flattening': 'True',
+                          'attach_to_shared_component_container': 'True',
+                          'component_container_name': shared_container_name}.items(),
+        condition=IfCondition(LaunchConfiguration('run_vslam')))
 
     # Nvblox
     nvblox_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
             os.path.join(bringup_dir, 'launch', 'nvblox', 'nvblox.launch.py')]),
-        launch_arguments={'setup_for_isaac_sim': 'True'}.items())
+        launch_arguments={'global_frame': global_frame,
+                          'setup_for_isaac_sim': 'True', 
+                          'attach_to_shared_component_container': 'True',
+                          'component_container_name': shared_container_name}.items())
 
     # Rviz
     rviz_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([os.path.join(
             bringup_dir, 'launch', 'rviz', 'rviz.launch.py')]),
         launch_arguments={
-            'config_name': 'isaac_sim_example.rviz'}.items(),
+            'config_name': 'isaac_sim_example.rviz',
+            'global_frame': global_frame}.items(),
         condition=IfCondition(LaunchConfiguration('run_rviz')))
 
     return LaunchDescription([
         run_rviz_arg,
         run_nav2_arg,
+        run_vslam_arg,
+        shared_container,
         nav2_launch,
+        vslam_launch,
         nvblox_launch,
         rviz_launch])

@@ -22,7 +22,7 @@ import time
 
 import omni
 
-ADDITIONAL_EXTENSIONS_BASE = ['omni.isaac.ros2_bridge-humble']
+ADDITIONAL_EXTENSIONS_BASE = ['omni.isaac.ros2_bridge']
 
 ADDITIONAL_EXTENSIONS_PEOPLE = [
     'omni.anim.people', 'omni.anim.navigation.bundle', 'omni.anim.timeline',
@@ -60,20 +60,12 @@ def rebuild_nav_mesh():
 
     omni.kit.commands.execute(
         'ChangeSetting',
-        path='/exts/omni.anim.navigation.core/navMesh/config/height',
+        path='/exts/omni.anim.navigation.core/navMesh/config/agentHeight',
         value=1.5)
     omni.kit.commands.execute(
         'ChangeSetting',
-        path='/exts/omni.anim.navigation.core/navMesh/config/radius',
+        path='/exts/omni.anim.navigation.core/navMesh/config/agentRadius',
         value=0.5)
-    omni.kit.commands.execute(
-        'ChangeSetting',
-        path='/exts/omni.anim.navigation.core/navMesh/config/maxSlope',
-        value=60.0)
-    omni.kit.commands.execute(
-        'ChangeSetting',
-        path='/exts/omni.anim.navigation.core/navMesh/config/maxClimb',
-        value=0.2)
     omni.kit.commands.execute(
         'ChangeSetting',
         path='/persistent/exts/omni.anim.navigation.core/navMesh/autoRebakeDelaySeconds',
@@ -104,10 +96,10 @@ def create_people_commands(environment_prim_path: str,
         num_waypoints_per_human (int): The number of waypoints to create per human.
 
     """
-    from omni.isaac.occupancy_map import _occupancy_map
+    import carb
     import omni.anim.navigation.core as navcore
     from omni.isaac.core.prims import XFormPrim
-    import carb
+    from omni.isaac.occupancy_map import _occupancy_map
     navigation_interface = navcore.acquire_interface()
     print('Creating randomized paths for people...')
     bounding_box = omni.usd.get_context().compute_path_world_bounding_box(
@@ -203,11 +195,13 @@ def update_people_command_file_path(anim_people_command_dir: str):
 def main(scenario_path: str,
          anim_people_command_dir: str,
          environment_prim_path: str,
+         physics_scene_path: str,
          random_command_generation: bool,
          num_waypoints: int,
          headless: bool = False,
          with_people: bool = True,
          use_generated_command_file: bool = False,
+         gpu_physics_enabled: bool = False,
          tick_rate_hz: float = 20.0):
 
     # Start up the simulator
@@ -263,6 +257,14 @@ def main(scenario_path: str,
     simulation_context = SimulationContext(stage_units_in_meters=1.0,
                                            physics_dt=1.0 / 60,
                                            rendering_dt=time_dt)
+
+    if gpu_physics_enabled:
+        from pxr import Sdf
+        omni.kit.commands.execute('ChangeProperty',
+                                  prop_path=Sdf.Path(
+                                      physics_scene_path + '.physxScene:enableGPUDynamics'),
+                                  value=True,
+                                  prev=None)
 
     simulation_context.play()
     simulation_context.step()
@@ -342,6 +344,14 @@ if __name__ == '__main__':
         help='Choose whether to use generated/custom command file or to use the default one to run\
               the people animation',
         action='store_true')
+    parser.add_argument(
+        '--gpu_physics_enabled',
+        help='If used, gpu physics for the scene will be enabled. '
+             'To be used in case of deformable bodies',
+        action='store_true')
+    parser.add_argument('--physics_scene_path',
+                        default='/World/PhysicsScene',
+                        help='Path to the physics scene')
     # This allows for IsaacSim options to be passed on the SimulationApp.
     args, unknown = parser.parse_known_args()
 
@@ -359,5 +369,6 @@ if __name__ == '__main__':
             )
 
     main(args.scenario_path, args.anim_people_waypoint_dir, args.environment_prim_path,
-         args.random_command_generation, args.num_waypoints, args.headless, args.with_people,
-         args.use_generated_command_file, args.tick_rate_hz)
+         args.physics_scene_path, args.random_command_generation,
+         args.num_waypoints, args.headless, args.with_people,
+         args.use_generated_command_file, args.gpu_physics_enabled, args.tick_rate_hz)

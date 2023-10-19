@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,28 +21,38 @@
 #include <std_msgs/msg/string.hpp>
 
 #include <nvblox_ros/nvblox_node.hpp>
+#include <nvblox_ros/nvblox_human_node.hpp>
 
 #include <nvblox_performance_measurement_msgs/msg/frame_processed.hpp>
 
 namespace nvblox
 {
 
-class NvbloxPerformanceMeasurementNode : public NvbloxNode
+using ImageSegmentationMaskMsgTuple =
+  std::tuple<sensor_msgs::msg::Image::ConstSharedPtr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr,
+    sensor_msgs::msg::Image::ConstSharedPtr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr>;
+using ImageMsgTuple =
+  std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
+    sensor_msgs::msg::CameraInfo::ConstSharedPtr>;
+
+template<typename NvbloxType, typename MessageTupleType>
+class NvbloxPerformanceMeasurementNodeTemplate : public NvbloxType
 {
 public:
-  NvbloxPerformanceMeasurementNode();
-  virtual ~NvbloxPerformanceMeasurementNode() = default;
+  NvbloxPerformanceMeasurementNodeTemplate(
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  virtual ~NvbloxPerformanceMeasurementNodeTemplate() = default;
 
   // Callback functions. These just stick images in a queue.
   // Process a single images
   virtual bool processDepthImage(
-    const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
-    sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
-    depth_camera_pair) override;
+    const MessageTupleType &
+    depth_mask_msg) override;
   virtual bool processColorImage(
-    const std::pair<sensor_msgs::msg::Image::ConstSharedPtr,
-    sensor_msgs::msg::CameraInfo::ConstSharedPtr> &
-    color_camera_pair) override;
+    const MessageTupleType &
+    color_mask_msg) override;
   virtual bool processLidarPointcloud(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr) override;
 
@@ -69,6 +79,13 @@ private:
   rclcpp::TimerBase::SharedPtr timers_publishing_timer_;
 };
 
+typedef NvbloxPerformanceMeasurementNodeTemplate<NvbloxHumanNode,
+    ImageSegmentationMaskMsgTuple> NvbloxHumanPerformanceMeasurementNode;
+typedef NvbloxPerformanceMeasurementNodeTemplate<NvbloxNode,
+    ImageMsgTuple> NvbloxPerformanceMeasurementNode;
+
 }  // namespace nvblox
 
 #endif  // NVBLOX_PERFORMANCE_MEASUREMENT__NVBLOX_PERFORMANCE_MEASUREMENT_NODE_HPP_
+
+#include "nvblox_performance_measurement/impl/nvblox_performance_measurement_node_impl.hpp"

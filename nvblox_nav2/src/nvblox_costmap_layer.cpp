@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,7 +39,7 @@ void NvbloxCostmapLayer::onInitialize()
   enabled_ = node->declare_parameter(name_ + "." + "enabled", true);
 
   // Get the path of the map slice topic.
-  std::string nvblox_map_slice_topic = "/nvblox_node/map_slice";
+  std::string nvblox_map_slice_topic = "/nvblox_node/static_map_slice";
 
   nvblox_map_slice_topic = node->declare_parameter<std::string>(
     getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);

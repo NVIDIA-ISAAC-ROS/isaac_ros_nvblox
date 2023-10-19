@@ -1,0 +1,17 @@
+# NOTE(remos): This file was copied from stereolabs/zed-ros2-wrapper/zed_wrapper/config/zed2.yaml 
+#              and modified according to our needs.
+
+# config/zed2_yaml
+# Parameters for Stereolabs ZED2 camera
+---
+/**:
+    ros__parameters:
+        general:            
+            camera_model: "zed2"
+            camera_name: "zed2" # usually overwritten by launch file
+            grab_resolution: 'HD720' # The native camera grab resolution. 'HD2K', 'HD1080', 'HD720', 'VGA', 'AUTO'
+            grab_frame_rate: 60 # ZED SDK internal grabbing rate
+
+        depth:
+            min_depth: 0.5 # Min: 0.2, Max: 3.0
+            max_depth: 5.0 # Max: 40.0

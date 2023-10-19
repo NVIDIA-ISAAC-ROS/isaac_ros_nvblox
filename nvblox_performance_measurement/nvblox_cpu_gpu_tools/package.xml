@@ -21,11 +21,11 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_cpu_gpu_tools</name>
-  <version>0.31.0</version>
+  <version>2.0.0</version>
   <description>nvblox CPU/GPU Tools</description>
   <maintainer email="amillane@nvidia.com">alex</maintainer>
   <license>Apache-2.0</license>
-  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>  
+  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Alexander Millane</author>
 
   <test_depend>ament_flake8</test_depend>

@@ -21,6 +21,8 @@ from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration
+from nav2_common.launch import RewrittenYaml
 
 
 def generate_launch_description():
@@ -32,12 +34,21 @@ def generate_launch_description():
     nav2_param_file = os.path.join(nvblox_bringup_dir,
                                    'config', 'nav2', 'nav2_isaac_sim.yaml')
 
+    # Override the global_frame for all of the nav2 nodes
+    param_substitutions = {
+        'global_frame': LaunchConfiguration('global_frame', default='odom')}
+    configured_params = RewrittenYaml(
+            source_file=nav2_param_file,
+            root_key='',
+            param_rewrites=param_substitutions,
+            convert_types=True)
+
     # Nav2 launch
     nav2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(nav2_bringup_dir, 'launch', 'navigation_launch.py')),
         launch_arguments={'use_sim_time': 'True',
-                          'params_file': nav2_param_file,
+                          'params_file': configured_params,
                           'autostart': 'True'}.items())
 
     return LaunchDescription([nav2_launch])

@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,17 +52,8 @@ NvbloxNode::NvbloxNode(
   group_processing_ =
     create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
-  // Initialize the mapper (the interface to the underlying nvblox library)
-  // Note: This needs to be called after getParameters()
-  // The mapper includes:
-  // - Map layers
-  // - Integrators
-  const std::string mapper_name = "mapper";
-  declareMapperParameters(mapper_name, this);
-  mapper_ = std::make_shared<Mapper>(
-    voxel_size_, MemoryType::kDevice,
-    static_projective_layer_type_);
-  initializeMapper(mapper_name, mapper_.get(), this);
+  // Initialize the MultiMapper with the underlying dynamic/static mappers.
+  initializeMultiMapper();
 
   // Setup interactions with ROS
   subscribeToTopics();
@@ -76,9 +67,21 @@ NvbloxNode::NvbloxNode(
   pointcloud_frame_statistics_.Start();
 
   RCLCPP_INFO_STREAM(
-    get_logger(), "Started up nvblox node in frame " <<
-      global_frame_ << " and voxel size " <<
-      voxel_size_);
+    get_logger(), "Started up nvblox node in frame "
+      << global_frame_ << " and voxel size "
+      << voxel_size_);
+
+  // Check if a valid mapping typ was selected
+  RCLCPP_INFO_STREAM(get_logger(), "Mapping type: " << toString(mapping_type_));
+  if (get_name() == "nvblox_node") {
+    if (isHumanMapping(mapping_type_)) {
+      RCLCPP_FATAL_STREAM(
+        get_logger(),
+        "Invalid option. The basic nvblox node can not do human mapping. "
+        "Use the nvblox human node for that. Exiting nvblox.");
+      exit(1);
+    }
+  }
 
   // Set state.
   last_depth_update_time_ = rclcpp::Time(0ul, get_clock()->get_clock_type());
@@ -88,56 +91,55 @@ NvbloxNode::NvbloxNode(
 
 void NvbloxNode::getParameters()
 {
+  // Declare & initialize the parameters.
   RCLCPP_INFO_STREAM(get_logger(), "NvbloxNode::getParameters()");
 
-  const bool is_occupancy =
-    declare_parameter<bool>("use_static_occupancy_layer", false);
-  if (is_occupancy) {
-    static_projective_layer_type_ = ProjectiveLayerType::kOccupancy;
-    RCLCPP_INFO_STREAM(
-      get_logger(),
-      "static_projective_layer_type: occupancy "
-      "(Attention: ESDF and Mesh integration is not yet implemented "
-      "for occupancy.)");
-  } else {
-    static_projective_layer_type_ = ProjectiveLayerType::kTsdf;
-    RCLCPP_INFO_STREAM(
-      get_logger(),
-      "static_projective_layer_type: TSDF"
-      " (for occupancy set the use_static_occupancy_layer parameter)");
-  }
-
-  // Declare & initialize the parameters.
-  voxel_size_ = declare_parameter<float>("voxel_size", voxel_size_);
+  // Node params
   global_frame_ = declare_parameter<std::string>("global_frame", global_frame_);
   pose_frame_ = declare_parameter<std::string>("pose_frame", pose_frame_);
-  is_realsense_data_ =
-    declare_parameter<bool>("is_realsense_data", is_realsense_data_);
   compute_mesh_ = declare_parameter<bool>("compute_mesh", compute_mesh_);
   compute_esdf_ = declare_parameter<bool>("compute_esdf", compute_esdf_);
-  esdf_2d_ = declare_parameter<bool>("esdf_2d", esdf_2d_);
-  esdf_distance_slice_ =
-    declare_parameter<bool>("esdf_distance_slice", esdf_distance_slice_);
+  publish_esdf_distance_slice_ =
+    declare_parameter<bool>("publish_esdf_distance_slice", publish_esdf_distance_slice_);
   use_color_ = declare_parameter<bool>("use_color", use_color_);
   use_depth_ = declare_parameter<bool>("use_depth", use_depth_);
   use_lidar_ = declare_parameter<bool>("use_lidar", use_lidar_);
-  esdf_slice_height_ =
-    declare_parameter<float>("esdf_slice_height", esdf_slice_height_);
-  esdf_2d_min_height_ =
-    declare_parameter<float>("esdf_2d_min_height", esdf_2d_min_height_);
-  esdf_2d_max_height_ =
-    declare_parameter<float>("esdf_2d_max_height", esdf_2d_max_height_);
+
+  // Multi mapper params
+  voxel_size_ = declare_parameter<float>("voxel_size", voxel_size_);
+  mapping_type_ =
+    mapping_type_from_string(declare_parameter<std::string>("mapping_type", "static_tsdf"), this);
+  esdf_mode_ = declare_parameter<bool>("esdf_2d", true) ? EsdfMode::k2D : EsdfMode::k3D;
+  multi_mapper_params_.esdf_2d_min_height =
+    declare_parameter<float>("esdf_2d_min_height", MultiMapper::kDefaultEsdf2dMinHeight);
+  multi_mapper_params_.esdf_2d_max_height =
+    declare_parameter<float>("esdf_2d_max_height", MultiMapper::kDefaultEsdf2dMaxHeight);
+  multi_mapper_params_.esdf_slice_height =
+    declare_parameter<float>("esdf_slice_height", MultiMapper::kDefaultEsdf2dSliceHeight);
+  multi_mapper_params_.connected_mask_component_size_threshold =
+    declare_parameter<int>(
+    "connected_mask_component_size_threshold",
+    MultiMapper::kDefaultConnectedMaskComponentSizeThreshold);
+
+  // Lidar params
   lidar_width_ = declare_parameter<int>("lidar_width", lidar_width_);
   lidar_height_ = declare_parameter<int>("lidar_height", lidar_height_);
   lidar_vertical_fov_rad_ = declare_parameter<float>(
     "lidar_vertical_fov_rad",
     lidar_vertical_fov_rad_);
-  slice_visualization_attachment_frame_id_ =
-    declare_parameter<std::string>(
-    "slice_visualization_attachment_frame_id",
-    slice_visualization_attachment_frame_id_);
+  use_non_equal_vertical_fov_lidar_params_ = declare_parameter<bool>(
+    "use_non_equal_vertical_fov_lidar_params", use_non_equal_vertical_fov_lidar_params_);
+  min_angle_below_zero_elevation_rad_ = declare_parameter<float>(
+    "min_angle_below_zero_elevation_rad", min_angle_below_zero_elevation_rad_);
+  max_angle_above_zero_elevation_rad_ = declare_parameter<float>(
+    "max_angle_above_zero_elevation_rad", max_angle_above_zero_elevation_rad_);
+
+  // Slice bound visualization
+  slice_visualization_attachment_frame_id_ = declare_parameter<std::string>(
+    "slice_visualization_attachment_frame_id", slice_visualization_attachment_frame_id_);
   slice_visualization_side_length_ = declare_parameter<float>(
-    "slice_visualization_side_length", slice_visualization_side_length_);
+    "slice_visualization_side_length",
+    slice_visualization_side_length_);
 
   // Update rates
   max_depth_update_hz_ =
@@ -150,11 +152,14 @@ void NvbloxNode::getParameters()
     declare_parameter<float>("mesh_update_rate_hz", mesh_update_rate_hz_);
   esdf_update_rate_hz_ =
     declare_parameter<float>("esdf_update_rate_hz", esdf_update_rate_hz_);
-  occupancy_publication_rate_hz_ = declare_parameter<float>(
-    "occupancy_publication_rate_hz", occupancy_publication_rate_hz_);
+  static_occupancy_publication_rate_hz_ = declare_parameter<float>(
+    "static_occupancy_publication_rate_hz", static_occupancy_publication_rate_hz_);
+  dynamic_occupancy_decay_rate_hz_ = declare_parameter<float>(
+    "dynamic_occupancy_decay_rate_hz", dynamic_occupancy_decay_rate_hz_);
   max_poll_rate_hz_ =
     declare_parameter<float>("max_poll_rate_hz", max_poll_rate_hz_);
 
+  // Message queue params
   maximum_sensor_message_queue_length_ =
     declare_parameter<int>(
     "maximum_sensor_message_queue_length",
@@ -163,6 +168,8 @@ void NvbloxNode::getParameters()
   // Settings for QoS.
   depth_qos_str_ = declare_parameter<std::string>("depth_qos", depth_qos_str_);
   color_qos_str_ = declare_parameter<std::string>("color_qos", color_qos_str_);
+  pointcloud_qos_str_ =
+    declare_parameter<std::string>("pointcloud_qos", pointcloud_qos_str_);
 
   // Settings for map clearing
   map_clearing_radius_m_ =
@@ -171,6 +178,34 @@ void NvbloxNode::getParameters()
     "map_clearing_frame_id", map_clearing_frame_id_);
   clear_outside_radius_rate_hz_ = declare_parameter<float>(
     "clear_outside_radius_rate_hz", clear_outside_radius_rate_hz_);
+}
+
+void NvbloxNode::initializeMultiMapper()
+{
+  // Note: This function needs to be called after getParameters()
+
+  // Create the multi mapper
+  // NOTE(remos): Mesh integration is not implemented for occupancy layers.
+  multi_mapper_ = std::make_shared<MultiMapper>(
+    voxel_size_, mapping_type_, esdf_mode_, MemoryType::kDevice);
+  multi_mapper_->setMultiMapperParams(multi_mapper_params_);
+
+  // Get the mapper parameters
+  const std::string static_mapper_name = "static_mapper";
+  const std::string dynamic_mapper_name = "dynamic_mapper";
+  declareMapperParameters(static_mapper_name, this);
+  declareMapperParameters(dynamic_mapper_name, this);
+  MapperParams static_mapper_params = getMapperParamsFromROS(static_mapper_name, this);
+  MapperParams dynamic_mapper_params = getMapperParamsFromROS(dynamic_mapper_name, this);
+
+  // Set the mapper parameters
+  multi_mapper_->setMapperParams(static_mapper_params, dynamic_mapper_params);
+
+  // Get direct handles to the underlying mappers
+  // NOTE(remos): Ideally, everything would be handled by the multi mapper
+  //              and these handles wouldn't be needed.
+  static_mapper_ = multi_mapper_.get()->unmasked_mapper();
+  dynamic_mapper_ = multi_mapper_.get()->masked_mapper();
 }
 
 void NvbloxNode::subscribeToTopics()
@@ -188,8 +223,9 @@ void NvbloxNode::subscribeToTopics()
 
   if (use_depth_) {
     // Subscribe to synchronized depth + cam_info topics
-    depth_sub_.subscribe(this, "depth/image", parseQosString(depth_qos_str_));
-    depth_camera_info_sub_.subscribe(this, "depth/camera_info");
+    const auto depth_qos = parseQosString(depth_qos_str_);
+    depth_sub_.subscribe(this, "depth/image", depth_qos);
+    depth_camera_info_sub_.subscribe(this, "depth/camera_info", depth_qos);
 
     timesync_depth_.reset(
       new message_filters::Synchronizer<time_policy_t>(
@@ -202,8 +238,9 @@ void NvbloxNode::subscribeToTopics()
   }
   if (use_color_) {
     // Subscribe to synchronized color + cam_info topics
-    color_sub_.subscribe(this, "color/image", parseQosString(color_qos_str_));
-    color_camera_info_sub_.subscribe(this, "color/camera_info");
+    const auto color_qos = parseQosString(color_qos_str_);
+    color_sub_.subscribe(this, "color/image", color_qos);
+    color_camera_info_sub_.subscribe(this, "color/camera_info", color_qos);
 
     timesync_color_.reset(
       new message_filters::Synchronizer<time_policy_t>(
@@ -217,8 +254,10 @@ void NvbloxNode::subscribeToTopics()
 
   if (use_lidar_) {
     // Subscribe to pointclouds.
+    const auto pointcloud_qos = rclcpp::QoS(
+      rclcpp::KeepLast(kQueueSize), parseQosString(pointcloud_qos_str_));
     pointcloud_sub_ = create_subscription<sensor_msgs::msg::PointCloud2>(
-      "pointcloud", kQueueSize,
+      "pointcloud", pointcloud_qos,
       std::bind(
         &NvbloxNode::pointcloudCallback, this,
         std::placeholders::_1));
@@ -240,20 +279,43 @@ void NvbloxNode::subscribeToTopics()
 void NvbloxNode::advertiseTopics()
 {
   RCLCPP_INFO_STREAM(get_logger(), "NvbloxNode::advertiseTopics()");
-
+  // Mesh publishers
   mesh_publisher_ = create_publisher<nvblox_msgs::msg::Mesh>("~/mesh", 1);
-  esdf_pointcloud_publisher_ =
-    create_publisher<sensor_msgs::msg::PointCloud2>("~/esdf_pointcloud", 1);
-  map_slice_publisher_ =
-    create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/map_slice", 1);
   mesh_marker_publisher_ =
-    create_publisher<visualization_msgs::msg::MarkerArray>(
-    "~/mesh_marker",
-    1);
-  slice_bounds_publisher_ = create_publisher<visualization_msgs::msg::Marker>(
-    "~/map_slice_bounds", 1);
-  occupancy_publisher_ =
-    create_publisher<sensor_msgs::msg::PointCloud2>("~/occupancy", 1);
+    create_publisher<visualization_msgs::msg::MarkerArray>("~/mesh_marker", 1);
+  // Static esdf
+  static_esdf_pointcloud_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud", 1);
+  static_map_slice_publisher_ =
+    create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/static_map_slice", 1);
+  // Static occupancy
+  static_occupancy_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/static_occupancy", 1);
+  // Debug outputs
+  slice_bounds_publisher_ =
+    create_publisher<visualization_msgs::msg::Marker>("~/map_slice_bounds", 1);
+  back_projected_depth_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/back_projected_depth", 1);
+  // Dynamic occupancy
+  dynamic_occupancy_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/dynamic_occupancy", 1);
+  // Dynamic esdf
+  dynamic_esdf_pointcloud_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/dynamic_esdf_pointcloud", 1);
+  dynamic_map_slice_publisher_ =
+    create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/dynamic_map_slice", 1);
+  // Debug output for dynamics
+  dynamic_points_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/dynamic_points", 1);
+  dynamic_depth_frame_overlay_publisher_ =
+    create_publisher<sensor_msgs::msg::Image>("~/dynamic_depth_frame_overlay", 1);
+  freespace_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/freespace", 1);
+  // Combined esdf
+  combined_esdf_pointcloud_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/combined_esdf_pointcloud", 1);
+  combined_map_slice_publisher_ =
+    create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/combined_map_slice", 1);
 }
 
 void NvbloxNode::advertiseServices()
@@ -306,13 +368,18 @@ void NvbloxNode::setupTimers()
     std::chrono::duration<double>(1.0 / mesh_update_rate_hz_),
     std::bind(&NvbloxNode::processMesh, this), group_processing_);
 
-  if (static_projective_layer_type_ == ProjectiveLayerType::kOccupancy) {
+  if (isStaticOccupancy(mapping_type_)) {
     occupancy_publishing_timer_ = create_wall_timer(
-      std::chrono::duration<double>(1.0 / occupancy_publication_rate_hz_),
+      std::chrono::duration<double>(1.0 / static_occupancy_publication_rate_hz_),
       std::bind(&NvbloxNode::publishOccupancyPointcloud, this),
       group_processing_);
   }
-
+  if (isUsingDynamicMapper(mapping_type_)) {
+    dynamic_occupancy_decay_timer_ = create_wall_timer(
+      std::chrono::duration<double>(1.0 / dynamic_occupancy_decay_rate_hz_),
+      std::bind(&NvbloxNode::decayDynamicOccupancy, this),
+      group_processing_);
+  }
   if (map_clearing_radius_m_ > 0.0f) {
     clear_outside_radius_timer_ = create_wall_timer(
       std::chrono::duration<double>(1.0 / clear_outside_radius_rate_hz_),
@@ -428,57 +495,22 @@ void NvbloxNode::processEsdf()
   timing::Timer ros_esdf_timer("ros/esdf");
 
   timing::Timer esdf_integration_timer("ros/esdf/integrate");
-  std::vector<Index3D> updated_blocks;
-  if (esdf_2d_) {
-    updated_blocks = mapper_->updateEsdfSlice(
-      esdf_2d_min_height_, esdf_2d_max_height_, esdf_slice_height_);
-  } else {
-    updated_blocks = mapper_->updateEsdf();
-  }
+  multi_mapper_->updateEsdf();
   esdf_integration_timer.Stop();
-
-  if (updated_blocks.empty()) {
-    return;
-  }
 
   timing::Timer esdf_output_timer("ros/esdf/output");
 
-  // If anyone wants a slice
-  if (esdf_distance_slice_ &&
-    (esdf_pointcloud_publisher_->get_subscription_count() > 0 ||
-    map_slice_publisher_->get_subscription_count() > 0))
-  {
-    // Get the slice as an image
-    timing::Timer esdf_slice_compute_timer("ros/esdf/output/compute");
-    AxisAlignedBoundingBox aabb;
-    Image<float> map_slice_image;
-    esdf_slice_converter_.distanceMapSliceImageFromLayer(
-      mapper_->esdf_layer(), esdf_slice_height_, &map_slice_image, &aabb);
-    esdf_slice_compute_timer.Stop();
+  sliceAndPublishEsdf(
+    "static", static_mapper_,
+    static_esdf_pointcloud_publisher_, static_map_slice_publisher_);
 
-    // Slice pointcloud for RVIZ
-    if (esdf_pointcloud_publisher_->get_subscription_count() > 0) {
-      timing::Timer esdf_output_pointcloud_timer("ros/esdf/output/pointcloud");
-      sensor_msgs::msg::PointCloud2 pointcloud_msg;
-      esdf_slice_converter_.sliceImageToPointcloud(
-        map_slice_image, aabb, esdf_slice_height_,
-        mapper_->esdf_layer().voxel_size(), &pointcloud_msg);
-      pointcloud_msg.header.frame_id = global_frame_;
-      pointcloud_msg.header.stamp = get_clock()->now();
-      esdf_pointcloud_publisher_->publish(pointcloud_msg);
-    }
-
-    // Also publish the map slice (costmap for nav2).
-    if (map_slice_publisher_->get_subscription_count() > 0) {
-      timing::Timer esdf_output_human_slice_timer("ros/esdf/output/slice");
-      nvblox_msgs::msg::DistanceMapSlice map_slice_msg;
-      esdf_slice_converter_.distanceMapSliceImageToMsg(
-        map_slice_image, aabb, esdf_slice_height_,
-        mapper_->voxel_size_m(), &map_slice_msg);
-      map_slice_msg.header.frame_id = global_frame_;
-      map_slice_msg.header.stamp = get_clock()->now();
-      map_slice_publisher_->publish(map_slice_msg);
-    }
+  if (isUsingDynamicMapper(mapping_type_)) {
+    sliceAndPublishEsdf(
+      "dynamic", dynamic_mapper_,
+      dynamic_esdf_pointcloud_publisher_, dynamic_map_slice_publisher_);
+    sliceAndPublishEsdf(
+      "combined_dynamic", static_mapper_,
+      combined_esdf_pointcloud_publisher_, combined_map_slice_publisher_, dynamic_mapper_.get());
   }
 
   // Also publish the slice bounds (showing esdf max/min 2d height)
@@ -493,14 +525,65 @@ void NvbloxNode::processEsdf()
       // Get and publish the planes representing the slice bounds in z.
       const visualization_msgs::msg::Marker marker = sliceLimitsToMarker(
         T_S_PB, slice_visualization_side_length_, timestamp, global_frame_,
-        esdf_2d_min_height_, esdf_2d_max_height_);
+        multi_mapper_params_.esdf_2d_min_height, multi_mapper_params_.esdf_2d_max_height);
       slice_bounds_publisher_->publish(marker);
     } else {
       constexpr float kTimeBetweenDebugMessages = 1.0;
       RCLCPP_INFO_STREAM_THROTTLE(
         get_logger(), *get_clock(), kTimeBetweenDebugMessages,
-        "Tried to publish slice bounds but couldn't look up frame: " <<
-          slice_visualization_attachment_frame_id_);
+        "Tried to publish slice bounds but couldn't look up frame: "
+          << slice_visualization_attachment_frame_id_);
+    }
+  }
+}
+
+void NvbloxNode::sliceAndPublishEsdf(
+  const std::string & name,
+  const std::shared_ptr<Mapper> & mapper,
+  const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pointcloud_publisher,
+  const rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr & slice_publisher,
+  const Mapper * mapper_2)
+{
+  // If anyone wants a slice
+  if (pointcloud_publisher->get_subscription_count() > 0 ||
+    (publish_esdf_distance_slice_ && slice_publisher->get_subscription_count() > 0))
+  {
+    // Get the slice as an image
+    timing::Timer slicing_timer("ros/" + name + "/esdf/output/compute");
+    AxisAlignedBoundingBox aabb;
+    Image<float> map_slice_image(MemoryType::kDevice);
+    if (mapper_2 != nullptr) {
+      esdf_slice_converter_.sliceLayersToCombinedDistanceImage(
+        mapper->esdf_layer(), mapper_2->esdf_layer(), multi_mapper_params_.esdf_slice_height,
+        &map_slice_image, &aabb);
+    } else {
+      esdf_slice_converter_.sliceLayerToDistanceImage(
+        mapper->esdf_layer(), multi_mapper_params_.esdf_slice_height, &map_slice_image, &aabb);
+    }
+    slicing_timer.Stop();
+
+    // Publish a pointcloud of the slice image for visualization in RVIZ
+    if (pointcloud_publisher->get_subscription_count() > 0) {
+      timing::Timer pointcloud_msg_timer("ros/" + name + "/esdf/output/pointcloud");
+      sensor_msgs::msg::PointCloud2 pointcloud_msg;
+      esdf_slice_converter_.pointcloudMsgFromSliceImage(
+        map_slice_image, aabb, multi_mapper_params_.esdf_slice_height,
+        mapper->esdf_layer().voxel_size(), &pointcloud_msg);
+      pointcloud_msg.header.frame_id = global_frame_;
+      pointcloud_msg.header.stamp = get_clock()->now();
+      pointcloud_publisher->publish(pointcloud_msg);
+    }
+
+    // Publish the distance map slice (costmap for nav2).
+    if (publish_esdf_distance_slice_ && slice_publisher->get_subscription_count() > 0) {
+      timing::Timer slice_msg_timer("ros/" + name + "/esdf/output/slice");
+      nvblox_msgs::msg::DistanceMapSlice map_slice_msg;
+      esdf_slice_converter_.distanceMapSliceMsgFromSliceImage(
+        map_slice_image, aabb, multi_mapper_params_.esdf_slice_height, mapper->voxel_size_m(),
+        &map_slice_msg);
+      map_slice_msg.header.frame_id = global_frame_;
+      map_slice_msg.header.stamp = get_clock()->now();
+      slice_publisher->publish(map_slice_msg);
     }
   }
 }
@@ -515,7 +598,7 @@ void NvbloxNode::processMesh()
   timing::Timer ros_mesh_timer("ros/mesh");
 
   timing::Timer mesh_integration_timer("ros/mesh/integrate_and_color");
-  const std::vector<Index3D> mesh_updated_list = mapper_->updateMesh();
+  const std::vector<Index3D> mesh_updated_list = multi_mapper_->updateMesh();
   mesh_integration_timer.Stop();
 
   // In the case that some mesh blocks have been re-added after deletion, remove
@@ -538,12 +621,12 @@ void NvbloxNode::processMesh()
     // In case we have new subscribers, publish the ENTIRE map once.
     if (new_subscriber_count > mesh_subscriber_count_) {
       RCLCPP_INFO(get_logger(), "Got a new subscriber, sending entire map.");
-      conversions::meshMessageFromMeshLayer(mapper_->mesh_layer(), &mesh_msg);
+      conversions::meshMessageFromMeshLayer(static_mapper_->mesh_layer(), &mesh_msg);
       mesh_msg.clear = true;
       should_publish = true;
     } else {
       conversions::meshMessageFromMeshBlocks(
-        mapper_->mesh_layer(),
+        static_mapper_->mesh_layer(),
         mesh_updated_list, &mesh_msg,
         mesh_blocks_to_delete);
     }
@@ -559,13 +642,15 @@ void NvbloxNode::processMesh()
   if (mesh_marker_publisher_->get_subscription_count() > 0) {
     visualization_msgs::msg::MarkerArray marker_msg;
     conversions::markerMessageFromMeshLayer(
-      mapper_->mesh_layer(), global_frame_,
-      &marker_msg);
+      static_mapper_->mesh_layer(),
+      global_frame_, &marker_msg);
     mesh_marker_publisher_->publish(marker_msg);
   }
 
   mesh_output_timer.Stop();
 }
+
+void NvbloxNode::decayDynamicOccupancy() {dynamic_mapper_->decayOccupancy();}
 
 bool NvbloxNode::canTransform(const std_msgs::msg::Header & header)
 {
@@ -603,21 +688,29 @@ bool NvbloxNode::processDepthImage(
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & camera_info_msg =
     depth_camera_pair.second;
 
+  const rclcpp::Time depth_image_timestamp = depth_img_ptr->header.stamp;
+
   // Check that we're not updating more quickly than we should.
   if (isUpdateTooFrequent(
-      depth_img_ptr->header.stamp, last_depth_update_time_,
+      depth_image_timestamp, last_depth_update_time_,
       max_depth_update_hz_))
   {
     return true;
   }
-  last_depth_update_time_ = depth_img_ptr->header.stamp;
+  last_depth_update_time_ = depth_image_timestamp;
+
+  // Get the timestamp
+  constexpr int64_t kNanoSecondsToMilliSeconds = 1e6;
+  nvblox::Time update_time_ms(
+    depth_image_timestamp.nanoseconds() /
+    kNanoSecondsToMilliSeconds);
 
   // Get the TF for this image.
   Transform T_L_C;
   std::string target_frame = depth_img_ptr->header.frame_id;
 
   if (!transformer_.lookupTransformToGlobalFrame(
-      target_frame, depth_img_ptr->header.stamp, &T_L_C))
+      target_frame, depth_image_timestamp, &T_L_C))
   {
     return false;
   }
@@ -634,11 +727,101 @@ bool NvbloxNode::processDepthImage(
   }
   conversions_timer.Stop();
 
-  // Integrate
+  // Do the actual depth integration
   timing::Timer integration_timer("ros/depth/integrate");
-  mapper_->integrateDepth(depth_image_, T_L_C, camera);
+  multi_mapper_->integrateDepth(depth_image_, T_L_C, camera, update_time_ms);
   integration_timer.Stop();
+
+  if (mapping_type_ == MappingType::kDynamic) {
+    // Process the freespace layer
+    timing::Timer dynamic_publishing_timer("ros/depth/output/dynamics");
+    publishFreespace(T_L_C);
+    publishDynamics(target_frame);
+    dynamic_publishing_timer.Stop();
+  }
+
+  // Publish back projected depth image for debugging
+  timing::Timer back_projected_depth_timer(
+    "ros/depth/output/back_projected_depth");
+  if (back_projected_depth_publisher_->get_subscription_count() > 0) {
+    publishBackProjectedDepth(camera, T_L_C);
+  }
+  back_projected_depth_timer.Stop();
+
   return true;
+}
+
+void NvbloxNode::publishFreespace(
+  const Transform & T_L_C)
+{
+  // Publish the freespace layer pointcloud
+  if (freespace_publisher_->get_subscription_count() > 0) {
+    sensor_msgs::msg::PointCloud2 pointcloud_msg;
+    // Make abb around robot to limit pointcloud size in Rviz.
+    constexpr float aabb_size = 5.0f;
+    constexpr float abb_min_height = -0.5f;
+    constexpr float abb_max_height = 0.5f;
+    auto aabb = AxisAlignedBoundingBox(
+      Vector3f(-aabb_size, -aabb_size, abb_min_height) + T_L_C.translation(),
+      Vector3f(aabb_size, aabb_size, abb_max_height) + T_L_C.translation());
+    layer_converter_.pointcloudMsgFromLayerInAABB(
+      static_mapper_->freespace_layer(), aabb,
+      &pointcloud_msg);
+    pointcloud_msg.header.frame_id = global_frame_;
+    pointcloud_msg.header.stamp = get_clock()->now();
+    freespace_publisher_->publish(pointcloud_msg);
+  }
+}
+
+void NvbloxNode::publishDynamics(
+  const std::string & camera_frame_id)
+{
+  // Publish the dynamic pointcloud
+  if (dynamic_points_publisher_->get_subscription_count() > 0) {
+    sensor_msgs::msg::PointCloud2 dynamic_points_msg;
+    const Pointcloud & dynamic_points =
+      multi_mapper_->getLastDynamicPointcloud();
+    pointcloud_converter_.pointcloudMsgFromPointcloud(dynamic_points, &dynamic_points_msg);
+    dynamic_points_msg.header.frame_id = global_frame_;
+    dynamic_points_msg.header.stamp = get_clock()->now();
+    dynamic_points_publisher_->publish(dynamic_points_msg);
+  }
+
+  // Publish the dynamic overlay
+  if (dynamic_depth_frame_overlay_publisher_->get_subscription_count() > 0) {
+    sensor_msgs::msg::Image img_msg;
+    const ColorImage & dynamic_overlay =
+      multi_mapper_->getLastDynamicFrameMaskOverlay();
+    conversions::imageMessageFromColorImage(dynamic_overlay, camera_frame_id, &img_msg);
+    dynamic_depth_frame_overlay_publisher_->publish(img_msg);
+  }
+
+  // Publish the dynamic occupancy layer
+  if (dynamic_occupancy_publisher_->get_subscription_count() > 0) {
+    sensor_msgs::msg::PointCloud2 pointcloud_msg;
+    layer_converter_.pointcloudMsgFromLayer(dynamic_mapper_->occupancy_layer(), &pointcloud_msg);
+    pointcloud_msg.header.frame_id = global_frame_;
+    pointcloud_msg.header.stamp = get_clock()->now();
+    dynamic_occupancy_publisher_->publish(pointcloud_msg);
+  }
+}
+
+void NvbloxNode::publishBackProjectedDepth(const Camera & camera, const Transform & T_L_C)
+{
+  // Get the pointcloud from the depth image
+  image_back_projector_.backProjectOnGPU(
+    depth_image_, camera,
+    &pointcloud_C_device_);
+  transformPointcloudOnGPU(T_L_C, pointcloud_C_device_, &pointcloud_L_device_);
+
+  // Send the message
+  sensor_msgs::msg::PointCloud2 back_projected_depth_msg;
+  pointcloud_converter_.pointcloudMsgFromPointcloud(
+    pointcloud_L_device_,
+    &back_projected_depth_msg);
+  back_projected_depth_msg.header.frame_id = global_frame_;
+  back_projected_depth_msg.header.stamp = get_clock()->now();
+  back_projected_depth_publisher_->publish(back_projected_depth_msg);
 }
 
 bool NvbloxNode::processColorImage(
@@ -689,7 +872,7 @@ bool NvbloxNode::processColorImage(
 
   // Integrate.
   timing::Timer color_integrate_timer("ros/color/integrate");
-  mapper_->integrateColor(color_image_, T_L_C, camera);
+  multi_mapper_->integrateColor(color_image_, T_L_C, camera);
   color_integrate_timer.Stop();
   return true;
 }
@@ -721,8 +904,15 @@ bool NvbloxNode::processLidarPointcloud(
 
   transform_timer.Stop();
 
-  // LiDAR intrinsics model
-  Lidar lidar(lidar_width_, lidar_height_, lidar_vertical_fov_rad_);
+  // Create the LiDAR model. The method of creation depends on whether we have
+  // equal FoV above and below 0 elevation. This is specified through a param.
+  Lidar lidar =
+    (use_non_equal_vertical_fov_lidar_params_) ?
+    Lidar(
+    lidar_width_, lidar_height_,
+    min_angle_below_zero_elevation_rad_,
+    max_angle_above_zero_elevation_rad_) :
+    Lidar(lidar_width_, lidar_height_, lidar_vertical_fov_rad_);
 
   // We check that the pointcloud is consistent with this LiDAR model
   // NOTE(alexmillane): If the check fails we return true which indicates that
@@ -747,7 +937,7 @@ bool NvbloxNode::processLidarPointcloud(
 
   timing::Timer lidar_integration_timer("ros/lidar/integration");
 
-  mapper_->integrateLidarDepth(pointcloud_image_, T_L_C, lidar);
+  static_mapper_->integrateLidarDepth(pointcloud_image_, T_L_C, lidar);
   lidar_integration_timer.Stop();
 
   return true;
@@ -758,12 +948,12 @@ void NvbloxNode::publishOccupancyPointcloud()
   timing::Timer ros_total_timer("ros/total");
   timing::Timer esdf_output_timer("ros/occupancy/output");
 
-  if (occupancy_publisher_->get_subscription_count() > 0) {
+  if (static_occupancy_publisher_->get_subscription_count() > 0) {
     sensor_msgs::msg::PointCloud2 pointcloud_msg;
-    layer_converter_.pointcloudMsgFromLayer(mapper_->occupancy_layer(), &pointcloud_msg);
+    layer_converter_.pointcloudMsgFromLayer(static_mapper_->occupancy_layer(), &pointcloud_msg);
     pointcloud_msg.header.frame_id = global_frame_;
     pointcloud_msg.header.stamp = get_clock()->now();
-    occupancy_publisher_->publish(pointcloud_msg);
+    static_occupancy_publisher_->publish(pointcloud_msg);
   }
 }
 
@@ -776,7 +966,7 @@ void NvbloxNode::clearMapOutsideOfRadiusOfLastKnownPose()
         map_clearing_frame_id_,
         rclcpp::Time(0), &T_L_MC))
     {
-      const std::vector<Index3D> blocks_cleared = mapper_->clearOutsideRadius(
+      const std::vector<Index3D> blocks_cleared = static_mapper_->clearOutsideRadius(
         T_L_MC.translation(), map_clearing_radius_m_);
       // We keep track of the deleted blocks for publishing later.
       mesh_blocks_deleted_.insert(blocks_cleared.begin(), blocks_cleared.end());
@@ -784,8 +974,8 @@ void NvbloxNode::clearMapOutsideOfRadiusOfLastKnownPose()
       constexpr float kTimeBetweenDebugMessages = 1.0;
       RCLCPP_INFO_STREAM_THROTTLE(
         get_logger(), *get_clock(), kTimeBetweenDebugMessages,
-        "Tried to clear map outside of radius but couldn't look up frame: " <<
-          map_clearing_frame_id_);
+        "Tried to clear map outside of radius but couldn't look up frame: "
+          << map_clearing_frame_id_);
     }
   }
 }
@@ -808,21 +998,26 @@ void NvbloxNode::savePly(
   std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
 {
   // If we get a full path, then write to that path.
-  bool success = false;
+  bool success = true;
   if (ends_with(request->file_path, ".ply")) {
     success =
-      io::outputMeshLayerToPly(mapper_->mesh_layer(), request->file_path);
+      io::outputMeshLayerToPly(static_mapper_->mesh_layer(), request->file_path);
   } else {
     // If we get a partial path then output a bunch of stuff to a folder.
-    io::outputVoxelLayerToPly(
-      mapper_->tsdf_layer(),
+    success &= io::outputVoxelLayerToPly(
+      static_mapper_->tsdf_layer(),
       request->file_path + "/ros2_tsdf.ply");
-    io::outputVoxelLayerToPly(
-      mapper_->esdf_layer(),
+    success &= io::outputVoxelLayerToPly(
+      static_mapper_->esdf_layer(),
       request->file_path + "/ros2_esdf.ply");
-    success = io::outputMeshLayerToPly(
-      mapper_->mesh_layer(),
+    success &= io::outputMeshLayerToPly(
+      static_mapper_->mesh_layer(),
       request->file_path + "/ros2_mesh.ply");
+    if (mapping_type_ == MappingType::kDynamic) {
+      success &= io::outputVoxelLayerToPly(
+        static_mapper_->freespace_layer(),
+        request->file_path + "/ros2_freespace.ply");
+    }
   }
   if (success) {
     RCLCPP_INFO_STREAM(
@@ -849,7 +1044,7 @@ void NvbloxNode::saveMap(
     filename += ".nvblx";
   }
 
-  response->success = mapper_->saveMap(filename);
+  response->success = static_mapper_->saveLayerCake(filename);
   if (response->success) {
     RCLCPP_INFO_STREAM(get_logger(), "Output map to file to " << filename);
   } else {
@@ -869,7 +1064,7 @@ void NvbloxNode::loadMap(
     filename += ".nvblx";
   }
 
-  response->success = mapper_->loadMap(filename);
+  response->success = static_mapper_->loadMap(filename);
   if (response->success) {
     RCLCPP_INFO_STREAM(get_logger(), "Loaded map to file from " << filename);
   } else {

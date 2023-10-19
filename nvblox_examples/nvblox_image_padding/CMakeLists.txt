@@ -27,6 +27,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(nvblox_ros_common REQUIRED)
+find_package(CUDAToolkit REQUIRED)
 
 #############
 # LIBRARIES #

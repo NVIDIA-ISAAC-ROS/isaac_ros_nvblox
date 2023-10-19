@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,6 +63,7 @@ public:
 
   // Setup. These are called by the constructor.
   void getParameters();
+  void initializeMultiMapper();
   void subscribeToTopics();
   void advertiseTopics();
   void advertiseServices();
@@ -115,7 +116,34 @@ public:
 
   void publishSlicePlane(const rclcpp::Time & timestamp, const Transform & T_L_C);
 
+  // Decay the dynamic occupancy grid on fixed frequency
+  void decayDynamicOccupancy();
+
 protected:
+  // Publish the freespace layer
+  void publishFreespace(
+    const Transform & T_L_C);
+
+  // Publish the dynamic outputs
+  void publishDynamics(
+    const std::string & camera_frame_id);
+
+  // Publish the back projected depth image for debug purposes
+  void publishBackProjectedDepth(const Camera & camera, const Transform & T_L_C);
+
+  // Helper function to update the esdf of a specific mapper
+  void updateEsdf(
+    const std::string & name,
+    const std::shared_ptr<Mapper> & mapper);
+
+  // Helper function to slice and publish the esdf of a specific mapper
+  void sliceAndPublishEsdf(
+    const std::string & name,
+    const std::shared_ptr<Mapper> & mapper,
+    const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pointcloud_publisher,
+    const rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr & slice_publisher,
+    const Mapper * mapper_2 = nullptr);
+
   // Map clearing
   void clearMapOutsideOfRadiusOfLastKnownPose();
 
@@ -201,15 +229,32 @@ protected:
   // Publishers
   rclcpp::Publisher<nvblox_msgs::msg::Mesh>::SharedPtr mesh_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    esdf_pointcloud_publisher_;
+    static_esdf_pointcloud_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    occupancy_publisher_;
+    static_occupancy_publisher_;
   rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
-    map_slice_publisher_;
+    static_map_slice_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
     slice_bounds_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
     mesh_marker_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    back_projected_depth_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    dynamic_points_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
+    dynamic_depth_frame_overlay_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr freespace_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    dynamic_occupancy_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    dynamic_esdf_pointcloud_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    combined_esdf_pointcloud_publisher_;
+  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+    dynamic_map_slice_publisher_;
+  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+    combined_map_slice_publisher_;
 
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
@@ -227,15 +272,14 @@ protected:
   rclcpp::TimerBase::SharedPtr esdf_processing_timer_;
   rclcpp::TimerBase::SharedPtr mesh_processing_timer_;
   rclcpp::TimerBase::SharedPtr clear_outside_radius_timer_;
+  rclcpp::TimerBase::SharedPtr dynamic_occupancy_decay_timer_;
 
   // ROS & nvblox settings
   float voxel_size_ = 0.05f;
-  bool esdf_2d_ = true;
-  bool esdf_distance_slice_ = true;
-  float esdf_slice_height_ = 1.0f;
-  ProjectiveLayerType static_projective_layer_type_ =
-    ProjectiveLayerType::kTsdf;
-  bool is_realsense_data_ = false;
+  EsdfMode esdf_mode_ = EsdfMode::k2D;
+  bool publish_esdf_distance_slice_ = true;
+  MappingType mapping_type_ = MappingType::kStaticTsdf;
+  MultiMapper::Params multi_mapper_params_;
 
   // Toggle parameters
   bool use_depth_ = true;
@@ -244,16 +288,19 @@ protected:
   bool compute_esdf_ = true;
   bool compute_mesh_ = true;
 
-  // LIDAR settings, defaults for Velodyne VLP16
+  // LIDAR settings
+  // Defaults for Velodyne VLP16
   int lidar_width_ = 1800;
   int lidar_height_ = 16;
   float lidar_vertical_fov_rad_ = 30.0 * M_PI / 180.0;
 
-  // Used for ESDF slicing. Everything between min and max height will be
-  // compressed to a single 2D level (if esdf_2d_ enabled), output at
-  // esdf_slice_height_.
-  float esdf_2d_min_height_ = 0.0f;
-  float esdf_2d_max_height_ = 1.0f;
+  // Alternate LiDAR Settings for lidars which are not even around 0 elevation
+  // These settings are alternate to specifying the vertical FoV above.
+  // The node will use these settings if "lidar_non_equal_vertical_fov" is set
+  // to true. Defaults for Hesai PandarXT32
+  bool use_non_equal_vertical_fov_lidar_params_ = false;
+  float min_angle_below_zero_elevation_rad_ = 20.0 * M_PI / 180.0;
+  float max_angle_above_zero_elevation_rad_ = 15.0 * M_PI / 180.0;
 
   // Slice visualization params
   std::string slice_visualization_attachment_frame_id_ = "base_link";
@@ -263,12 +310,14 @@ protected:
   std::string global_frame_ = "odom";
   /// Pose frame to use if using transform topics.
   std::string pose_frame_ = "base_link";
-  float max_depth_update_hz_ = 10.0f;
+  float max_depth_update_hz_ = 30.0f;
   float max_color_update_hz_ = 5.0f;
   float max_lidar_update_hz_ = 10.0f;
   float mesh_update_rate_hz_ = 5.0f;
   float esdf_update_rate_hz_ = 2.0f;
-  float occupancy_publication_rate_hz_ = 2.0f;
+  float static_occupancy_publication_rate_hz_ = 2.0f;
+
+  float dynamic_occupancy_decay_rate_hz_ = 10.0f;
 
   /// Specifies what rate to poll the color & depth updates at.
   /// Will exit as no-op if no new images are in the queue so it is safe to
@@ -288,11 +337,19 @@ protected:
   // The QoS settings for the image input topics
   std::string depth_qos_str_ = "SYSTEM_DEFAULT";
   std::string color_qos_str_ = "SYSTEM_DEFAULT";
+  std::string pointcloud_qos_str_ = "SYSTEM_DEFAULT";
 
-  // Mapper
-  // Holds the map layers and their associated integrators
-  // - TsdfLayer, ColorLayer, EsdfLayer, MeshLayer
-  std::shared_ptr<Mapper> mapper_;
+
+  // MultiMapper
+  // Holding the static and dynamic mapper and
+  // handling where input data gets integrated.
+  std::shared_ptr<MultiMapper> multi_mapper_;
+
+  // Direct access to Mappers
+  // Holding the map layers and their associated integrators
+  // - TsdfLayer, FreespaceLayer, ColorLayer, EsdfLayer, MeshLayer
+  std::shared_ptr<Mapper> static_mapper_;
+  std::shared_ptr<Mapper> dynamic_mapper_;
 
   // The most important part: the ROS converter. Just holds buffers as state.
   conversions::LayerConverter layer_converter_;
@@ -300,9 +357,12 @@ protected:
   conversions::EsdfSliceConverter esdf_slice_converter_;
 
   // Caches for GPU images
-  ColorImage color_image_;
-  DepthImage depth_image_;
-  DepthImage pointcloud_image_;
+  ColorImage color_image_{MemoryType::kDevice};
+  DepthImage depth_image_{MemoryType::kDevice};
+  DepthImage pointcloud_image_{MemoryType::kDevice};
+
+  // Object for back projecting image to a pointcloud.
+  DepthImageBackProjector image_back_projector_;
 
   // Message statistics (useful for debugging)
   libstatistics_collector::topic_statistics_collector::
@@ -340,6 +400,10 @@ protected:
   // Keeps track of the mesh blocks deleted such that we can publish them for
   // deletion in the rviz plugin
   Index3DSet mesh_blocks_deleted_;
+
+  // Device caches
+  Pointcloud pointcloud_C_device_;
+  Pointcloud pointcloud_L_device_;
 };
 
 }  // namespace nvblox

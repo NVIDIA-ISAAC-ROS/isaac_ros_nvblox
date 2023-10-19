@@ -22,6 +22,9 @@
 namespace nvblox {
 namespace conversions {
 
+// TODO(remosteiner): Group these functions into a class with a 
+// cuda stream member and call copyFromAsync instead of copyFrom.
+
 // Convert camera info message to NVBlox camera object
 Camera cameraFromMessage(
     const sensor_msgs::msg::CameraInfo& camera_info) {
@@ -40,10 +43,9 @@ bool colorImageFromImageMessage(
   cv_bridge::CvImageConstPtr rgba_cv_image =
       cv_bridge::toCvCopy(image_msg, "rgba8");
 
-  color_image->populateFromBuffer(
+  color_image->copyFrom(
       image_msg->height, image_msg->width,
-      reinterpret_cast<const Color*>(rgba_cv_image->image.ptr()),
-      MemoryType::kDevice);
+      reinterpret_cast<const Color*>(rgba_cv_image->image.ptr()));
 
   return true;
 }
@@ -59,9 +61,8 @@ bool monoImageFromImageMessage(
     return false;
   }
 
-  mono_image->populateFromBuffer(image_msg->height, image_msg->width,
-                                 &image_msg->data[0], MemoryType::kDevice);
-
+  mono_image->copyFrom(image_msg->height, image_msg->width,
+                       &image_msg->data[0]);
   return true;
 }
 
@@ -127,9 +128,8 @@ bool depthImageFromImageMessage(
   // Fill it in. How this is done depends on what the image encoding is.
   if (image_msg->encoding == "32FC1") {
     // Float to float, so this should be a straight-up copy. :)
-    depth_image->populateFromBuffer(
-        image_msg->height, image_msg->width,
-        reinterpret_cast<const float*>(&image_msg->data[0]));
+    depth_image->copyFrom(image_msg->height, image_msg->width,
+                          reinterpret_cast<const float*>(&image_msg->data[0]));
   } else if (image_msg->encoding == "16UC1") {
     // Then we have to just go byte-by-byte and convert this. This is a massive
     // pain and slow. We need to find a better way to do this; on GPU or
@@ -155,9 +155,8 @@ bool depthImageFromImageMessage(
         float_depth_buffer[i] =
             static_cast<float>(char_depth_buffer[i]) / 1000.0f;
       }
-      depth_image->populateFromBuffer(image_msg->height, image_msg->width,
-                                      float_depth_buffer.data(),
-                                      MemoryType::kDevice);
+      depth_image->copyFrom(image_msg->height, image_msg->width,
+                            float_depth_buffer.data());
     }
   }
 

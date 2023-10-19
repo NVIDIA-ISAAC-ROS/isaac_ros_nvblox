@@ -21,19 +21,19 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_image_padding</name>
-  <version>0.31.0</version>
+  <version>2.0.0</version>
   <description>Image padding for nvblox_ros</description>
 
   <maintainer email="amillane@nvidia.com">Alexander Millane</maintainer>
   <maintainer email="remos@nvidia.com">Remo Steiner</maintainer>
-  <maintainer email="hemals@nvidia.com">Hemal Shah</maintainer> 
+  <maintainer email="hemals@nvidia.com">Hemal Shah</maintainer>
   <license>Apache-2.0</license>
-  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>   
+  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Alexander Millane</author>
   <author>Remo Steiner</author>
   <author>Emilie Wirbel</author>
   <author>Vikram Ramasamy</author>
-  
+
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
 

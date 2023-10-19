@@ -63,7 +63,11 @@ void copyDevicePointcloudToMsg(
 }
 
 
-PointcloudConverter::PointcloudConverter() {cudaStreamCreate(&cuda_stream_);}
+PointcloudConverter::PointcloudConverter()
+    : PointcloudConverter(std::make_shared<CudaStreamOwning>()) {}
+
+PointcloudConverter::PointcloudConverter(std::shared_ptr<CudaStream> cuda_stream)
+    : cuda_stream_(cuda_stream) {}
 
 
 bool PointcloudConverter::checkLidarPointcloud(
@@ -185,16 +189,16 @@ void PointcloudConverter::depthImageFromPointcloudGPU(
         Vector3f(iter_xyz[0], iter_xyz[1], iter_xyz[2]));
   }
   // Copy the pointcloud to the GPU
-  lidar_pointcloud_device_ = lidar_pointcloud_host_;
+  lidar_pointcloud_device_.copyFromAsync(lidar_pointcloud_host_, *cuda_stream_);
 
   // Convert to an image on the GPU
   constexpr int num_threads_per_block = 256;  // because why not
   const int num_thread_blocks = lidar.numel() / num_threads_per_block + 1;
   depthImageFromPointcloudKernel<<<num_thread_blocks, num_threads_per_block, 0,
-                                   cuda_stream_>>>(
+                                   *cuda_stream_>>>(
       lidar_pointcloud_device_.data(), lidar, num_bytes_between_points,
       lidar.numel(), depth_image_ptr->dataPtr());
-  checkCudaErrors(cudaStreamSynchronize(cuda_stream_));
+  checkCudaErrors(cudaStreamSynchronize(*cuda_stream_));
   checkCudaErrors(cudaPeekAtLastError());
 }
 

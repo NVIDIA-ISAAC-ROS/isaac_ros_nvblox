@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2021-2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2021-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,18 +37,17 @@ endif()
 # find dependencies
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(nvblox_msgs REQUIRED)
 find_package(nvblox_ros REQUIRED)
 find_package(nvblox_performance_measurement_msgs REQUIRED)
-find_package(CUDA REQUIRED) # Should probably be replaced with CUDAToolkit when available.
+find_package(CUDAToolkit REQUIRED)
 
 # include
 include_directories(include)
-
-# libraries
 
 # executables
 add_executable(results_collector_node
@@ -65,15 +64,39 @@ ament_target_dependencies(results_collector_node
   nvblox_performance_measurement_msgs
 ) 
 
-add_executable(nvblox_performance_measurement_node
-  src/nvblox_performance_measurement_node_main.cpp
+# NvbloxPerformanceMeasurementNode codelet
+add_library(${PROJECT_NAME}_lib SHARED
   src/lib/nvblox_performance_measurement_node.cpp
 )
-ament_target_dependencies(nvblox_performance_measurement_node
+ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox_ros
   std_msgs
   nvblox_performance_measurement_msgs
-  CUDA
+  CUDAToolkit
+)
+
+rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::NvbloxHumanPerformanceMeasurementNode")
+rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::NvbloxPerformanceMeasurementNode")
+
+# nvblox executable
+add_executable(nvblox_performance_measurement_node
+  src/nvblox_performance_measurement_node_main.cpp
+)
+target_link_libraries(nvblox_performance_measurement_node ${PROJECT_NAME}_lib)
+
+add_executable(nvblox_human_performance_measurement_node
+  src/nvblox_human_performance_measurement_node_main.cpp
+)
+target_link_libraries(nvblox_human_performance_measurement_node ${PROJECT_NAME}_lib)
+
+# Install the library target.
+install(
+  TARGETS ${PROJECT_NAME}_lib
+  EXPORT ${PROJECT_NAME}Targets
+  LIBRARY DESTINATION lib
+  ARCHIVE DESTINATION lib
+  RUNTIME DESTINATION bin
+  INCLUDES DESTINATION include
 )
 
 # install

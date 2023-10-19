@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -81,9 +81,9 @@ void meshBlockMessageFromMeshBlock(
   mesh_block_msg->colors.resize(mesh_block.colors.size());
   mesh_block_msg->triangles.resize(mesh_block.triangles.size());
 
-  std::vector<Vector3f> vertices = mesh_block.getVertexVectorOnCPU();
-  std::vector<Vector3f> normals = mesh_block.getNormalVectorOnCPU();
-  std::vector<Color> colors = mesh_block.getColorVectorOnCPU();
+  std::vector<Vector3f> vertices = mesh_block.vertices.toVector();
+  std::vector<Vector3f> normals = mesh_block.normals.toVector();
+  std::vector<Color> colors = mesh_block.colors.toVector();
 
   // Copy over vertices and normals.
   for (size_t i = 0; i < num_vertices; i++) {
@@ -97,7 +97,7 @@ void meshBlockMessageFromMeshBlock(
   }
 
   // Copying over triangles is thankfully easy.
-  mesh_block_msg->triangles = mesh_block.getTriangleVectorOnCPU();
+  mesh_block_msg->triangles = mesh_block.triangles.toVector();
 }
 
 void meshMessageFromMeshBlocks(
@@ -147,9 +147,9 @@ void markerMessageFromMeshBlock(
   marker->type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
 
   // Assumes UNWELDED mesh: all vertices in order.
-  std::vector<Vector3f> vertices = mesh_block->getVertexVectorOnCPU();
-  std::vector<Color> colors = mesh_block->getColorVectorOnCPU();
-  std::vector<int> triangles = mesh_block->getTriangleVectorOnCPU();
+  std::vector<Vector3f> vertices = mesh_block->vertices.toVector();
+  std::vector<Color> colors = mesh_block->colors.toVector();
+  std::vector<int> triangles = mesh_block->triangles.toVector();
 
   CHECK_EQ(vertices.size(), colors.size());
 

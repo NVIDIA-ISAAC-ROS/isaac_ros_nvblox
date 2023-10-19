@@ -1,11 +1,11 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+// http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,7 @@
 #define NVBLOX_ROS__MAPPER_INITIALIZATION_HPP_
 
 #include <nvblox/mapper/mapper.h>
+#include <nvblox/mapper/multi_mapper.h>
 
 #include <string>
 
@@ -29,6 +30,9 @@
 namespace nvblox
 {
 
+MappingType mapping_type_from_string(
+  const std::string & mapping_type_str, rclcpp::Node * node);
+
 void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * node);
 
 template<typename T>
@@ -38,7 +42,7 @@ void set_mapper_parameter(
   std::function<void(T)> parameter_setter,
   rclcpp::Node * node);
 
-void initializeMapper(const std::string & mapper_name, Mapper * mapper_ptr, rclcpp::Node * node);
+MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Node * node);
 
 }  // namespace nvblox
 
