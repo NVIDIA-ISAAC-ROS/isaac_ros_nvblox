@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>odometry_flattener</name>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
   <description>Flattens a 3d tf frame to 2d</description>
   <maintainer email="amillane@nvidia.com">alex</maintainer>
   <license>Apache-2.0</license>
