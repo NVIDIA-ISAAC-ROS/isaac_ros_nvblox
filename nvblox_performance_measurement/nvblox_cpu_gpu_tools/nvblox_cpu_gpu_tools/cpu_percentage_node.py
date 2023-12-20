@@ -41,12 +41,12 @@ class CpuPercentageNode(Node):
             'time_between_measurements_s', 1.0,
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
-                description='The time between sucessive measurements of the CPU load.'))
+                description=
+                'The time between sucessive measurements of the CPU load.'))
         self.declare_parameter(
             'measurement_interval_s', 0.5,
-            ParameterDescriptor(
-                type=ParameterType.PARAMETER_DOUBLE,
-                description='The interval passed to psutil.'))
+            ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE,
+                                description='The interval passed to psutil.'))
         self.declare_parameter(
             'node_process_name', 'unset',
             ParameterDescriptor(
@@ -63,14 +63,16 @@ class CpuPercentageNode(Node):
 
         # We require the process name to be set
         if self._node_process_name == 'unset':
-            self.get_logger().fatal("We require the parameter 'node_process_name' to be set.")
+            self.get_logger().fatal(
+                "We require the parameter 'node_process_name' to be set.")
             self._ready = False
             return
-        self.get_logger().info('Monitoring CPU usage for the process: ' + self._node_process_name)
+        self.get_logger().info('Monitoring CPU usage for the process: ' +
+                               self._node_process_name)
 
         # Create a timer to measure cpu usage
-        self.timer = self.create_timer(
-            self._time_between_measurements_s, self.timer_callback)
+        self.timer = self.create_timer(self._time_between_measurements_s,
+                                       self.timer_callback)
 
         # Indicating that the setup was successful
         self._ready = True
@@ -82,7 +84,8 @@ class CpuPercentageNode(Node):
         return self._ready
 
     def search_for_process(self) -> bool:
-        self.get_logger().info('Searching for process: ' + self._node_process_name)
+        self.get_logger().info('Searching for process: ' +
+                               self._node_process_name)
         pids = []
         for proc in psutil.process_iter(['pid', 'name']):
             if proc.name() == self._node_process_name:
@@ -94,7 +97,8 @@ class CpuPercentageNode(Node):
         elif len(pids) == 0:
             self.get_logger().warning("Couldn't find the process.")
         else:
-            self.get_logger().warning('Found more than one process. Not measuring.')
+            self.get_logger().warning(
+                'Found more than one process. Not measuring.')
         return False
 
     def timer_callback(self):
@@ -105,7 +109,8 @@ class CpuPercentageNode(Node):
 
         # Check if the process has disappeared
         if not psutil.pid_exists(self._process_id):
-            self.get_logger().warning('Process disappeared. Going back to search loop.')
+            self.get_logger().warning(
+                'Process disappeared. Going back to search loop.')
             self._process_id = -1
             return
 
@@ -115,7 +120,8 @@ class CpuPercentageNode(Node):
                 interval=self._measurement_interval_s)
         except psutil.Error:
             # The process disappeared during measurement
-            self.get_logger().warning('Process disappeared. Going back to search loop.')
+            self.get_logger().warning(
+                'Process disappeared. Going back to search loop.')
             self._process_id = -1
             return
 

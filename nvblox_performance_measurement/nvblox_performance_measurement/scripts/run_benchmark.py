@@ -17,6 +17,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
+import shutil
 import argparse
 import json
 import math
@@ -33,82 +34,122 @@ import rclpy
 from ament_index_python.packages import get_package_share_directory
 from nvblox_performance_measurement_msgs.srv import GetResults as GetResultsSrv
 from rclpy.node import Node
+from interpret_benchmark_results import plot_benchmarking_results
+from interpret_benchmark_results import plot_rate_histories
+
+import parse_ros_logs
 
 
 class NvbloxRunner:
-    def __init__(self, realsense, with_humans, with_dynamics, model_name, model_repository_paths, input_binding_names, output_binding_names):
-        self.package_name = 'nvblox_performance_measurement'
-        self.arg_string = ''
+
+    def __init__(
+        self,
+        pipeline,
+        save_rate_plots,
+        with_dynamics,
+        model_name,
+        model_repository_paths,
+        input_binding_names,
+        output_binding_names,
+        ess_engine_file_path,
+    ):
+        self.package_name = "nvblox_performance_measurement"
+        self.arg_string = ""
         self.process = None
-        self.launchfile_name = 'isaac_sim_benchmark.launch.py'
-        if realsense and with_humans:
-            self.launchfile_name = 'realsense_humans_benchmark.launch.py'
-        elif realsense:
-            self.launchfile_name = 'realsense_benchmark.launch.py'
-        elif with_humans:
-            self.launchfile_name = 'isaac_sim_humans_benchmark.launch.py'
+        self.launchfile_name = ""
+        if "realsense" in pipeline:
+            if "human" in pipeline:
+                self.launchfile_name = "realsense_humans_benchmark.launch.py"
+            else:
+                self.launchfile_name = "realsense_benchmark.launch.py"
+        elif "sim" in pipeline:
+            if "human" in pipeline:
+                self.launchfile_name = "isaac_sim_humans_benchmark.launch.py"
+            else:
+                self.launchfile_name = "isaac_sim_benchmark.launch.py"
+        elif "hawk" in pipeline:
+            self.launchfile_name = "hawk_open_loop_benchmark.launch.py"
+
+        if self.launchfile_name == "":
+            print(
+                "No launch file matches the pipeline. Killing the benchmarking script"
+            )
+            exit()
 
         if with_dynamics:
-            self.arg_string += 'mapping_type:=dynamic' + ' '
-        elif with_humans:
-            self.arg_string += 'model_name:=' + model_name + ' '
-            self.arg_string += 'model_repository_paths:=' + model_repository_paths + ' '
-            self.arg_string += 'input_binding_names:=' + str(input_binding_names) + ' '
-            self.arg_string += 'output_binding_names:=' + str(output_binding_names)
-
+            self.arg_string += "mapping_type:=dynamic" + " "
+        if save_rate_plots:
+            self.arg_string += "run_nvblox_perf_wrapper:=false" + " "
+        if "human" in pipeline:
+            self.arg_string += "model_name:=" + model_name + " "
+            self.arg_string += "model_repository_paths:=" + model_repository_paths + " "
+            self.arg_string += "input_binding_names:=" + str(
+                input_binding_names) + " "
+            self.arg_string += "output_binding_names:=" + str(
+                output_binding_names) + ""
+        if "hawk" in pipeline:
+            self.arg_string += "ess_engine_file_path:=" + ess_engine_file_path + " "
 
     def launch(self):
         self.process = subprocess.Popen(
             f"exec ros2 launch {self.package_name} {self.launchfile_name} {self.arg_string}",
-            shell=True, preexec_fn=os.setsid)
+            shell=True,
+            preexec_fn=os.setsid,
+        )
 
     def kill(self):
         if self.process is not None:
-            print('killing nvblox')
+            print("killing nvblox")
             self.process.kill()
             os.killpg(os.getpgid(self.process.pid), signal.SIGTERM)
 
 
 class BagLauncher:
+
     def __init__(self):
         self.process = None
+        self.arg_string = ""
 
-    def launch(self, bag_path: str):
+    def launch(self, bag_path: str, bag_play_args: str):
+        if bag_play_args != "":
+            self.arg_string += bag_play_args
         self.process = subprocess.run(
-            f"ros2 bag play {bag_path}", shell=True)
+            f"ros2 bag play {bag_path} {self.arg_string}", shell=True)
 
     def kill(self):
         if self.process is not None:
-            print('killing bag')
+            print("killing bag")
             self.process.kill()
+            self.process = None
 
 
 class ResultsGetter(Node):
+
     def __init__(self):
-        super().__init__('results_getter_node')
+        super().__init__("results_getter_node")
         self.get_results_client = self.create_client(
-            GetResultsSrv, '/results_collector_node/get_results')
+            GetResultsSrv, "/results_collector_node/get_results")
         while not self.get_results_client.wait_for_service(timeout_sec=1.0):
-            self.get_logger().info('service not available, waiting again...')
+            self.get_logger().info("service not available, waiting again...")
 
     def get_results(self):
         request = GetResultsSrv.Request()
-        response = self.send_request_and_await_result(
-            self.get_results_client, request)
+        response = self.send_request_and_await_result(self.get_results_client,
+                                                      request)
 
         # Packing stamps into a dictionary
         stamps = {}
         for topic_stamps in response.topic_stamps:
             stamps[topic_stamps.topic_name] = np.array(topic_stamps.stamps)
         # Extracting the cpu/gpu usage samples into numpy array
-        cpu_samples = np.array([msg.data
-                                for msg in response.cpu_percentage_samples])
-        gpu_samples = np.array([msg.data
-                                for msg in response.gpu_percentage_samples])
+        cpu_samples = np.array(
+            [msg.data for msg in response.cpu_percentage_samples])
+        gpu_samples = np.array(
+            [msg.data for msg in response.gpu_percentage_samples])
 
         # Extract network performance measurement
-        network_mean_iou_samples = np.array([msg.data
-                                             for msg in response.network_mean_iou_percentage_samples])
+        network_mean_iou_samples = np.array(
+            [msg.data for msg in response.network_mean_iou_percentage_samples])
 
         # Extract the timers string
         timers_string = response.timers_string.data
@@ -120,49 +161,52 @@ class ResultsGetter(Node):
         return self.wait_for_result(result_future)
 
     def send_request(self, client, request):
-        print('About to send request.')
+        print("About to send request.")
         result_future = client.call_async(request)
         return result_future
 
     def wait_for_result(self, result_future):
-        print('Picking up the results of the request')
+        print("Picking up the results of the request")
         while rclpy.ok():
             rclpy.spin_once(self)
             if result_future.done():
                 try:
                     response = result_future.result()
                 except Exception as e:
-                    self.get_logger().info(
-                        'Service call failed %r' % (e,))
+                    self.get_logger().info("Service call failed %r" % (e, ))
                 else:
                     self.get_logger().info("Got response.")
                     return response
                 break
-            print('Didn\'t hear back yet...')
+            print("Didn't hear back yet...")
 
 
-def save_results_files(stamps_dict: dict, cpu_samples: np.ndarray,
-                       gpu_samples: np.ndarray, network_mean_iou_samples: np.ndarray, timers_string: str,
-                       results_table: str, output_dir: Path, timestr: str = None):
-    if timestr is None:
-        timestr = time.strftime('%Y%m%d-%H%M%S')
-    with open(output_dir / f"nvblox_timers_{timestr}.txt", 'w') as f:
+def save_results_files(
+    stamps_dict: dict,
+    cpu_samples: np.ndarray,
+    gpu_samples: np.ndarray,
+    network_mean_iou_samples: np.ndarray,
+    timers_string: str,
+    results_table: str,
+    output_dir: Path,
+    timestr: str = None,
+):
+    with open(output_dir / f"nvblox_timers_{timestr}.txt", "w") as f:
         f.write(str(timers_string))
-    with open(output_dir / f"benchmark_results_{timestr}.txt", 'w') as f:
+    with open(output_dir / f"benchmark_results_{timestr}.txt", "w") as f:
         f.write(str(results_table))
-    np.savetxt(
-        output_dir / f"cpu_samples_{timestr}.txt", cpu_samples)
+    np.savetxt(output_dir / f"cpu_samples_{timestr}.txt", cpu_samples)
     np.savetxt(output_dir / f"gpu_samples_{timestr}.txt", gpu_samples)
-    np.savetxt(
-        output_dir / f"network_mean_iou_samples_{timestr}.txt", network_mean_iou_samples)
+    np.savetxt(output_dir / f"network_mean_iou_samples_{timestr}.txt",
+               network_mean_iou_samples)
     np.save(output_dir / f"message_stamps_{timestr}", stamps_dict)
     print(f"Wrote results in directory: {output_dir}")
 
 
-def save_pulse_figure(stamps_dict: dict, filepath: Path, with_humans: bool = False):
+def save_pulse_figure(stamps_dict: dict, filepath: Path):
     from plotly.subplots import make_subplots
 
-    if len(stamps_dict['pointcloud']) > 0:
+    if len(stamps_dict["pointcloud"]) > 0:
         pointclouds_present = True
     else:
         pointclouds_present = False
@@ -174,35 +218,63 @@ def save_pulse_figure(stamps_dict: dict, filepath: Path, with_humans: bool = Fal
 
     fig.add_trace(
         analyze_timestamps.get_pulses_plot(
-            stamps_dict['/nvblox_human_node/depth_processed'],
-            2.0, line_name='depth processed'),
-        row=1, col=1)
+            stamps_dict["/nvblox_human_node/depth_processed"],
+            2.0,
+            line_name="depth processed",
+        ),
+        row=1,
+        col=1,
+    )
 
     fig.add_trace(
         analyze_timestamps.get_pulses_plot(
-            stamps_dict['/nvblox_human_node/color_processed'],
-            2.0, line_name='color processed'),
-        row=2, col=1)
+            stamps_dict["/nvblox_human_node/color_processed"],
+            2.0,
+            line_name="color processed",
+        ),
+        row=2,
+        col=1,
+    )
 
     if pointclouds_present:
         fig.add_trace(
             analyze_timestamps.get_pulses_plot(
-                stamps_dict['/nvblox_human_node/pointcloud_processed'],
-                2.0, line_name='pointcloud processed'),
-            row=3, col=1)
+                stamps_dict["/nvblox_human_node/pointcloud_processed"],
+                2.0,
+                line_name="pointcloud processed",
+            ),
+            row=3,
+            col=1,
+        )
 
-    fig.add_trace(analyze_timestamps.get_pulses_plot(
-        stamps_dict['depth/image'], 1.0, line_name='depth released'), row=1, col=1)
+    fig.add_trace(
+        analyze_timestamps.get_pulses_plot(stamps_dict["depth/image"],
+                                           1.0,
+                                           line_name="depth released"),
+        row=1,
+        col=1,
+    )
 
-    fig.add_trace(analyze_timestamps.get_pulses_plot(
-        stamps_dict['color/image'], 1.0, line_name='color released'), row=2, col=1)
+    fig.add_trace(
+        analyze_timestamps.get_pulses_plot(stamps_dict["color/image"],
+                                           1.0,
+                                           line_name="color released"),
+        row=2,
+        col=1,
+    )
 
     if pointclouds_present:
-        fig.add_trace(analyze_timestamps.get_pulses_plot(
-            stamps_dict['pointcloud'], 1.0, line_name='pointcloud released'), row=3, col=1)
+        fig.add_trace(
+            analyze_timestamps.get_pulses_plot(
+                stamps_dict["pointcloud"],
+                1.0,
+                line_name="pointcloud released"),
+            row=3,
+            col=1,
+        )
 
     fig.write_html(str(filepath))
-    print(f'Wrote pulse figure to: {filepath}')
+    print(f"Wrote pulse figure to: {filepath}")
 
 
 def remove_nan_values_from_dict(input: dict) -> dict:
@@ -212,169 +284,230 @@ def remove_nan_values_from_dict(input: dict) -> dict:
     return input
 
 
+def push_dict_keys_into_namespace(d: dict, namespace: str) -> dict:
+    namespace = namespace.rstrip("/")
+    return {(namespace + "/" + key): val for key, val in d.items()}
+
+
+def merge_dicts(*dict_args) -> dict:
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+
 def main(args=None):
     rclpy.init(args=args)
 
     parser = argparse.ArgumentParser(
         description="Run a benchmark of nvblox_ros.")
-    parser.add_argument('bag_filepath', nargs='?',
+    parser.add_argument("bag_filepath",
+                        nargs="?",
                         help="Path to the bag to run the benchmark on.")
+    parser.add_argument("--with_dynamics",
+                        action="store_true",
+                        help="Whether to run dynamic detection.")
     parser.add_argument(
-        "--realsense",
-        action='store_true',
-        help="Whether to use realsense settings.")
+        "--save_rate_plots",
+        action="store_true",
+        help=
+        "If we want to enable running the service to plot rates and timers",
+    )
     parser.add_argument(
-        "--with_humans",
-        action='store_true',
-        help="Whether to run human detection.")
-    parser.add_argument(
-        "--with_dynamics",
-        action='store_true',
-        help="Whether to run dynamic detection.")
-    parser.add_argument(
-        "--output_dir",
-        help="Directory in which to save the results files.")
-    parser.add_argument(
-        "--save_results_files", action='store_const', const=True,
-        default=False,
-        help="Flag indicating if we should save the results to files.")
-    parser.add_argument(
-        "--save_pulse_plot", action='store_const', const=True,
-        default=False,
-        help="Flag indicating if we should save the pulse plot.")
-    parser.add_argument(
-        "--save_kpi_json", action='store_const', const=True,
-        default=False,
-        help="Flag indicating if we should save the KPI table as a json.")
-    parser.add_argument(
-        "--save_kpis_in_namespace",
-        help="Namespace to save the kpis")
-    parser.add_argument(
-        "--model_name",
-        default='peoplesemsegnet',
-        help="Path to the network model file")
+        "--pipeline",
+        choices=[
+            "sim",
+            "sim_with_humans",
+            "realsense",
+            "realsense_with_humans",
+            "hawk",
+        ],
+        required=True,
+        help="The pipeline to benchmark",
+    )
+    parser.add_argument("--output_dir",
+                        help="Directory in which to save the results files.")
+    parser.add_argument("--model_name",
+                        default="peoplesemsegnet",
+                        help="Path to the network model file")
     parser.add_argument(
         "--model_repository_paths",
         default="['/workspaces/isaac_ros-dev/models']",
-        help="Path to the tensorrt model file")
+        help="Path to the tensorrt model file",
+    )
+    parser.add_argument(
+        "--ess_engine_path",
+        default="['/workspaces/isaac_ros-dev/models/ess.engine']",
+        help="Path to the tensorrt ess engine file",
+    )
     parser.add_argument(
         "--input_binding_name",
-        default=['input_1:0'],
-        help="Input binding name for the tensorrt model")
+        default=["input_1:0"],
+        help="Input binding name for the tensorrt model",
+    )
     parser.add_argument(
         "--output_binding_name",
-        default=['argmax_1'],
-        help="Output binding name for the tensorrt model")
+        default=["argmax_1"],
+        help="Output binding name for the tensorrt model",
+    )
+    parser.add_argument(
+        "--bag_play_args",
+        default="",
+        help='A (quotation bounded) list of bag replay arguments. E.g.:'
+        'bag_play_args:="--remap /old_topic:=/new_topic --qos-profile-overrides-path qos_overrides.yaml"',
+    )
+    parser.add_argument(
+        "--show",
+        action="store_const",
+        const=True,
+        default=False,
+        help="A flag indicating if we should show the plots on screen",
+    )
+    parser.add_argument(
+        "--kpi_namespace",
+        type=str,
+        help=
+        "If passed, the KPIs in the output JSON will be preceeded by this string."
+    )
 
     args = parser.parse_args()
 
     # If no bag provided, use bags that come with the repo.
     # NOTE(alexmillane): Getting the dataset path here is kinda ugly, but I can't see a better way in ROS 2
     if args.bag_filepath is None:
-        print("No bagfile provided. Using the bag distributed with this package (nvblox_performance_measurement).")
+        print(
+            "No bagfile provided. Using the bag distributed with this package (nvblox_performance_measurement)."
+        )
         nvblox_performance_measurement_share_dir = Path(
-            get_package_share_directory('nvblox_performance_measurement'))
+            get_package_share_directory("nvblox_performance_measurement"))
         workspace_dir = nvblox_performance_measurement_share_dir.parents[3]
-        workspace_src_dir = workspace_dir / 'src'
+        workspace_src_dir = workspace_dir / "src"
 
         # Default bag locations (delivered via git lfs)
-        if args.realsense:
+        if "realsense" in args.pipeline:
             args.bag_filepath = workspace_src_dir / Path(
-                'isaac_ros_nvblox/nvblox_performance_measurement/nvblox_performance_measurement/datasets/realsense_office')
+                "isaac_ros_nvblox/nvblox_performance_measurement/nvblox_performance_measurement/datasets/realsense_office"
+            )
         else:
-            args.bag_filepath = workspace_src_dir / \
-                Path('isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol')
+            args.bag_filepath = workspace_src_dir / Path(
+                "isaac_ros_nvblox/nvblox_ros/test/test_cases/rosbags/nvblox_pol"
+            )
 
     # Check the bag exists
     if not os.path.exists(args.bag_filepath):
-        sys.exit(
-            f"Bagfile at path: {args.bag_filepath} does not exist. \n\
+        sys.exit(f"Bagfile at path: {args.bag_filepath} does not exist. \n\
                 Either specify your own bag as an argument, or run \
                     git lfs pull to download the default bag.")
 
     print("")
     print(f"Going to run performance test with bag: {args.bag_filepath}")
-    if args.realsense: 
-        print("Running realsense benchmark.")
-    else:
-        print("Running Isaac Sim benchmark.")
-
-    if args.with_humans:
-        print("Human detection activated.")
-    elif args.with_dynamics:
+    if args.with_dynamics:
         print("Dynamic detection activated.")
     else:
         print("Static tsdf mapping activated.")
     print("")
-        
+
     # Run the test
     try:
-
         nvblox_startup_wait_time_s = 20.0
         print("Starting nvblox")
-        nvblox_runner = NvbloxRunner(args.realsense, args.with_humans, args.with_dynamics,
-                                     args.model_name, args.model_repository_paths, args.input_binding_name, args.output_binding_name)
+        nvblox_runner = NvbloxRunner(args.pipeline, args.save_rate_plots,
+                                     args.with_dynamics, args.model_name,
+                                     args.model_repository_paths,
+                                     args.input_binding_name,
+                                     args.output_binding_name,
+                                     args.ess_engine_path)
 
         nvblox_runner.launch()
         print(
-            f"Waiting for: {nvblox_startup_wait_time_s} for nvblox to start up before launching bag.")
+            f"Waiting for: {nvblox_startup_wait_time_s} for nvblox to start up before launching bag."
+        )
         time.sleep(nvblox_startup_wait_time_s)
 
         print("Starting the bag")
         bag_launcher = BagLauncher()
-        bag_launcher.launch(args.bag_filepath)
+        bag_launcher.launch(args.bag_filepath, args.bag_play_args)
         print("Bag done")
 
         # Getting results (and printing them)
         results_getter = ResultsGetter()
-        stamps_dict, cpu_samples, gpu_samples, network_mean_iou_samples, timers_string = results_getter.get_results()
+        (
+            stamps_dict,
+            cpu_samples,
+            gpu_samples,
+            network_mean_iou_samples,
+            timers_string,
+        ) = results_getter.get_results()
 
         print(
-            f"\n\n{timers_string}\n\nBenchmarking Results\n-------------------------------------\n")
+            f"\n\n{timers_string}\n\nBenchmarking Results\n-------------------------------------\n"
+        )
         results_table, results_table_dict = analyze_timestamps.make_results_table(
             stamps_dict, cpu_samples, gpu_samples, network_mean_iou_samples)
+        results_table_dict = remove_nan_values_from_dict(results_table_dict)
         print(results_table)
-
-        # Remove Nan values from dict
-        results_table_dict = remove_nan_values_from_dict(
-            results_table_dict)
 
         # Default file output location
         if args.output_dir is None:
-            args.output_dir = '/tmp'
+            args.output_dir = "/tmp"
         output_dir = Path(args.output_dir)
-        timestr = time.strftime('%Y%m%d-%H%M%S')
-        print(f'Output directory is: {output_dir}')
+        print(f"Output directory is: {output_dir}")
 
         # Create the output dir if it doesn't exist already
         if not os.path.exists(output_dir):
-            print(f'Output directory doesn\'t exist so creating it')
+            print(f"Output directory doesn't exist so creating it")
             os.makedirs(output_dir, exist_ok=True)
 
         # Saving the collected results
-        if args.save_results_files:
-            save_results_files(stamps_dict, cpu_samples, gpu_samples, network_mean_iou_samples,
-                               timers_string, results_table, output_dir, timestr=timestr)
+        save_results_files(
+            stamps_dict,
+            cpu_samples,
+            gpu_samples,
+            network_mean_iou_samples,
+            timers_string,
+            results_table,
+            output_dir,
+        )
 
-        # Saving a plot
-        if args.save_pulse_plot:
-            save_pulse_figure(stamps_dict, output_dir /
-                              'pulses.html', args.with_humans)
+        # TODO(alexmillane): Put this back in.
+        # # Saving a plot
+        # if args.save_pulse_plot:
+        #     save_pulse_figure(stamps_dict, output_dir / "pulses.html")
 
-        # Save results table as json
-        if args.save_kpi_json:
-            if args.with_humans:
-                results_table_dict = {f'{key}_with_humans': value for key, value in results_table_dict.items()}
-            if args.save_kpis_in_namespace:
-                output_dir = os.path.join(
-                    output_dir, args.save_kpis_in_namespace)
-            if not os.path.isdir(output_dir):
-                os.mkdir(output_dir)
-            timings_table_file = os.path.join(
-                output_dir, 'ros_performance_kpis.json')
-            print(f"Writing the timings table to: {timings_table_file}")
-            with open(timings_table_file, "w") as timings_file:
-                json.dump(results_table_dict, timings_file, indent=4)
+        # Get the logs (and saving them to the output)
+        log_path = parse_ros_logs.get_latest_ros_logs_path(
+            "component_container_mt")
+        print("Loading ROS logs at: " + str(log_path))
+        log_output_path = output_dir / "ros_logs.txt"
+        print("Saving logs to output folder at: " + str(log_output_path))
+        shutil.copy(log_path, log_output_path)
+
+        print("Scraping logs for rates and timers.")
+        timer_dfs = parse_ros_logs.read_timer_tables_from_ros_log(log_path)
+        rates_dfs = parse_ros_logs.read_rate_tables_from_ros_log(log_path)
+        kpis_dict_timers_mean = push_dict_keys_into_namespace(
+            timer_dfs[-1]["mean"].to_dict(), "timers/mean")
+        kpis_dict_timers_total = push_dict_keys_into_namespace(
+            timer_dfs[-1]["total_time"].to_dict(), "timers/total")
+        kpis_dict_rates_total = push_dict_keys_into_namespace(
+            rates_dfs[-1]["mean"].to_dict(), "rates/mean")
+
+        # Write out to a merged KPI file
+        kpis_dict = merge_dicts(kpis_dict_timers_mean, kpis_dict_timers_total,
+                                kpis_dict_rates_total, results_table_dict)
+        if args.kpi_namespace:
+            push_dict_keys_into_namespace(kpis_dict, args.kpi_namespace)
+        kpis_filepath = output_dir / "kpis.json"
+        print("Saving KPIs to: " + str(kpis_filepath))
+        print("KPIs: \n" + str(kpis_dict))
+        with open(kpis_filepath, 'w') as fp:
+            json.dump(kpis_dict, fp, indent=4)
+
+        # Generate a rate histories plot
+        plot_rate_histories(rates_dfs,
+                            timer_dfs,
+                            show=args.show,
+                            output_dir=output_dir)
 
     finally:
         # Kill
@@ -382,5 +515,5 @@ def main(args=None):
         print("exiting")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

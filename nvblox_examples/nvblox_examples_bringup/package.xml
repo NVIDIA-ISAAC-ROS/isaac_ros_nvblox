@@ -30,7 +30,10 @@
 
   <author>Helen Oleynikova</author>
   <author>Alexander Millane</author>
-
+  <author>Remo Steiner</author>
+  <author>Vikram Ramasamy</author>
+  <author>David Tingdahl</author>
+  
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <test_depend>ament_lint_auto</test_depend>

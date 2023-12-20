@@ -94,48 +94,42 @@ void NvbloxNode::processMessageQueue(
   }
 
   // nvblox statistics
-  constexpr int kPublishPeriodMs = 10000;
   auto & clk = *get_clock();
-  RCLCPP_INFO_STREAM_THROTTLE(
-    get_logger(), clk, kPublishPeriodMs,
-    "Timing statistics: \n" <<
-      nvblox::timing::Timing::Print());
+  if (print_timings_to_console_) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_logger(), clk, print_statistics_on_console_period_ms_,
+      "Timing statistics: \n" <<
+        nvblox::timing::Timing::Print());
+  }
+  if (print_rates_to_console_) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_logger(), clk, print_statistics_on_console_period_ms_,
+      "Rates statistics: \n" <<
+        nvblox::timing::Rates::Print());
+  }
 }
 
 template<typename MessageType>
 void NvbloxNode::pushMessageOntoQueue(
+  const std::string & queue_name,
   MessageType message,
   std::deque<MessageType> * queue_ptr,
   std::mutex * queue_mutex_ptr)
 {
-  // Push it into the queue.
-  timing::Timer ros_total_timer("ros/total");
-  {
-    const std::lock_guard<std::mutex> lock(*queue_mutex_ptr);
-    queue_ptr->emplace_back(message);
-  }
-}
-
-template<typename MessageType>
-void NvbloxNode::limitQueueSizeByDeletingOldestMessages(
-  const int max_num_messages, const std::string & queue_name,
-  std::deque<MessageType> * queue_ptr, std::mutex * queue_mutex_ptr)
-{
-  // Delete extra elements in the queue.
-  timing::Timer ros_total_timer("ros/total");
   const std::lock_guard<std::mutex> lock(*queue_mutex_ptr);
-  if (queue_ptr->size() > max_num_messages) {
-    const int num_elements_to_delete = queue_ptr->size() - max_num_messages;
-    queue_ptr->erase(
-      queue_ptr->begin(),
-      queue_ptr->begin() + num_elements_to_delete);
+  // Size should never grow larget than allowed if this is the only place we modify the queue.
+  CHECK(queue_ptr->size() <= maximum_sensor_message_queue_length_);
+
+  // Make room for the new message if queue is full
+  if (queue_ptr->size() == maximum_sensor_message_queue_length_) {
+    queue_ptr->pop_front();
     constexpr int kPublishPeriodMs = 1000;
     auto & clk = *get_clock();
     RCLCPP_INFO_STREAM_THROTTLE(
       get_logger(), clk, kPublishPeriodMs,
-      queue_name << " queue was longer than " << max_num_messages <<
-        " deleted " << num_elements_to_delete << " messages.");
+      "Dropped an item from: " << queue_name << ". Size of queue: " << queue_ptr->size());
   }
+  queue_ptr->emplace_back(message);
 }
 
 template<typename MessageType>

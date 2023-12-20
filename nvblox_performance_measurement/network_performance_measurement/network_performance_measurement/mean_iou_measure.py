@@ -29,6 +29,7 @@ from std_msgs.msg import Float32
 
 
 class MeanIoU(Node):
+
     def __init__(self) -> None:
         super().__init__('network_performance_node')
 
@@ -36,17 +37,19 @@ class MeanIoU(Node):
         self.iou_publisher = self.create_publisher(Float32, '~/iou', 10)
 
         gt_subscriber = Subscriber(
-            self, Image, '/semantic_conversion/front/stereo_camera/left/semantic_mono8')
+            self, Image,
+            '/semantic_conversion/front/stereo_camera/left/semantic_mono8')
         pred_subscriber = Subscriber(
-            self, Image, '/unet/raw_segmentation_mask_depadded', qos_profile=QoSPresetProfiles.SENSOR_DATA.value)
+            self,
+            Image,
+            '/unet/raw_segmentation_mask_depadded',
+            qos_profile=QoSPresetProfiles.SENSOR_DATA.value)
 
         QueueSize = 5
         TimeGap = 0.1
 
         self.approximate_synchronizer = ApproximateTimeSynchronizer(
-            [gt_subscriber, pred_subscriber],
-            QueueSize,
-            TimeGap)
+            [gt_subscriber, pred_subscriber], QueueSize, TimeGap)
         self.approximate_synchronizer.registerCallback(self.iou)
 
         self.cv_bridge = CvBridge()

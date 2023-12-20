@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
- 
+
 #pragma once
 
 #include <functional>
@@ -29,28 +29,31 @@ namespace nvblox_rviz_plugin {
 // Minimal functions taken from nvblox/core/hash.h to remove dependency and
 // uses the ROS types instead.
 
-typedef nvblox_msgs::msg::Index3D Index3D;
+  typedef nvblox_msgs::msg::Index3D Index3D;
 
 /**
  * Performs deco hashing on block indexes. Based on recommendations of
  * "Investigating the impact of Suboptimal Hashing Functions" by L. Buckley et
  * al.
  */
-struct Index3DHash {
-  /// number was arbitrarily chosen with no good justification
-  static constexpr size_t sl = 17191;
-  static constexpr size_t sl2 = sl * sl;
+  struct Index3DHash
+  {
+    /// number was arbitrarily chosen with no good justification
+    static constexpr size_t sl = 17191;
+    static constexpr size_t sl2 = sl * sl;
 
-  std::size_t operator()(const Index3D& index) const {
-    return static_cast<unsigned int>(index.x + index.y * sl + index.z * sl2);
-  }
-};
+    std::size_t operator()(const Index3D & index) const
+    {
+      return static_cast < unsigned int > (index.x + index.y * sl + index.z * sl2);
+    }
+  };
 
-template <typename ValueType>
-struct Index3DHashMapType {
-  typedef std::unordered_map<Index3D, ValueType, Index3DHash,
-                             std::equal_to<Index3D>>
+  template < typename ValueType >
+  struct Index3DHashMapType
+  {
+    typedef std::unordered_map < Index3D, ValueType, Index3DHash,
+      std::equal_to < Index3D >>
       type;
-};
+  };
 
 }  // namespace nvblox_rviz_plugin

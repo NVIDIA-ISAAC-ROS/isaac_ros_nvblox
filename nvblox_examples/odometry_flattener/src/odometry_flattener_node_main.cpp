@@ -21,7 +21,8 @@
 
 #include "odometry_flattener/odometry_flattener_node.h"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::NodeOptions node_options;
   rclcpp::spin(std::make_shared<nvblox::OdometryFlattenerNode>(node_options));

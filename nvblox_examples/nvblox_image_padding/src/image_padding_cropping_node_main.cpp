@@ -21,7 +21,8 @@
 
 #include "nvblox_image_padding/image_padding_cropping_node.hpp"
 
-int main(int argc, char* argv[]) {
+int main(int argc, char * argv[])
+{
   rclcpp::init(argc, argv);
   rclcpp::spin(std::make_shared<nvblox::ImagePaddingCroppingNode>());
   rclcpp::shutdown();

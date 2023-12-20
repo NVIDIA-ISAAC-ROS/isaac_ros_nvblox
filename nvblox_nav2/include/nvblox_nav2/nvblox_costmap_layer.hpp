@@ -55,6 +55,7 @@ private:
   bool lookupInSlice(const Eigen::Vector2f & pos, float * distance);
 
   // Settings
+  bool convert_to_binary_costmap_ = false;
   float max_obstacle_distance_ = 1.0f;
   float inflation_distance_ = 0.5f;
   // This should not include any "special" values like 255.

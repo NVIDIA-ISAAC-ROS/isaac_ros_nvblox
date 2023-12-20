@@ -31,55 +31,64 @@ def generate_launch_description():
     examples_bringup_dir = get_package_share_directory(
         'nvblox_examples_bringup')
     use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time', default_value='False',
+        'use_sim_time',
+        default_value='False',
         description='Use simulation (Omniverse Isaac Sim) clock if true')
     mapping_type_arg = DeclareLaunchArgument(
-        'mapping_type', default_value='static_tsdf',
+        'mapping_type',
+        default_value='static_tsdf',
         description='Mapping type to choose between dynamic and static tsdf')
 
     nvblox_param_dir_arg = DeclareLaunchArgument(
         'nvblox_params_file',
-        default_value=os.path.join(
-            examples_bringup_dir, 'config', 'nvblox', 'nvblox_base.yaml'
-        ),
+        default_value=os.path.join(examples_bringup_dir, 'config', 'nvblox',
+                                   'nvblox_base.yaml'),
     )
 
     # Remaps
-    isaac_sim_remaps = [('depth/image', '/front/stereo_camera/right/depth'),
-                        ('depth/camera_info', '/front/stereo_camera/right/camera_info'),
-                        ('color/image', '/front/stereo_camera/left/rgb'),
-                        ('color/camera_info', '/front/stereo_camera/left/camera_info'),
-                        ('pointcloud', '/point_cloud'),
-                        ('mask/image', '/unet/raw_segmentation_mask_depadded'),
-                        ('mask/camera_info', '/front/stereo_camera/left/camera_info')]
+    isaac_sim_remaps = [
+        ('depth/image', '/front/stereo_camera/right/depth'),
+        ('depth/camera_info', '/front/stereo_camera/right/camera_info'),
+        ('color/image', '/front/stereo_camera/left/rgb'),
+        ('color/camera_info', '/front/stereo_camera/left/camera_info'),
+        ('pointcloud', '/point_cloud'),
+        ('mask/image', '/unet/raw_segmentation_mask_depadded'),
+        ('mask/camera_info', '/front/stereo_camera/left/camera_info')
+    ]
 
-    nvblox_remaps = [('/nvblox_human_node/color_processed', '/nvblox_node/color_processed'),
-                     ('/nvblox_human_node/depth_processed',
-                      '/nvblox_node/depth_processed'),
-                     ('/nvblox_human_node/pointcloud_processed',
-                      '/nvblox_node/pointcloud_processed'),
-                     ('/nvblox_human_node/static_map_slice', '/nvblox_node/static_map_slice'),
-                     ('/nvblox_human_node/mesh_processed', '/nvblox_node/mesh_processed')]
+    nvblox_remaps = [
+        ('/nvblox_human_node/color_processed', '/nvblox_node/color_processed'),
+        ('/nvblox_human_node/depth_processed', '/nvblox_node/depth_processed'),
+        ('/nvblox_human_node/pointcloud_processed',
+         '/nvblox_node/pointcloud_processed'),
+        ('/nvblox_human_node/static_map_slice',
+         '/nvblox_node/static_map_slice'),
+        ('/nvblox_human_node/mesh_processed', '/nvblox_node/mesh_processed')
+    ]
 
     # Nvblox node + Results recorder - Sim
-    sim_recorder_node = Node(
-        package='nvblox_performance_measurement',
-        executable='results_collector_node',
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        output='screen',
-        remappings=isaac_sim_remaps + nvblox_remaps
-    )
+    sim_recorder_node = Node(package='nvblox_performance_measurement',
+                             executable='results_collector_node',
+                             parameters=[{
+                                 'use_sim_time':
+                                 LaunchConfiguration('use_sim_time')
+                             }],
+                             output='screen',
+                             remappings=isaac_sim_remaps + nvblox_remaps)
 
     # Nvblox performance measurement node
     nvblox_node = ComposableNode(
-            name='nvblox_node',
-            package='nvblox_performance_measurement',
-            plugin='nvblox::NvbloxPerformanceMeasurementNode',
-            remappings=isaac_sim_remaps,
-            parameters=[LaunchConfiguration('nvblox_params_file'),
-                        {'mapping_type': LaunchConfiguration('mapping_type')}],
-            )
-    
+        name='nvblox_node',
+        package='nvblox_performance_measurement',
+        plugin='nvblox::NvbloxPerformanceMeasurementNode',
+        remappings=isaac_sim_remaps,
+        parameters=[
+            LaunchConfiguration('nvblox_params_file'), {
+                'mapping_type': LaunchConfiguration('mapping_type')
+            }
+        ],
+    )
+
     # Nvblox node container
     # We use multithreaded container
     nvblox_container = ComposableNodeContainer(
@@ -90,23 +99,20 @@ def generate_launch_description():
         composable_node_descriptions=[nvblox_node],
         output='screen')
 
-    cpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='cpu_percentage_node',
-        parameters=[{
-            'node_process_name':
-            'component_container_mt'}],
-        output='screen')
+    cpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='cpu_percentage_node',
+                          parameters=[{
+                              'node_process_name':
+                              'component_container_mt'
+                          }],
+                          output='screen')
 
-    gpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='gpu_percentage_node',
-        parameters=[],
-        output='screen')
+    gpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='gpu_percentage_node',
+                          parameters=[],
+                          output='screen')
 
-    return LaunchDescription([use_sim_time_arg,
-                              mapping_type_arg,
-                              nvblox_param_dir_arg,
-                              sim_recorder_node,
-                              nvblox_container,
-                              cpu_usage_node,
-                              gpu_usage_node
-                              ])
+    return LaunchDescription([
+        use_sim_time_arg, mapping_type_arg, nvblox_param_dir_arg,
+        sim_recorder_node, nvblox_container, cpu_usage_node, gpu_usage_node
+    ])

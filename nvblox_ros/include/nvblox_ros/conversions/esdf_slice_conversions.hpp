@@ -49,7 +49,8 @@ public:
   void sliceLayersToCombinedDistanceImage(
     const EsdfLayer & layer_1,
     const EsdfLayer & layer_2,
-    float slice_height,
+    float layer_1_slice_height,
+    float layer_2_slice_height,
     Image<float> * output_image,
     AxisAlignedBoundingBox * aabb);
 

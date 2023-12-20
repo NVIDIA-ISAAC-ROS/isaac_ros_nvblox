@@ -37,6 +37,8 @@ WeightingFunctionType weighting_function_type_from_string(
     return WeightingFunctionType::kInverseSquareDropoffWeight;
   } else if (weighting_function_str == "inverse_square_tsdf_distance_penalty") {
     return WeightingFunctionType::kInverseSquareTsdfDistancePenalty;
+  } else if (weighting_function_str == "linear_with_max") {
+    return WeightingFunctionType::kLinearWithMax;
   } else {
     RCLCPP_WARN_STREAM(
       node->get_logger(),
@@ -89,10 +91,25 @@ void declareMapperParameters(
   // versions.
 
   // ======= MAPPER =======
+  // depth preprocessing
   declareParameterWithoutDefault<bool>(
     mapper_name + ".do_depth_preprocessing", node);
   declareParameterWithoutDefault<int64_t>(
     mapper_name + ".depth_preprocessing_num_dilations", node);
+  // mesh streaming
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".mesh_bandwidth_limit_mbps", node);
+  // 2D esdf slice
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".esdf_slice_min_height", node);
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".esdf_slice_max_height", node);
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".esdf_slice_height", node);
+  // Decay
+  declareParameterWithoutDefault<bool>(
+    mapper_name + ".exclude_last_view_from_decay", node);
+
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
   declareParameterWithoutDefault<float>(
     mapper_name + ".projective_integrator_max_integration_distance_m", node);
@@ -144,6 +161,11 @@ void declareMapperParameters(
     mapper_name + ".min_consecutive_occupancy_duration_for_reset_ms", node);
   declareParameterWithoutDefault<bool>(
     mapper_name + ".check_neighborhood", node);
+  // ======= MESH STREAMER =======
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".mesh_streamer_exclusion_height_m", node);
+  declareParameterWithoutDefault<float>(
+    mapper_name + ".mesh_streamer_exclusion_radius_m", node);
 }
 
 MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Node * node)
@@ -160,6 +182,24 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_mapper_parameter<int64_t>(
     mapper_name, "depth_preprocessing_num_dilations",
     [&](auto value) {params.depth_preprocessing_num_dilations = value;}, node);
+  // mesh streaming
+  set_mapper_parameter<float>(
+    mapper_name, "mesh_bandwidth_limit_mbps",
+    [&](auto value) {params.mesh_bandwidth_limit_mbps = value;}, node);
+  // 2D esdf slice
+  set_mapper_parameter<float>(
+    mapper_name, "esdf_slice_min_height",
+    [&](auto value) {params.esdf_slice_min_height = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, "esdf_slice_max_height",
+    [&](auto value) {params.esdf_slice_max_height = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, "esdf_slice_height",
+    [&](auto value) {params.esdf_slice_height = value;}, node);
+  // Decay
+  set_mapper_parameter<bool>(
+    mapper_name, "exclude_last_view_from_decay",
+    [&](auto value) {params.exclude_last_view_from_decay = value;}, node);
 
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
   // max integration distance
@@ -262,6 +302,14 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_mapper_parameter<bool>(
     mapper_name, "check_neighborhood",
     [&](auto value) {params.check_neighborhood = value;}, node);
+
+  // ======= MESH STREAMER =======
+  set_mapper_parameter<float>(
+    mapper_name, "mesh_streamer_exclusion_height_m",
+    [&](auto value) {params.mesh_streamer_exclusion_height_m = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, "mesh_streamer_exclusion_radius_m",
+    [&](auto value) {params.mesh_streamer_exclusion_radius_m = value;}, node);
 
   return params;
 }

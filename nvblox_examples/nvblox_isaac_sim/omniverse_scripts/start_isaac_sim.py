@@ -28,7 +28,8 @@ ADDITIONAL_EXTENSIONS_PEOPLE = [
     'omni.anim.people', 'omni.anim.navigation.bundle', 'omni.anim.timeline',
     'omni.anim.graph.bundle', 'omni.anim.graph.core', 'omni.anim.graph.ui',
     'omni.anim.retarget.bundle', 'omni.anim.retarget.core',
-    'omni.anim.retarget.ui', 'omni.kit.scripting']
+    'omni.anim.retarget.ui', 'omni.kit.scripting'
+]
 
 
 def enable_extensions_for_sim(with_people: bool = False):
@@ -68,7 +69,8 @@ def rebuild_nav_mesh():
         value=0.5)
     omni.kit.commands.execute(
         'ChangeSetting',
-        path='/persistent/exts/omni.anim.navigation.core/navMesh/autoRebakeDelaySeconds',
+        path=
+        '/persistent/exts/omni.anim.navigation.core/navMesh/autoRebakeDelaySeconds',
         value=4)
     omni.kit.commands.execute(
         'ChangeSetting',
@@ -78,8 +80,7 @@ def rebuild_nav_mesh():
 
 
 def create_people_commands(environment_prim_path: str,
-                           anim_people_command_dir: str,
-                           max_number_tries: int,
+                           anim_people_command_dir: str, max_number_tries: int,
                            num_waypoints_per_human: int):
     """
     Create the occupancy grid which returns the free points for the humans to move.
@@ -161,11 +162,12 @@ def create_people_commands(environment_prim_path: str,
                 start_point = new_waypoint[0]
             else:
                 print(
-                    f'Could not find path for {human_name} after {max_number_tries}, skipping')
+                    f'Could not find path for {human_name} after {max_number_tries}, skipping'
+                )
 
     # Save as command file
-    command_file_path = os.path.join(
-        anim_people_command_dir, 'human_cmd_file.txt')
+    command_file_path = os.path.join(anim_people_command_dir,
+                                     'human_cmd_file.txt')
     print(f'Saving randomized commands to {command_file_path}')
     with open(command_file_path, 'w') as file:
         for human_name, waypoints in random_waypoints.items():
@@ -260,11 +262,12 @@ def main(scenario_path: str,
 
     if gpu_physics_enabled:
         from pxr import Sdf
-        omni.kit.commands.execute('ChangeProperty',
-                                  prop_path=Sdf.Path(
-                                      physics_scene_path + '.physxScene:enableGPUDynamics'),
-                                  value=True,
-                                  prev=None)
+        omni.kit.commands.execute(
+            'ChangeProperty',
+            prop_path=Sdf.Path(physics_scene_path +
+                               '.physxScene:enableGPUDynamics'),
+            value=True,
+            prev=None)
 
     simulation_context.play()
     simulation_context.step()
@@ -275,20 +278,19 @@ def main(scenario_path: str,
     # simulation and point the user on how to use the generated file
     if with_people and random_command_generation:
         print('Creating human animation file...')
-        create_people_commands(environment_prim_path,
-                               anim_people_command_dir, 10, num_waypoints)
+        create_people_commands(environment_prim_path, anim_people_command_dir,
+                               10, num_waypoints)
         print(
             'Human command file has been created at {}/human_human_cmd_file.txt'
             .format(anim_people_command_dir))
-        print(
-            'Please restart the simulation with --with_people and \n \
+        print('Please restart the simulation with --with_people and \n \
               --use_generated_command_file to use the generated command file in human simulation'
-        )
+              )
         simulation_context.stop()
         simulation_app.close()
 
     # Simulate for a few seconds to warm up sim and let everything settle
-    for _ in range(2*round(tick_rate_hz)):
+    for _ in range(2 * round(tick_rate_hz)):
         simulation_context.step()
 
     # Run the sim
@@ -326,7 +328,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--anim_people_waypoint_dir',
         help='Directory location to save the waypoints in a yaml file')
-    parser.add_argument('--headless', action='store_true',
+    parser.add_argument('--headless',
+                        action='store_true',
                         help='Run the simulation headless.')
     parser.add_argument(
         '--with_people',
@@ -336,18 +339,21 @@ if __name__ == '__main__':
         '--random_command_generation',
         help='Choose whether we generate random waypoint or run sim',
         action='store_true')
-    parser.add_argument('--num_waypoints', type=int,
-                        help='Number of waypoints to generate for each human in the scene.',
-                        default=5)
+    parser.add_argument(
+        '--num_waypoints',
+        type=int,
+        help='Number of waypoints to generate for each human in the scene.',
+        default=5)
     parser.add_argument(
         '--use_generated_command_file',
-        help='Choose whether to use generated/custom command file or to use the default one to run\
+        help=
+        'Choose whether to use generated/custom command file or to use the default one to run\
               the people animation',
         action='store_true')
     parser.add_argument(
         '--gpu_physics_enabled',
         help='If used, gpu physics for the scene will be enabled. '
-             'To be used in case of deformable bodies',
+        'To be used in case of deformable bodies',
         action='store_true')
     parser.add_argument('--physics_scene_path',
                         default='/World/PhysicsScene',
@@ -365,10 +371,10 @@ if __name__ == '__main__':
         if not args.anim_people_waypoint_dir:
             raise ValueError(
                 'Input to command file directory required if custom command file has to be \
-                    generated/used!!'
-            )
+                    generated/used!!')
 
-    main(args.scenario_path, args.anim_people_waypoint_dir, args.environment_prim_path,
-         args.physics_scene_path, args.random_command_generation,
-         args.num_waypoints, args.headless, args.with_people,
-         args.use_generated_command_file, args.gpu_physics_enabled, args.tick_rate_hz)
+    main(args.scenario_path, args.anim_people_waypoint_dir,
+         args.environment_prim_path, args.physics_scene_path,
+         args.random_command_generation, args.num_waypoints, args.headless,
+         args.with_people, args.use_generated_command_file,
+         args.gpu_physics_enabled, args.tick_rate_hz)

@@ -30,6 +30,7 @@ from sensor_msgs.msg import Image
 
 
 class SemanticConverter(Node):
+
     def __init__(self) -> None:
         '''
         Helper node to convert IsaacSim Semantic Labels to a consistent semantic segmentation image
@@ -67,8 +68,9 @@ class SemanticConverter(Node):
 
             output_id = self.get_parameter(
                 output_id_param_name).get_parameter_value().integer_value
-            output_color = list(self.get_parameter(
-                output_color_param_name).get_parameter_value().integer_array_value)
+            output_color = list(
+                self.get_parameter(output_color_param_name).
+                get_parameter_value().integer_array_value)
 
             self.label_conversion_dict[label_name] = {
                 'output_id': output_id,
@@ -102,14 +104,16 @@ class SemanticConverter(Node):
             Image, f"/semantic_conversion/{camera_name}/semantic_colorized", 1)
 
         # Synchronized callback
-        def on_camera_image_received(image_msg, label_msg): return \
-            self.on_image_received(
+        def on_camera_image_received(image_msg, label_msg):            return \
+self.on_image_received(
                 publisher_mono8, publisher_colorized, image_msg, label_msg)
+
         ts = message_filters.TimeSynchronizer(
             [image_subscriber, labels_subscriber], 10)
         ts.registerCallback(on_camera_image_received)
 
-    def on_image_received(self, publisher_mono8, publisher_colorized, image_msg: Image,
+    def on_image_received(self, publisher_mono8, publisher_colorized,
+                          image_msg: Image,
                           labels_msg: SemanticLabelsStamped) -> None:
         '''
         Callback to convert semantic image from IsaacSim to a consistent label image in mono8
@@ -179,8 +183,8 @@ class SemanticConverter(Node):
                 continue
             label_name = label_name.lower()
             # Look for the output id / color if if exists
-            target_label = self.label_conversion_dict.get(
-                label_name, {}).get("output_id", 0)
+            target_label = self.label_conversion_dict.get(label_name, {}).get(
+                "output_id", 0)
             target_color = self.label_conversion_dict.get(label_name, {}).get(
                 "output_color", [0, 0, 0])
             # Update the remap

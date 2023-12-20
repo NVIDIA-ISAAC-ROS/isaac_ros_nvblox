@@ -25,8 +25,8 @@ def generate_launch_description():
 
     # Config file
     config_file = os.path.join(
-        get_package_share_directory('semantic_label_conversion'),
-        'params', 'semantic_label_conversion.yaml')
+        get_package_share_directory('semantic_label_conversion'), 'params',
+        'semantic_label_conversion.yaml')
 
     semantic_label_stamper = Node(package='semantic_label_conversion',
                                   executable='semantic_label_stamper.py',
@@ -42,7 +42,5 @@ def generate_launch_description():
                                     emulate_tty=True,
                                     parameters=[config_file])
 
-    return LaunchDescription([
-        semantic_label_stamper,
-        semantic_label_converter
-    ])
+    return LaunchDescription(
+        [semantic_label_stamper, semantic_label_converter])

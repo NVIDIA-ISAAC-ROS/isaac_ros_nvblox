@@ -45,6 +45,15 @@
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
 
+  <build_depend>python3-matplotlib</build_depend>
+  <exec_depend>python3-matplotlib</exec_depend>
+  <build_depend>python3-tk</build_depend>
+  <exec_depend>python3-tk</exec_depend>
+  <build_depend>python3-pandas</build_depend>
+  <exec_depend>python3-pandas</exec_depend>
+  <build_depend>python3-pymupdf</build_depend>
+  <exec_depend>python3-pymupdf</exec_depend>
+
   <member_of_group>rosidl_interface_packages</member_of_group>
 
   <export>

@@ -26,16 +26,22 @@ from launch.substitutions import LaunchConfiguration
 def generate_launch_description():
 
     output_odom_frame_name_arg = DeclareLaunchArgument(
-        'output_odom_frame_name', default_value='odom',
+        'output_odom_frame_name',
+        default_value='odom',
         description='The name of the VSLAM output frame')
     run_odometry_flattening_arg = DeclareLaunchArgument(
-        'run_odometry_flattening', default_value='False',
-        description='Whether to flatten the output_odom_frame to 2D (camera only moving on XY-plane).')
+        'run_odometry_flattening',
+        default_value='False',
+        description=
+        'Whether to flatten the output_odom_frame to 2D (camera only moving on XY-plane).'
+    )
 
     # Option to attach the nodes to a shared component container for speed ups through intra process communication.
     # Make sure to set the 'component_container_name' to the name of the component container you want to attach to.
-    attach_to_shared_component_container_arg = LaunchConfiguration('attach_to_shared_component_container', default=False)
-    component_container_name_arg = LaunchConfiguration('component_container_name', default='vslam_container')
+    attach_to_shared_component_container_arg = LaunchConfiguration(
+        'attach_to_shared_component_container', default=False)
+    component_container_name_arg = LaunchConfiguration(
+        'component_container_name', default='vslam_container')
 
     # If we do not attach to a shared component container we have to create our own container.
     vslam_container = Node(
@@ -43,8 +49,7 @@ def generate_launch_description():
         package='rclcpp_components',
         executable='component_container_mt',
         output='screen',
-        condition=UnlessCondition(attach_to_shared_component_container_arg)
-    )
+        condition=UnlessCondition(attach_to_shared_component_container_arg))
 
     load_composable_nodes = LoadComposableNodes(
         target_container=component_container_name_arg,
@@ -56,16 +61,18 @@ def generate_launch_description():
                 plugin='nvidia::isaac_ros::visual_slam::VisualSlamNode'),
 
             # Odom flattener node
-            ComposableNode(
-                name='odometry_flattener_node',
-                package='odometry_flattener',
-                plugin='nvblox::OdometryFlattenerNode',
-                condition=IfCondition(LaunchConfiguration('run_odometry_flattening'))
-            )])
+            ComposableNode(name='odometry_flattener_node',
+                           package='odometry_flattener',
+                           plugin='nvblox::OdometryFlattenerNode',
+                           condition=IfCondition(
+                               LaunchConfiguration('run_odometry_flattening')))
+        ])
 
     # Conditionals for setup
     setup_for_realsense = IfCondition(
         LaunchConfiguration('setup_for_realsense', default='False'))
+    setup_for_hawk = IfCondition(
+        LaunchConfiguration('setup_for_hawk', default='False'))
     setup_for_isaac_sim = IfCondition(
         LaunchConfiguration('setup_for_isaac_sim', default='False'))
 
@@ -78,6 +85,7 @@ def generate_launch_description():
         ##########################################
 
         # Set general parameters
+        SetParameter(name='enable_imu_fusion', value=False),
         SetParameter(name='enable_debug_mode', value=False),
         SetParameter(name='debug_dump_path', value='/tmp/cuvslam'),
         SetParameter(name='enable_slam_visualization', value=True),
@@ -92,36 +100,62 @@ def generate_launch_description():
         # can not be set to the output_odom_frame.
         # In that case, the vslam output odom_frame is first flattened by the
         # odometry flattener node and then published as the output_odom_frame.
-        SetParameter(name='odom_frame', value=LaunchConfiguration('output_odom_frame_name'),
-                     condition=UnlessCondition(LaunchConfiguration('run_odometry_flattening'))),
-        SetParameter(name='odom_frame', value=odometry_frame_before_flattening_name,
-                     condition=IfCondition(LaunchConfiguration('run_odometry_flattening'))),
+        SetParameter(name='odom_frame',
+                     value=LaunchConfiguration('output_odom_frame_name'),
+                     condition=UnlessCondition(
+                         LaunchConfiguration('run_odometry_flattening'))),
+        SetParameter(name='odom_frame',
+                     value=odometry_frame_before_flattening_name,
+                     condition=IfCondition(
+                         LaunchConfiguration('run_odometry_flattening'))),
 
         # Parameters for Isaac Sim
-        SetParameter(name='use_sim_time', value=True,
+        SetParameter(name='use_sim_time',
+                     value=True,
                      condition=setup_for_isaac_sim),
-        SetParameter(name='denoise_input_images', value=True,
+        SetParameter(name='denoise_input_images',
+                     value=True,
                      condition=setup_for_isaac_sim),
-        SetParameter(name='rectified_images', value=False,
+        SetParameter(name='rectified_images',
+                     value=False,
                      condition=setup_for_isaac_sim),
-        SetParameter(name='base_frame', value='base_link',
+        SetParameter(name='base_frame',
+                     value='base_link',
                      condition=setup_for_isaac_sim),
-        SetParameter(name='input_base_frame', value='base_link',
+        SetParameter(name='input_base_frame',
+                     value='base_link',
                      condition=setup_for_isaac_sim),
-        SetParameter(name='input_left_camera_frame', value='camera_left_ROS_frame',
+        SetParameter(name='input_left_camera_frame',
+                     value='camera_left_ROS_frame',
                      condition=setup_for_isaac_sim),
-        SetParameter(name='input_right_camera_frame', value='camera_right_ROS_frame',
+        SetParameter(name='input_right_camera_frame',
+                     value='camera_right_ROS_frame',
                      condition=setup_for_isaac_sim),
 
         # Parameters for Realsense
-        SetParameter(name='enable_rectified_pose', value=True,
+        SetParameter(name='enable_rectified_pose',
+                     value=True,
                      condition=setup_for_realsense),
-        SetParameter(name='denoise_input_images', value=False,
+        SetParameter(name='denoise_input_images',
+                     value=False,
                      condition=setup_for_realsense),
-        SetParameter(name='rectified_images', value=True,
+        SetParameter(name='rectified_images',
+                     value=True,
                      condition=setup_for_realsense),
-        SetParameter(name='base_frame', value='camera_link',
+        SetParameter(name='base_frame',
+                     value='camera_link',
                      condition=setup_for_realsense),
+
+        # Parameters for Hawk
+        SetParameter(name='denoise_input_images',
+                     value=False,
+                     condition=setup_for_hawk),
+        SetParameter(name='rectified_images',
+                     value=True,
+                     condition=setup_for_hawk),
+        SetParameter(name='base_frame',
+                     value='camera_link',
+                     condition=setup_for_hawk),
 
         # Remappings for Isaac Sim
         SetRemap(src=['/stereo_camera/left/camera_info'],
@@ -151,31 +185,58 @@ def generate_launch_description():
                  dst=['/camera/realsense_splitter_node/output/infra_2'],
                  condition=setup_for_realsense),
 
+        # Remappings for Hawk
+        # NOTE(remos): Using resized images here.
+        # We expect less compute (need to verify) and similar odometry quality
+        # (vslam uses VGA resolution per default).
+        SetRemap(src=['stereo_camera/left/image'],
+                 dst=['/hawk/left/image_resized'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['stereo_camera/left/camera_info'],
+                 dst=['/hawk/left/camera_info_resized'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['stereo_camera/right/image'],
+                 dst=['/hawk/right/image_resized'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['stereo_camera/right/camera_info'],
+                 dst=['/hawk/right/camera_info_resized'],
+                 condition=setup_for_hawk),
+
         #################################################
         ######### ODOMETRY FLATTENER NODE SETUP #########
         #################################################
 
         # Set odometry flattening parameters
-        SetParameter(name='input_parent_frame_id', value=odometry_frame_before_flattening_name),
-        SetParameter(name='input_child_frame_id', value='base_link',
+        SetParameter(name='input_parent_frame_id',
+                     value=odometry_frame_before_flattening_name),
+        SetParameter(name='input_child_frame_id',
+                     value='base_link',
                      condition=setup_for_isaac_sim),
-        SetParameter(name='input_child_frame_id', value='camera_link',
+        SetParameter(name='input_child_frame_id',
+                     value='camera_link',
+                     condition=setup_for_hawk),
+        SetParameter(name='input_child_frame_id',
+                     value='camera_link',
                      condition=setup_for_realsense),
-        SetParameter(name='output_parent_frame_id', value=LaunchConfiguration('output_odom_frame_name')),
-        SetParameter(name='output_child_frame_id', value='base_link',
+        SetParameter(name='output_parent_frame_id',
+                     value=LaunchConfiguration('output_odom_frame_name')),
+        SetParameter(name='output_child_frame_id',
+                     value='base_link',
                      condition=setup_for_isaac_sim),
-        SetParameter(name='output_child_frame_id', value='camera_link',
+        SetParameter(name='output_child_frame_id',
+                     value='camera_link',
+                     condition=setup_for_hawk),
+        SetParameter(name='output_child_frame_id',
+                     value='camera_link',
                      condition=setup_for_realsense),
         SetParameter(name='invert_output_transform', value=True),
 
         ########################################
         ######### ADD COMPOSABLE NODES #########
         ########################################
-
+        output_odom_frame_name_arg,
+        run_odometry_flattening_arg,
         load_composable_nodes
     ])
 
-    return LaunchDescription([output_odom_frame_name_arg,
-                              run_odometry_flattening_arg,
-                              vslam_container,
-                              group_action])
+    return LaunchDescription([vslam_container, group_action])

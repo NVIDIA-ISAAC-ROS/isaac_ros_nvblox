@@ -52,17 +52,18 @@ class GpuPercentageNode(Node):
             'time_between_measurements_s', 1.0,
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_DOUBLE,
-                description='The time between sucessive measurements of the CPU load.'))
+                description=
+                'The time between sucessive measurements of the CPU load.'))
         self.declare_parameter(
             'measurement_interval_s', 0.5,
-            ParameterDescriptor(
-                type=ParameterType.PARAMETER_DOUBLE,
-                description='The interval passed to psutil.'))
+            ParameterDescriptor(type=ParameterType.PARAMETER_DOUBLE,
+                                description='The interval passed to psutil.'))
         self.declare_parameter(
             'gpu_index', 0,
             ParameterDescriptor(
                 type=ParameterType.PARAMETER_INTEGER,
-                description='The index of the GPU to track on a multi GPU system.'))
+                description=
+                'The index of the GPU to track on a multi GPU system.'))
 
         # Get the initial values
         self._time_between_measurements_s = self.get_parameter(
@@ -77,7 +78,8 @@ class GpuPercentageNode(Node):
             self.get_logger().info('Multi GPU system detected.')
             self._gpu_index = self.get_parameter(
                 'gpu_index').get_parameter_value().integer_value
-            if self._gpu_index >= self.get_number_of_gpus() or self._gpu_index < 0:
+            if self._gpu_index >= self.get_number_of_gpus(
+            ) or self._gpu_index < 0:
                 self.get_logger().fatal(
                     f"""Detected {self.get_number_of_gpus()} GPUs. Requested to track
                         GPU index {self._gpu_index}. Not possible. Failing.""")
@@ -95,8 +97,8 @@ class GpuPercentageNode(Node):
             self._jetson.start()
 
         # Create a timer to measure cpu usage
-        self.timer = self.create_timer(
-            self._time_between_measurements_s, self.timer_callback)
+        self.timer = self.create_timer(self._time_between_measurements_s,
+                                       self.timer_callback)
 
     def ready(self) -> bool:
         return self._ready

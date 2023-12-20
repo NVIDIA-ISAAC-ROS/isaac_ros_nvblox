@@ -6,46 +6,50 @@
     # multi mapper
     mapping_type: "static_tsdf"  # ["static_tsdf", "static_occupancy"]
     connected_mask_component_size_threshold: 2000
+
+    # Parameters governing frequency of different processing steps in the reconstruction pipeline.
+    # Processing happens every n:th tick_period. <=0 means that no processing take place
+    tick_period_ms: 10
+    integrate_depth_rate_hz: 40.0
+    integrate_color_rate_hz: 5.0
+    integrate_lidar_rate_hz: 40.0
+    update_mesh_rate_hz: 5.0
+    update_esdf_rate_hz: 10.0
+    publish_static_occupancy_rate_hz: 2.0
+    decay_tsdf_rate_hz: 5.0
+    decay_dynamic_occupancy_rate_hz: 10.0
+    clear_map_outside_radius_rate_hz: 1.0
+
+    # printing statistics on console
+    print_rates_to_console: true
+    print_timings_to_console: false
+    print_statistics_on_console_period_ms: 10000
+
     # esdf settings
-    compute_esdf: true
-    esdf_update_rate_hz: 10.0
     esdf_2d: true
     publish_esdf_distance_slice: true
-    esdf_slice_height: 0.4
-    esdf_2d_min_height: 0.025
-    esdf_2d_max_height: 0.7
-    # mesh settings
-    compute_mesh: true
-    mesh_update_rate_hz: 5.0
     # color settings
     use_color: true
-    max_color_update_hz: 5.0
     # depth settings
     use_depth: true
-    max_depth_update_hz: 30.0
     # lidar settings
     use_lidar: true
-    max_lidar_update_hz: 100.0
     lidar_width: 1800
     lidar_height: 31
     use_non_equal_vertical_fov_lidar_params: false
-    # static occupancy
-    static_occupancy_publication_rate_hz: 2.0
-    # dynamic occupancy
-    dynamic_occupancy_decay_rate_hz: 10.0
     # Input queues
-    max_poll_rate_hz: 100.0
-    maximum_sensor_message_queue_length: 30
+    maximum_sensor_message_queue_length: 2
     # Map clearing settings
     map_clearing_radius_m: 10.0 # no map clearing if < 0.0
     map_clearing_frame_id: "base_link"
-    clear_outside_radius_rate_hz: 1.0
     # QoS settings
     depth_qos: "SYSTEM_DEFAULT"
     color_qos: "SYSTEM_DEFAULT"
     # Rviz visualization
     slice_visualization_attachment_frame_id: "base_link"
     slice_visualization_side_length: 10.0
+    max_back_projection_distance: 7.0
+    back_projection_subsampling: 1 # no subsampling if == 1
 
     static_mapper:
       # mapper
@@ -63,11 +67,18 @@
       unobserved_region_occupancy_probability: 0.5
       occupied_region_half_width_m: 0.1
       # esdf integrator
-      esdf_integrator_min_weight: 0.0001
+      esdf_integrator_min_weight: 0.1
       esdf_integrator_max_site_distance_vox: 5.0
       esdf_integrator_max_distance_m: 2.0
       # mesh integrator
-      mesh_integrator_min_weight: 0.0001
+      mesh_integrator_min_weight: 0.1
       mesh_integrator_weld_vertices: true
       # tsdf decay integrator
       tsdf_decay_factor: 0.95
+      exclude_last_view_from_decay: true
+      # mesh streamer
+       # NOTE(remos): will slice after the next full block (block size = 0.4 m) 
+       # -> actual slice is 1.6 m
+      mesh_streamer_exclusion_height_m: 2.0
+      mesh_streamer_exclusion_radius_m: 7.0
+      mesh_bandwidth_limit_mbps: 25.0 # in mega bits per second

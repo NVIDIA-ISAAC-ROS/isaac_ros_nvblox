@@ -30,35 +30,35 @@ def generate_launch_description():
     examples_bringup_dir = get_package_share_directory(
         'nvblox_examples_bringup')
     use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time', default_value='False',
+        'use_sim_time',
+        default_value='False',
         description='Use simulation (Omniverse Isaac Sim) clock if true')
-    model_name = LaunchConfiguration(
-        'model_name', default='peoplesemsegnet')
+    model_name = LaunchConfiguration('model_name', default='peoplesemsegnet')
     model_repository_paths = LaunchConfiguration(
-        'model_repository_paths', default="['/workspaces/isaac_ros-dev/models']")
-    input_binding_names = LaunchConfiguration(
-        'input_binding_names', default="['input_1:0']")
-    output_binding_names = LaunchConfiguration(
-        'output_binding_names', default="['argmax_1']")
+        'model_repository_paths',
+        default="['/workspaces/isaac_ros-dev/models']")
+    input_binding_names = LaunchConfiguration('input_binding_names',
+                                              default="['input_1:0']")
+    output_binding_names = LaunchConfiguration('output_binding_names',
+                                               default="['argmax_1']")
 
     nvblox_param_dir_arg = DeclareLaunchArgument(
         'nvblox_params_file',
         default_value=os.path.join(
-            get_package_share_directory(
-                'nvblox_examples_bringup'), 'config', 'nvblox', 'nvblox_base.yaml'
-        ),
+            get_package_share_directory('nvblox_examples_bringup'), 'config',
+            'nvblox', 'nvblox_base.yaml'),
     )
 
     nvblox_human_param_dir_arg = DeclareLaunchArgument(
         'nvblox_human_params_file',
         default_value=os.path.join(
-            get_package_share_directory(
-                'nvblox_examples_bringup'), 'config', 'nvblox', 'specializations', 'nvblox_humans.yaml'
-        ),
+            get_package_share_directory('nvblox_examples_bringup'), 'config',
+            'nvblox', 'specializations', 'nvblox_humans.yaml'),
     )
 
     # Remaps
-    realsense_remaps = [('depth/image', '/camera/realsense_splitter_node/output/depth'),
+    realsense_remaps = [('depth/image',
+                         '/camera/realsense_splitter_node/output/depth'),
                         ('depth/camera_info', '/camera/depth/camera_info'),
                         ('color/image', '/camera/color/image_raw'),
                         ('color/camera_info', '/camera/color/camera_info'),
@@ -66,69 +66,72 @@ def generate_launch_description():
                         ('mask/camera_info', '/camera/color/camera_info')]
 
     # Nvblox node + Results recorder - realsense
-    realsense_recorder_node = Node(
-        package='nvblox_performance_measurement',
-        executable='results_collector_node',
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        output='screen',
-        remappings=realsense_remaps
-    )
+    realsense_recorder_node = Node(package='nvblox_performance_measurement',
+                                   executable='results_collector_node',
+                                   parameters=[{
+                                       'use_sim_time':
+                                       LaunchConfiguration('use_sim_time')
+                                   }],
+                                   output='screen',
+                                   remappings=realsense_remaps)
 
-    # Create a shared container to hold composable nodes 
+    # Create a shared container to hold composable nodes
     # for speed ups through intra process communication.
     shared_container_name = "shared_nvblox_container"
-    shared_container = Node(
-        name=shared_container_name,
-        package='rclcpp_components',
-        executable='component_container_mt',
-        output='screen')
+    shared_container = Node(name=shared_container_name,
+                            package='rclcpp_components',
+                            executable='component_container_mt',
+                            output='screen')
 
     # Nvblox performance measurement node
     nvblox_node = LoadComposableNodes(
         target_container=shared_container_name,
         composable_node_descriptions=[
-        ComposableNode(
-        name='nvblox_human_node',
-        package='nvblox_performance_measurement',
-        plugin='nvblox::NvbloxHumanPerformanceMeasurementNode',
-        parameters=[LaunchConfiguration('nvblox_params_file'),
-                    LaunchConfiguration('nvblox_human_params_file'),
-                    {'use_sim_time': LaunchConfiguration('use_sim_time'),
-                     'depth_qos': 'SENSOR_DATA',
-                     'color_qos': 'SENSOR_DATA'}],
-        remappings=realsense_remaps)])
+            ComposableNode(
+                name='nvblox_human_node',
+                package='nvblox_performance_measurement',
+                plugin='nvblox::NvbloxHumanPerformanceMeasurementNode',
+                parameters=[
+                    LaunchConfiguration('nvblox_params_file'),
+                    LaunchConfiguration('nvblox_human_params_file'), {
+                        'use_sim_time': LaunchConfiguration('use_sim_time'),
+                        'depth_qos': 'SENSOR_DATA',
+                        'color_qos': 'SENSOR_DATA'
+                    }
+                ],
+                remappings=realsense_remaps)
+        ])
 
     # Segmentation
     segmentation_launch_realsense = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            examples_bringup_dir, 'launch', 'perception', 'segmentation.launch.py')]),
+        PythonLaunchDescriptionSource([
+            os.path.join(examples_bringup_dir, 'launch', 'perception',
+                         'segmentation.launch.py')
+        ]),
         launch_arguments={
-            'model_name': model_name, 
-            'model_repository_paths': model_repository_paths, 
+            'model_name': model_name,
+            'model_repository_paths': model_repository_paths,
             'input_binding_names': input_binding_names,
-            'output_binding_names': output_binding_names, 
+            'output_binding_names': output_binding_names,
             'attach_to_shared_component_container': 'True',
-            'component_container_name': shared_container_name}.items())
+            'component_container_name': shared_container_name
+        }.items())
 
-    cpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='cpu_percentage_node',
-        parameters=[{
-            'node_process_name':
-            'component_container_mt'}],
-        output='screen')
+    cpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='cpu_percentage_node',
+                          parameters=[{
+                              'node_process_name':
+                              'component_container_mt'
+                          }],
+                          output='screen')
 
-    gpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='gpu_percentage_node',
-        parameters=[],
-        output='screen')
+    gpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='gpu_percentage_node',
+                          parameters=[],
+                          output='screen')
 
-    return LaunchDescription([use_sim_time_arg,
-                              nvblox_param_dir_arg,
-                              nvblox_human_param_dir_arg,
-                              realsense_recorder_node,
-                              shared_container,
-                              nvblox_node,
-                              segmentation_launch_realsense,
-                              cpu_usage_node,
-                              gpu_usage_node
-                              ])
+    return LaunchDescription([
+        use_sim_time_arg, nvblox_param_dir_arg, nvblox_human_param_dir_arg,
+        realsense_recorder_node, shared_container, nvblox_node,
+        segmentation_launch_realsense, cpu_usage_node, gpu_usage_node
+    ])

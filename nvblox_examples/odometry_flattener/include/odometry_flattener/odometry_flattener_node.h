@@ -24,31 +24,31 @@
 
 namespace nvblox {
 
-class OdometryFlattenerNode : public rclcpp::Node {
- public:
-  OdometryFlattenerNode(const rclcpp::NodeOptions & options);
+  class OdometryFlattenerNode: public rclcpp::Node {
+public:
+    OdometryFlattenerNode(const rclcpp::NodeOptions & options);
 
-  void tfMessageCallback(tf2_msgs::msg::TFMessage::ConstSharedPtr msg);
+    void tfMessageCallback(tf2_msgs::msg::TFMessage::ConstSharedPtr msg);
 
- private:
-  // Input frame names
-  std::string input_parent_frame_id_ = "odom";
-  std::string input_child_frame_id_ = "base_link";
+private:
+    // Input frame names
+    std::string input_parent_frame_id_ = "odom";
+    std::string input_child_frame_id_ = "base_link";
 
-  // Output frame names
-  std::string output_parent_frame_id_ = "odom";
-  std::string output_child_frame_id_ = "base_link_flattened";
+    // Output frame names
+    std::string output_parent_frame_id_ = "odom";
+    std::string output_child_frame_id_ = "base_link_flattened";
 
-  // Whether or not to invert the output transform. This is often necessary to
-  // ensure each node in the TF tree has a single parent.
-  bool invert_output_transform_ = false;
+    // Whether or not to invert the output transform. This is often necessary to
+    // ensure each node in the TF tree has a single parent.
+    bool invert_output_transform_ = false;
 
-  // Subscribers
-  rclcpp::Subscription<tf2_msgs::msg::TFMessage>::SharedPtr tf2_message_sub_;
+    // Subscribers
+    rclcpp::Subscription < tf2_msgs::msg::TFMessage > ::SharedPtr tf2_message_sub_;
 
-  // Publishers
-  std::unique_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-};
+    // Publishers
+    std::unique_ptr < tf2_ros::TransformBroadcaster > tf_broadcaster_;
+  };
 
 }  // namespace nvblox
 

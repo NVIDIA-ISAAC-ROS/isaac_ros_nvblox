@@ -28,6 +28,7 @@
 #include <chrono>
 #include <deque>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -49,6 +50,7 @@
 #include "nvblox_ros/conversions/esdf_slice_conversions.hpp"
 #include "nvblox_ros/mapper_initialization.hpp"
 #include "nvblox_ros/transformer.hpp"
+#include "nvblox_ros/subscribers.hpp"
 
 namespace nvblox
 {
@@ -88,17 +90,18 @@ public:
   void loadMap(
     const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
     std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
+  void saveRates(
+    const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+    std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
+  void saveTimings(
+    const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+    std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
 
-  // Does whatever processing there is to be done, depending on what
-  // transforms are available.
-  virtual void processDepthQueue();
-  virtual void processColorQueue();
-  virtual void processPointcloudQueue();
-  virtual void processEsdf();
-  virtual void processMesh();
+  // Main tick function that process all input data queues in order
+  virtual void tick();
 
   // Publish data on fixed frequency
-  void publishOccupancyPointcloud();
+  void publishStaticOccupancyPointcloud();
 
   // Process data
   virtual bool processDepthImage(
@@ -116,10 +119,24 @@ public:
 
   void publishSlicePlane(const rclcpp::Time & timestamp, const Transform & T_L_C);
 
-  // Decay the dynamic occupancy grid on fixed frequency
+  // Decay the dynamic occupancy and static tsdf grid on fixed frequency
   void decayDynamicOccupancy();
+  void decayTsdf();
 
 protected:
+  // Process functions for individual queues
+  virtual void processDepthQueue();
+  virtual void processColorQueue();
+  virtual void processPointcloudQueue();
+  virtual void processEsdf();
+  virtual void processMesh();
+
+  // Return true if the time between the two passed timestamps is sufficient to trigger an action
+  // under the requested rate.
+  bool shouldProcess(
+    const rclcpp::Time & time_now, const rclcpp::Time & time_last,
+    const float desired_frequency_hz);
+
   // Publish the freespace layer
   void publishFreespace(
     const Transform & T_L_C);
@@ -149,11 +166,13 @@ protected:
 
   /// Used by callbacks (internally) to add messages to queues.
   /// @tparam MessageType The type of the Message stored by the queue.
+  /// @param queue_name Name of the queue, used for logging.
   /// @param message Message to be added to the queue.
   /// @param queue_ptr Queue where to add the message.
   /// @param queue_mutex_ptr Mutex protecting the queue.
   template<typename MessageType>
   void pushMessageOntoQueue(
+    const std::string & queue_name,
     MessageType message,
     std::deque<MessageType> * queue_ptr,
     std::mutex * queue_mutex_ptr);
@@ -184,38 +203,46 @@ protected:
     MessageReadyCallback<MessageType> message_ready_check,
     ProcessMessageCallback<MessageType> callback);
 
-  // Check if interval between current stamp
-  bool isUpdateTooFrequent(
-    const rclcpp::Time & current_stamp,
-    const rclcpp::Time & last_update_stamp,
-    float max_update_rate_hz);
-
-  template<typename MessageType>
-  void limitQueueSizeByDeletingOldestMessages(
-    const int max_num_messages, const std::string & queue_name,
-    std::deque<MessageType> * queue_ptr, std::mutex * queue_mutex_ptr);
-
   // ROS publishers and subscribers
 
   // Transformer to handle... everything, let's be honest.
   Transformer transformer_;
 
-  // Time Sync
-  typedef message_filters::sync_policies::ExactTime<
-      sensor_msgs::msg::Image, sensor_msgs::msg::CameraInfo>
-    time_policy_t;
+  /// Max number of cameras supported.
+  static constexpr size_t kMaxNumCameras = 5;
 
-  // Depth sub.
-  std::shared_ptr<message_filters::Synchronizer<time_policy_t>> timesync_depth_;
-  message_filters::Subscriber<sensor_msgs::msg::Image> depth_sub_;
-  message_filters::Subscriber<sensor_msgs::msg::CameraInfo>
-  depth_camera_info_sub_;
+  /// Depth topics to listen to. At least one of these topics has to transmit images. All topics
+  /// are added to the same processing queue (depth or color) and thus gets the same treatment.
+  static constexpr std::array<const char *,
+    kMaxNumCameras> kDepthTopicBaseNames =
+  {
+    // Multi-camera topics
+    "camera_0/depth",
+    "camera_1/depth",
+    "camera_2/depth",
+    "camera_3/depth",
+    // Single-camera topic
+    "depth",
+  };
 
-  // Color sub
-  std::shared_ptr<message_filters::Synchronizer<time_policy_t>> timesync_color_;
-  message_filters::Subscriber<sensor_msgs::msg::Image> color_sub_;
-  message_filters::Subscriber<sensor_msgs::msg::CameraInfo>
-  color_camera_info_sub_;
+  /// Color topics to listen to.
+  static constexpr std::array<const char *,
+    kMaxNumCameras> kColorTopicBaseNames =
+  {
+    // Multi-camera topics
+    "camera_0/color",
+    "camera_1/color",
+    "camera_2/color",
+    "camera_3/color",
+    // Single-camera topic
+    "color",
+  };
+
+  /// Synchronized depth+camera_info pair subscribers
+  std::array<ImageAndCameraInfoSyncedSubscriber, kMaxNumCameras> depth_subs_;
+
+  /// Synchronized color+camera_info pair subscribers
+  std::array<ImageAndCameraInfoSyncedSubscriber, kMaxNumCameras> color_subs_;
 
   // Pointcloud sub.
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
@@ -256,23 +283,25 @@ protected:
   rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
     combined_map_slice_publisher_;
 
+  // NOTE(remos): We are disabling the mesh_marker_publisher_ on default.
+  // For visualizing the mesh,
+  // the mesh_publisher_ (publishing the nvblox mesh message) is the preferred option.
+  // TODO(remos): Remove the mesh markers altogether when the nvblox mesh
+  // has proven itself to be robust.
+  bool enable_mesh_markers_ = false;
+
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_map_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr load_map_service_;
+  rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_rates_service_;
+  rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_timings_service_;
 
   // Callback groups.
   rclcpp::CallbackGroup::SharedPtr group_processing_;
 
   // Timers.
-  rclcpp::TimerBase::SharedPtr depth_processing_timer_;
-  rclcpp::TimerBase::SharedPtr color_processing_timer_;
-  rclcpp::TimerBase::SharedPtr pointcloud_processing_timer_;
-  rclcpp::TimerBase::SharedPtr occupancy_publishing_timer_;
-  rclcpp::TimerBase::SharedPtr esdf_processing_timer_;
-  rclcpp::TimerBase::SharedPtr mesh_processing_timer_;
-  rclcpp::TimerBase::SharedPtr clear_outside_radius_timer_;
-  rclcpp::TimerBase::SharedPtr dynamic_occupancy_decay_timer_;
+  rclcpp::TimerBase::SharedPtr queue_processing_timer_;
 
   // ROS & nvblox settings
   float voxel_size_ = 0.05f;
@@ -285,8 +314,6 @@ protected:
   bool use_depth_ = true;
   bool use_lidar_ = true;
   bool use_color_ = true;
-  bool compute_esdf_ = true;
-  bool compute_mesh_ = true;
 
   // LIDAR settings
   // Defaults for Velodyne VLP16
@@ -302,27 +329,47 @@ protected:
   float min_angle_below_zero_elevation_rad_ = 20.0 * M_PI / 180.0;
   float max_angle_above_zero_elevation_rad_ = 15.0 * M_PI / 180.0;
 
-  // Slice visualization params
+  // Visualization params
   std::string slice_visualization_attachment_frame_id_ = "base_link";
   float slice_visualization_side_length_ = 10.0f;
+  float max_back_projection_distance_ = std::numeric_limits<float>::max();
+  int back_projection_subsampling_ = 1;
+  uint32_t back_projection_idx_ = 0;
 
   // ROS settings & update throttles
   std::string global_frame_ = "odom";
   /// Pose frame to use if using transform topics.
   std::string pose_frame_ = "base_link";
-  float max_depth_update_hz_ = 30.0f;
-  float max_color_update_hz_ = 5.0f;
-  float max_lidar_update_hz_ = 10.0f;
-  float mesh_update_rate_hz_ = 5.0f;
-  float esdf_update_rate_hz_ = 2.0f;
-  float static_occupancy_publication_rate_hz_ = 2.0f;
 
-  float dynamic_occupancy_decay_rate_hz_ = 10.0f;
+  /// Specifies how often tick() is called
+  int tick_period_ms_ = 10;
 
-  /// Specifies what rate to poll the color & depth updates at.
-  /// Will exit as no-op if no new images are in the queue so it is safe to
-  /// set this higher than you expect images to come in at.
-  float max_poll_rate_hz_ = 100.0f;
+  /// Processing rates
+  float integrate_depth_rate_hz_ = 40.0;
+  float integrate_color_rate_hz_ = 5.0;
+  float integrate_lidar_rate_hz_ = 40.0;
+  float update_mesh_rate_hz_ = 5.0;
+  float update_esdf_rate_hz_ = 10.0;
+  float publish_static_occupancy_rate_hz_ = 5.0;
+  float decay_tsdf_rate_hz_ = 5.0;
+  float decay_dynamic_occupancy_rate_hz_ = 10.0;
+  float clear_map_outside_radius_rate_hz_ = 1.0;
+
+  /// The last time processing occurred. Used to maintain rates.
+  rclcpp::Time integrate_depth_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time integrate_color_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time integrate_lidar_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time update_mesh_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time update_esdf_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time publish_static_occupancy_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time decay_tsdf_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time decay_dynamic_occupancy_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time clear_map_outside_radius_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
+  /// Specifies if and how often we dump the timers and rates to the console
+  bool print_timings_to_console_ = false;
+  bool print_rates_to_console_ = true;
+  int print_statistics_on_console_period_ms_ = 10000;
 
   /// How many messages to store in the sensor messages queues (depth, color,
   /// lidar) before deleting oldest messages.
@@ -332,7 +379,6 @@ protected:
   /// Note that values <=0.0 indicate that no clearing is performed.
   float map_clearing_radius_m_ = -1.0f;
   std::string map_clearing_frame_id_ = "base_link";
-  float clear_outside_radius_rate_hz_ = 1.0f;
 
   // The QoS settings for the image input topics
   std::string depth_qos_str_ = "SYSTEM_DEFAULT";
@@ -375,11 +421,6 @@ protected:
   ReceivedMessagePeriodCollector<sensor_msgs::msg::PointCloud2>
   pointcloud_frame_statistics_;
 
-  // State for integrators running at various speeds.
-  rclcpp::Time last_depth_update_time_;
-  rclcpp::Time last_color_update_time_;
-  rclcpp::Time last_lidar_update_time_;
-
   // Cache the last known number of subscribers.
   size_t mesh_subscriber_count_ = 0;
 
@@ -404,6 +445,12 @@ protected:
   // Device caches
   Pointcloud pointcloud_C_device_;
   Pointcloud pointcloud_L_device_;
+
+  // The idle timer measures time spent *outside* the main tick function and can thus be used to
+  // monitor how much headroom there is until the system gets saturated. A lower number <=1ms/tick
+  // means that the system is under high pressure.
+  static constexpr bool kStartStopped = true;
+  timing::Timer idle_timer_{"ros/idle", kStartStopped};
 };
 
 }  // namespace nvblox

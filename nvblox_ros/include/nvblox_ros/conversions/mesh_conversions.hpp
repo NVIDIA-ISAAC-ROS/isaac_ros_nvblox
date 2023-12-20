@@ -20,12 +20,15 @@
 
 #include <nvblox/nvblox.h>
 
+#include <memory>
 #include <string>
 #include <vector>
 
-#include <nvblox_msgs/msg/mesh.hpp>
+#include <rclcpp/rclcpp.hpp>
 #include <visualization_msgs/msg/marker.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
+
+#include <nvblox_msgs/msg/mesh.hpp>
 
 
 namespace nvblox
@@ -36,17 +39,37 @@ namespace conversions
 // Convert a mesh to a message.
 void meshMessageFromMeshLayer(
   const BlockLayer<MeshBlock> & mesh_layer,
+  const rclcpp::Time & timestamp,
+  const std::string & frame_name,
   nvblox_msgs::msg::Mesh * mesh_msg);
 
 void meshMessageFromMeshBlocks(
   const BlockLayer<MeshBlock> & mesh_layer,
   const std::vector<Index3D> & block_indices,
-  nvblox_msgs::msg::Mesh * mesh_msg,
-  const std::vector<Index3D> & deleted_indices = std::vector<Index3D>());
+  const rclcpp::Time & timestamp,
+  const std::string & frame_name,
+  nvblox_msgs::msg::Mesh * mesh_msg);
+
+// Convert a serialized mesh to a mesh message
+void meshMessageFromSerializedMesh(
+  const std::shared_ptr<const SerializedMesh> serialized_mesh,
+  const rclcpp::Time & timestamp,
+  const std::string & frame_name,
+  const float mesh_layer_block_size,
+  nvblox_msgs::msg::Mesh * mesh_msg);
+
+// Create a mesh message to delete a set of mesh blocks
+void meshMessageFromBlocksToDelete(
+  const std::vector<Index3D> & block_indices_to_delete,
+  const rclcpp::Time & timestamp,
+  const std::string & frame_name,
+  const float mesh_layer_block_size,
+  nvblox_msgs::msg::Mesh * mesh_msg);
 
 // Convert a mesh to a marker array.
-void markerMessageFromMeshLayer(
-  const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
+void markerMessageFromSerializedMesh(
+  const std::shared_ptr<const nvblox::SerializedMesh> & serialized_mesh,
+  const std::string & frame_id,
   visualization_msgs::msg::MarkerArray * marker_msg);
 
 }  // namespace conversions

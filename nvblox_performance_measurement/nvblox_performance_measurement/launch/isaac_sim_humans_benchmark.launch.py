@@ -35,116 +35,118 @@ def generate_launch_description():
     semantic_label_dir = get_package_share_directory(
         'semantic_label_conversion')
     use_sim_time_arg = DeclareLaunchArgument(
-        'use_sim_time', default_value='False',
+        'use_sim_time',
+        default_value='False',
         description='Use simulation (Omniverse Isaac Sim) clock if true')
-    model_name = LaunchConfiguration(
-        'model_name', default='peoplesemsegnet')
+    model_name = LaunchConfiguration('model_name', default='peoplesemsegnet')
     model_repository_paths = LaunchConfiguration(
-        'model_repository_paths', default="['/workspaces/isaac_ros-dev/models']")
-    input_binding_names = LaunchConfiguration(
-        'input_binding_names', default="['input_1:0']")
-    output_binding_names = LaunchConfiguration(
-        'output_binding_names', default="['argmax_1']")
+        'model_repository_paths',
+        default="['/workspaces/isaac_ros-dev/models']")
+    input_binding_names = LaunchConfiguration('input_binding_names',
+                                              default="['input_1:0']")
+    output_binding_names = LaunchConfiguration('output_binding_names',
+                                               default="['argmax_1']")
 
     nvblox_param_dir_arg = DeclareLaunchArgument(
         'nvblox_params_file',
         default_value=os.path.join(
-            get_package_share_directory(
-                'nvblox_examples_bringup'), 'config', 'nvblox', 'nvblox_base.yaml'
-        ),
+            get_package_share_directory('nvblox_examples_bringup'), 'config',
+            'nvblox', 'nvblox_base.yaml'),
     )
 
     nvblox_human_param_dir_arg = DeclareLaunchArgument(
         'nvblox_human_params_file',
         default_value=os.path.join(
-            get_package_share_directory(
-                'nvblox_examples_bringup'), 'config', 'nvblox', 'specializations', 'nvblox_humans.yaml'
-        ),
+            get_package_share_directory('nvblox_examples_bringup'), 'config',
+            'nvblox', 'specializations', 'nvblox_humans.yaml'),
     )
 
     # Remaps
-    isaac_sim_remaps = [('depth/image', '/front/stereo_camera/right/depth'),
-                        ('depth/camera_info', '/front/stereo_camera/right/camera_info'),
-                        ('color/image', '/front/stereo_camera/left/rgb'),
-                        ('color/camera_info', '/front/stereo_camera/left/camera_info'),
-                        ('pointcloud', '/point_cloud'),
-                        ('mask/image', '/unet/raw_segmentation_mask_depadded'),
-                        ('mask/camera_info', '/front/stereo_camera/left/camera_info')]
+    isaac_sim_remaps = [
+        ('depth/image', '/front/stereo_camera/right/depth'),
+        ('depth/camera_info', '/front/stereo_camera/right/camera_info'),
+        ('color/image', '/front/stereo_camera/left/rgb'),
+        ('color/camera_info', '/front/stereo_camera/left/camera_info'),
+        ('pointcloud', '/point_cloud'),
+        ('mask/image', '/unet/raw_segmentation_mask_depadded'),
+        ('mask/camera_info', '/front/stereo_camera/left/camera_info')
+    ]
 
     # Nvblox node + Results recorder - Sim
-    sim_recorder_node = Node(
-        package='nvblox_performance_measurement',
-        executable='results_collector_node',
-        parameters=[{'use_sim_time': LaunchConfiguration('use_sim_time')}],
-        output='screen',
-        remappings=isaac_sim_remaps
-    )
+    sim_recorder_node = Node(package='nvblox_performance_measurement',
+                             executable='results_collector_node',
+                             parameters=[{
+                                 'use_sim_time':
+                                 LaunchConfiguration('use_sim_time')
+                             }],
+                             output='screen',
+                             remappings=isaac_sim_remaps)
 
-    # Create a shared container to hold composable nodes 
+    # Create a shared container to hold composable nodes
     # for speed ups through intra process communication.
     shared_container_name = "shared_nvblox_container"
-    shared_container = Node(
-        name=shared_container_name,
-        package='rclcpp_components',
-        executable='component_container_mt',
-        output='screen')
+    shared_container = Node(name=shared_container_name,
+                            package='rclcpp_components',
+                            executable='component_container_mt',
+                            output='screen')
 
     # Nvblox performance measurement node
     nvblox_node = LoadComposableNodes(
         target_container=shared_container_name,
         composable_node_descriptions=[
-        ComposableNode(
+            ComposableNode(
                 name='nvblox_human_node',
                 package='nvblox_performance_measurement',
                 plugin='nvblox::NvbloxHumanPerformanceMeasurementNode',
                 remappings=isaac_sim_remaps,
-                parameters=[LaunchConfiguration('nvblox_params_file'),
-                            LaunchConfiguration('nvblox_human_params_file')])])
+                parameters=[
+                    LaunchConfiguration('nvblox_params_file'),
+                    LaunchConfiguration('nvblox_human_params_file')
+                ])
+        ])
 
     # Segmentation
     segmentation_launch_sim = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            examples_bringup_dir, 'launch', 'perception', 'segmentation.launch.py')),
+        PythonLaunchDescriptionSource(
+            os.path.join(examples_bringup_dir, 'launch', 'perception',
+                         'segmentation.launch.py')),
         launch_arguments={
-            'model_name': model_name, 
-            'model_repository_paths': model_repository_paths, 
+            'model_name': model_name,
+            'model_repository_paths': model_repository_paths,
             'input_binding_names': input_binding_names,
-            'output_binding_names': output_binding_names, 
+            'output_binding_names': output_binding_names,
             'padding_input_topic': '/front/stereo_camera/left/rgb',
             'attach_to_shared_component_container': 'True',
-            'component_container_name': shared_container_name}.items())
+            'component_container_name': shared_container_name
+        }.items())
 
     semantic_convert_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(os.path.join(
-            semantic_label_dir, 'launch', 'semantic_label_conversion.launch.py'))
-    )
+        PythonLaunchDescriptionSource(
+            os.path.join(semantic_label_dir, 'launch',
+                         'semantic_label_conversion.launch.py')))
 
-    cpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='cpu_percentage_node',
-        parameters=[{
-            'node_process_name':
-            'component_container_mt'}],
-        output='screen')
+    cpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='cpu_percentage_node',
+                          parameters=[{
+                              'node_process_name':
+                              'component_container_mt'
+                          }],
+                          output='screen')
 
-    gpu_usage_node = Node(
-        package='nvblox_cpu_gpu_tools', executable='gpu_percentage_node',
-        parameters=[],
-        output='screen')
+    gpu_usage_node = Node(package='nvblox_cpu_gpu_tools',
+                          executable='gpu_percentage_node',
+                          parameters=[],
+                          output='screen')
 
     network_performance_node = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([os.path.join(
-            network_perf_dir, 'launch', 'network_performance.launch.py')])
-    )
+        PythonLaunchDescriptionSource([
+            os.path.join(network_perf_dir, 'launch',
+                         'network_performance.launch.py')
+        ]))
 
-    return LaunchDescription([use_sim_time_arg,
-                              nvblox_param_dir_arg,
-                              nvblox_human_param_dir_arg,
-                              sim_recorder_node,
-                              shared_container,
-                              nvblox_node,
-                              segmentation_launch_sim,
-                              semantic_convert_launch,
-                              cpu_usage_node,
-                              gpu_usage_node,
-                              network_performance_node
-                              ])
+    return LaunchDescription([
+        use_sim_time_arg, nvblox_param_dir_arg, nvblox_human_param_dir_arg,
+        sim_recorder_node, shared_container, nvblox_node,
+        segmentation_launch_sim, semantic_convert_launch, cpu_usage_node,
+        gpu_usage_node, network_performance_node
+    ])

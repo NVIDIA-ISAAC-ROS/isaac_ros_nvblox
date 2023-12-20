@@ -21,13 +21,15 @@
 
 #include "nvblox_image_padding/image_padding_cropping_node.hpp"
 
-namespace nvblox {
+namespace nvblox
+{
 
 using std::placeholders::_1;
 
 ImagePaddingCroppingNode::ImagePaddingCroppingNode(
-    const rclcpp::NodeOptions& options, const std::string& node_name)
-    : Node(node_name, options) {
+  const rclcpp::NodeOptions & options, const std::string & node_name)
+: Node(node_name, options)
+{
   RCLCPP_INFO(get_logger(), "Starting up ImagePaddingCroppingNode");
 
   // Parameters
@@ -38,48 +40,52 @@ ImagePaddingCroppingNode::ImagePaddingCroppingNode(
   // Users like feedback!
   if (desired_height_ <= 0 || desired_width_ <= 0) {
     RCLCPP_FATAL_STREAM(
-        get_logger(),
-        "Parameters \"desired_height\" and \"desired_width\" need both to be "
-        "set and > 0. Currently desired_height="
-            << desired_height_ << " and desired_width=" << desired_width_);
+      get_logger(),
+      "Parameters \"desired_height\" and \"desired_width\" need both to be "
+      "set and > 0. Currently desired_height="
+        << desired_height_ << " and desired_width=" << desired_width_);
     exit(1);
   }
-  RCLCPP_INFO_STREAM(get_logger(),
-                     "Cropping/padding to desired_height="
-                         << desired_height_
-                         << ", and to desired_width=" << desired_width_);
+  RCLCPP_INFO_STREAM(
+    get_logger(),
+    "Cropping/padding to desired_height="
+      << desired_height_
+      << ", and to desired_width=" << desired_width_);
 
   // QoS
   constexpr size_t kOutputQueueSize = 10;
-  const auto qos = rclcpp::QoS(rclcpp::KeepLast(kOutputQueueSize),
-                               parseQosString(image_qos_str_));
+  const auto qos = rclcpp::QoS(
+    rclcpp::KeepLast(kOutputQueueSize),
+    parseQosString(image_qos_str_));
 
   // Subscriptions
   image_sub_ = this->create_subscription<sensor_msgs::msg::Image>(
-      "~/image_in", qos,
-      std::bind(&ImagePaddingCroppingNode::imageCallback, this, _1));
+    "~/image_in", qos,
+    std::bind(&ImagePaddingCroppingNode::imageCallback, this, _1));
 
   // Publishers
   image_pub_ = create_publisher<sensor_msgs::msg::Image>("~/image_out", qos);
 }
 
 void ImagePaddingCroppingNode::imageCallback(
-    sensor_msgs::msg::Image::ConstSharedPtr image_ptr) {
+  sensor_msgs::msg::Image::ConstSharedPtr image_ptr)
+{
   // Determine if we're cropping or padding.
   // NOTE(alexmillane): This is not totally general, if the user requests a pad
   // in one dimension and a crop in the other we just fail. Improving this is an
   // exercise for the reader.
   const bool crop_in_width =
-      desired_width_ < static_cast<int>(image_ptr->width);
-  const bool crop_in_height =
-      desired_height_ < static_cast<int>(image_ptr->height);
-  assert(crop_in_width == crop_in_height);
+    desired_width_ < static_cast<int>(image_ptr->width);
+  assert(crop_in_width == (desired_height_ < static_cast<int>(image_ptr->height)));
+
   const bool crop_if_true_pad_if_false = crop_in_width;
 
   // Calculate the crop/pad amount
-  const int left_pixels = std::abs(static_cast<int>(
+  const int left_pixels = std::abs(
+    static_cast<int>(
       (desired_width_ - static_cast<int>(image_ptr->width)) / 2.0));
-  const int top_pixels = std::abs(static_cast<int>(
+  const int top_pixels = std::abs(
+    static_cast<int>(
       (desired_height_ - static_cast<int>(image_ptr->height)) / 2.0));
 
   if (crop_if_true_pad_if_false) {
@@ -93,36 +99,39 @@ void ImagePaddingCroppingNode::imageCallback(
   // Warn if the crop/pad amount is fractional
   if (((desired_width_ - image_ptr->width) % 2) != 0) {
     RCLCPP_WARN_ONCE(
-        get_logger(),
-        "Desired width - Image width not cleanly dividable by two. Extra pixel "
-        "will be made up on one side.");
+      get_logger(),
+      "Desired width - Image width not cleanly dividable by two. Extra pixel "
+      "will be made up on one side.");
   }
   if (((desired_height_ - image_ptr->height) % 2) != 0) {
     RCLCPP_WARN_ONCE(
-        get_logger(),
-        "Desired height - Image height not cleanly dividable by two. Extra "
-        "pixel will be made up on one side.");
+      get_logger(),
+      "Desired height - Image height not cleanly dividable by two. Extra "
+      "pixel will be made up on one side.");
   }
 
   // Wrap input image
   cv_bridge::CvImageConstPtr input_image_cv_ptr =
-      cv_bridge::toCvShare(image_ptr, image_ptr->encoding);
+    cv_bridge::toCvShare(image_ptr, image_ptr->encoding);
 
   // Prepare empty output image
   cv_bridge::CvImage output_image_cv(input_image_cv_ptr->header,
-                                     input_image_cv_ptr->encoding);
+    input_image_cv_ptr->encoding);
 
   // Crop (if that's what we want)
   if (crop_if_true_pad_if_false) {
     output_image_cv.image = input_image_cv_ptr->image(
-        cv::Rect(left_pixels, top_pixels, desired_width_, desired_height_));
+      cv::Rect(left_pixels, top_pixels, desired_width_, desired_height_));
   }
   // Pad (if that's what we want)
   else {
-    output_image_cv.image = cv::Mat::zeros(desired_height_, desired_width_,
-                                           input_image_cv_ptr->image.type());
-    input_image_cv_ptr->image.copyTo(output_image_cv.image(cv::Rect(
-        left_pixels, top_pixels, image_ptr->width, image_ptr->height)));
+    output_image_cv.image = cv::Mat::zeros(
+      desired_height_, desired_width_,
+      input_image_cv_ptr->image.type());
+    input_image_cv_ptr->image.copyTo(
+      output_image_cv.image(
+        cv::Rect(
+          left_pixels, top_pixels, image_ptr->width, image_ptr->height)));
   }
   // Republish
   image_pub_->publish(*output_image_cv.toImageMsg());

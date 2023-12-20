@@ -45,3 +45,7 @@
 
 # Reconstructions
 *.ply
+
+# Node.js stuff
+**/node_modules
+**/dist

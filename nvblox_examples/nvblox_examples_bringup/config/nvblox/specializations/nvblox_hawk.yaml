@@ -1,0 +1,30 @@
+/**:
+  ros__parameters:
+    # Lidar settings
+    use_lidar: false
+    # QoS settings
+    depth_qos: "SENSOR_DATA"
+    color_qos: "SENSOR_DATA"
+    # Map clearing settings
+    map_clearing_frame_id: "camera_link"
+    # Rviz visualization
+    slice_visualization_attachment_frame_id: "camera_link"
+
+    # NOTE(remos): Slice bounds set for carter v2.4
+    static_mapper:
+      esdf_slice_height: -0.2
+      esdf_slice_min_height: -0.25
+      esdf_slice_max_height: 0.3
+      # do not send ceiling:
+      mesh_streamer_exclusion_height_m: 1.4
+      mesh_streamer_exclusion_radius_m: 5.0
+      # projective integrators - Changed to constant to deal with movement in the scene
+      weighting_mode: "constant"
+      # tsdf decay - Turned up to deal with movement in the scene
+      tsdf_decay_factor: 0.85
+
+
+    dynamic_mapper:
+      esdf_slice_height: -0.2
+      esdf_slice_min_height: -0.25
+      esdf_slice_max_height: 0.3

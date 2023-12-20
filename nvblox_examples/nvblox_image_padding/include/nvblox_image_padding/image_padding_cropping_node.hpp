@@ -23,19 +23,21 @@
 
 #include <cv_bridge/cv_bridge.h>
 
-namespace nvblox {
+namespace nvblox
+{
 
-class ImagePaddingCroppingNode : public rclcpp::Node {
- public:
+class ImagePaddingCroppingNode : public rclcpp::Node
+{
+public:
   explicit ImagePaddingCroppingNode(
-      const rclcpp::NodeOptions& options = rclcpp::NodeOptions(),
-      const std::string& node_name = "image_padding_node");
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
+    const std::string & node_name = "image_padding_node");
   virtual ~ImagePaddingCroppingNode() = default;
 
   // Callbacks
   void imageCallback(sensor_msgs::msg::Image::ConstSharedPtr image_ptr);
 
- private:
+private:
   // Image subscriber
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
 

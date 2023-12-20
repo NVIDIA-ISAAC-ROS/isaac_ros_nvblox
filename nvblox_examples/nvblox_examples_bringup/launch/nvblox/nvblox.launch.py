@@ -35,13 +35,13 @@ def generate_launch_description():
 
     # Config files
     base_config = os.path.join(base_config_dir, 'nvblox_base.yaml')
+    hawk_config = os.path.join(specialization_dir, 'nvblox_hawk.yaml')
     dynamics_config = os.path.join(specialization_dir, 'nvblox_dynamics.yaml')
-    realsense_config = os.path.join(
-        specialization_dir, 'nvblox_realsense.yaml')
-    zed_config = os.path.join(
-        specialization_dir, 'nvblox_zed.yaml')
-    simulation_config = os.path.join(
-        specialization_dir, 'nvblox_isaac_sim.yaml')
+    realsense_config = os.path.join(specialization_dir,
+                                    'nvblox_realsense.yaml')
+    zed_config = os.path.join(specialization_dir, 'nvblox_zed.yaml')
+    simulation_config = os.path.join(specialization_dir,
+                                     'nvblox_isaac_sim.yaml')
 
     # Conditionals for setup
     setup_for_dynamics = IfCondition(
@@ -50,13 +50,17 @@ def generate_launch_description():
         LaunchConfiguration('setup_for_isaac_sim', default='False'))
     setup_for_realsense = IfCondition(
         LaunchConfiguration('setup_for_realsense', default='False'))
+    setup_for_hawk = IfCondition(
+        LaunchConfiguration('setup_for_hawk', default='False'))
     setup_for_zed = IfCondition(
         LaunchConfiguration('setup_for_zed', default='False'))
-    
+
     # Option to attach the nodes to a shared component container for speed ups through intra process communication.
     # Make sure to set the 'component_container_name' to the name of the component container you want to attach to.
-    attach_to_shared_component_container_arg = LaunchConfiguration('attach_to_shared_component_container', default=False)
-    component_container_name_arg = LaunchConfiguration('component_container_name', default='nvblox_container')
+    attach_to_shared_component_container_arg = LaunchConfiguration(
+        'attach_to_shared_component_container', default=False)
+    component_container_name_arg = LaunchConfiguration(
+        'component_container_name', default='nvblox_container')
 
     # If we do not attach to a shared component container we have to create our own container.
     nvblox_container = Node(
@@ -64,31 +68,29 @@ def generate_launch_description():
         package='rclcpp_components',
         executable='component_container_mt',
         output='screen',
-        condition=UnlessCondition(attach_to_shared_component_container_arg)
-    )
-    
+        condition=UnlessCondition(attach_to_shared_component_container_arg))
+
     load_composable_nodes = LoadComposableNodes(
         target_container=component_container_name_arg,
         composable_node_descriptions=[
-            ComposableNode(
-            name='nvblox_node',
-            package='nvblox_ros',
-            plugin='nvblox::NvbloxNode')])
+            ComposableNode(name='nvblox_node',
+                           package='nvblox_ros',
+                           plugin='nvblox::NvbloxNode')
+        ])
 
     group_action = GroupAction([
 
         # Set parameters with specializations
         SetParametersFromFile(base_config),
-        SetParametersFromFile(dynamics_config,
-                              condition=setup_for_dynamics),
-        SetParametersFromFile(zed_config,
-                              condition=setup_for_zed),
-        SetParametersFromFile(realsense_config,
-                              condition=setup_for_realsense),
+        SetParametersFromFile(dynamics_config, condition=setup_for_dynamics),
+        SetParametersFromFile(zed_config, condition=setup_for_zed),
+        SetParametersFromFile(realsense_config, condition=setup_for_realsense),
+        SetParametersFromFile(hawk_config, condition=setup_for_hawk),
         SetParametersFromFile(simulation_config,
                               condition=setup_for_isaac_sim),
         SetParameter(name='global_frame',
-                     value=LaunchConfiguration('global_frame', default='odom')),
+                     value=LaunchConfiguration('global_frame',
+                                               default='odom')),
 
         # Remappings for realsense data
         SetRemap(src=['depth/image'],
@@ -105,7 +107,7 @@ def generate_launch_description():
                  condition=setup_for_realsense),
 
         # Remappings for zed
-	    SetRemap(src=['depth/image'],
+        SetRemap(src=['depth/image'],
                  dst=['/zed2/zed_node/depth/depth_registered'],
                  condition=setup_for_zed),
         SetRemap(src=['depth/camera_info'],
@@ -137,6 +139,20 @@ def generate_launch_description():
         SetRemap(src=['pointcloud'],
                  dst=['/point_cloud'],
                  condition=setup_for_isaac_sim),
+
+        # Remappings for hawk data
+        SetRemap(src=['depth/image'],
+                 dst=['/hawk/depth'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['depth/camera_info'],
+                 dst=['/hawk/left/camera_info_resized'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['color/image'],
+                 dst=['/hawk/left/image_resized'],
+                 condition=setup_for_hawk),
+        SetRemap(src=['color/camera_info'],
+                 dst=['/hawk/left/camera_info_resized'],
+                 condition=setup_for_hawk),
 
         # Include the node container
         load_composable_nodes

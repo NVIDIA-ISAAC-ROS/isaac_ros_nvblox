@@ -114,7 +114,11 @@ install(DIRECTORY
 # Install python scripts
 install(PROGRAMS
   scripts/run_benchmark.py
+  scripts/odd_evaluation.py
   scripts/analyze_timestamps.py
+  scripts/esdf_map_saver.py
+  scripts/interpret_benchmark_results.py
+  scripts/parse_ros_logs.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

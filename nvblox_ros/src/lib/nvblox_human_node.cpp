@@ -75,10 +75,15 @@ void NvbloxHumanNode::subscribeToTopics()
   // because of bigger delay comming from segmentation.
   constexpr int kQueueSize = 40;
 
+  // We only support single camera
+  constexpr size_t kCameraIndex = 0;
+  ImageAndCameraInfoSyncedSubscriber & depth_sub = NvbloxNode::depth_subs_[kCameraIndex];
+  ImageAndCameraInfoSyncedSubscriber & color_sub = NvbloxNode::color_subs_[kCameraIndex];
+
   // Unsubscribe from base-class synchronized topics.
   // We redo synchronization below.
-  NvbloxNode::timesync_depth_.reset();
-  NvbloxNode::timesync_color_.reset();
+  depth_sub.resetSynchronizer();
+  color_sub.resetSynchronizer();
 
   // Subscribe to segmentation masks
   segmentation_mask_sub_.subscribe(
@@ -89,13 +94,11 @@ void NvbloxHumanNode::subscribeToTopics()
     parseQosString(color_qos_str_));
 
   if (use_depth_) {
-    // Unsubscribe from the depth topic in nvblox_node
-    timesync_depth_.reset();
     // Subscribe to depth + mask + cam_infos
     timesync_depth_mask_ = std::make_shared<
       message_filters::Synchronizer<mask_approximate_time_policy_t>>(
-      mask_approximate_time_policy_t(kQueueSize), depth_sub_,
-      depth_camera_info_sub_, segmentation_mask_sub_,
+      mask_approximate_time_policy_t(kQueueSize), depth_sub.getImageSubscriber(),
+      depth_sub.getCameraInfoSubscriber(), segmentation_mask_sub_,
       segmentation_camera_info_sub_);
     timesync_depth_mask_->registerCallback(
       std::bind(
@@ -105,15 +108,13 @@ void NvbloxHumanNode::subscribeToTopics()
   }
 
   if (use_color_) {
-    // Unsubscribe from the color topic in nvblox_node
-    timesync_color_.reset();
     // Subscribe to color + mask + cam_infos
     // We use exact time sync here
     // because color image and its corresponding semantic prediction have the same timestamp
     timesync_color_mask_ = std::make_shared<
       message_filters::Synchronizer<mask_exact_time_policy_t>>(
-      mask_exact_time_policy_t(kQueueSize), color_sub_,
-      color_camera_info_sub_, segmentation_mask_sub_,
+      mask_exact_time_policy_t(kQueueSize), color_sub.getImageSubscriber(),
+      color_sub.getCameraInfoSubscriber(), segmentation_mask_sub_,
       segmentation_camera_info_sub_);
     timesync_color_mask_->registerCallback(
       std::bind(
@@ -149,6 +150,7 @@ void NvbloxHumanNode::depthPlusMaskImageCallback(
     *depth_img_ptr, "Depth plus Mask Statistics",
     &depth_frame_statistics_);
   pushMessageOntoQueue<ImageSegmentationMaskMsgTuple>(
+    "depth_plus_mask_queue",
     std::make_tuple(
       depth_img_ptr, camera_info_msg, mask_img_ptr,
       mask_camera_info_msg),
@@ -165,6 +167,7 @@ void NvbloxHumanNode::colorPlusMaskImageCallback(
     *color_img_ptr, "Color plus Mask Statistics",
     &rgb_frame_statistics_);
   pushMessageOntoQueue<ImageSegmentationMaskMsgTuple>(
+    "color_plus_mask_queue",
     std::make_tuple(
       color_img_ptr, camera_info_msg, mask_img_ptr,
       mask_camera_info_msg),
@@ -184,11 +187,6 @@ void NvbloxHumanNode::processDepthQueue()
     std::bind(
       &NvbloxHumanNode::processDepthImage, this,
       std::placeholders::_1));
-
-  limitQueueSizeByDeletingOldestMessages(
-    maximum_sensor_message_queue_length_,
-    "depth_mask", &depth_mask_image_queue_,
-    &depth_mask_queue_mutex_);
 }
 
 void NvbloxHumanNode::processColorQueue()
@@ -204,17 +202,11 @@ void NvbloxHumanNode::processColorQueue()
     std::bind(
       &NvbloxHumanNode::processColorImage, this,
       std::placeholders::_1));
-
-  limitQueueSizeByDeletingOldestMessages(
-    maximum_sensor_message_queue_length_,
-    "color_mask", &color_mask_image_queue_,
-    &color_mask_queue_mutex_);
 }
 
 bool NvbloxHumanNode::processDepthImage(
   const ImageSegmentationMaskMsgTuple & depth_mask_msg)
 {
-  timing::Timer ros_total_timer("ros/total");
   timing::Timer ros_depth_timer("ros/depth");
   timing::Timer transform_timer("ros/depth/transform");
 
@@ -227,15 +219,6 @@ bool NvbloxHumanNode::processDepthImage(
     std::get<2>(depth_mask_msg);
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & mask_camera_info_msg =
     std::get<3>(depth_mask_msg);
-
-  // Check that we're not updating more quickly than we should.
-  if (isUpdateTooFrequent(
-      depth_img_ptr->header.stamp, last_depth_update_time_,
-      max_depth_update_hz_))
-  {
-    return true;
-  }
-  last_depth_update_time_ = depth_img_ptr->header.stamp;
 
   // Get the TF for BOTH images.
   const std::string depth_img_frame = depth_img_ptr->header.frame_id;
@@ -301,7 +284,6 @@ bool NvbloxHumanNode::processDepthImage(
 bool NvbloxHumanNode::processColorImage(
   const ImageSegmentationMaskMsgTuple & color_mask_msg)
 {
-  timing::Timer ros_total_timer("ros/total");
   timing::Timer ros_color_timer("ros/color");
   timing::Timer transform_timer("ros/color/transform");
 
@@ -314,15 +296,6 @@ bool NvbloxHumanNode::processColorImage(
     std::get<2>(color_mask_msg);
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & mask_camera_info_msg =
     std::get<3>(color_mask_msg);
-
-  // Check that we're not updating more quickly than we should.
-  if (isUpdateTooFrequent(
-      color_img_ptr->header.stamp, last_color_update_time_,
-      max_color_update_hz_))
-  {
-    return true;
-  }
-  last_color_update_time_ = color_img_ptr->header.stamp;
 
   // Get the TF for BOTH images.
   Transform T_L_C;
@@ -383,7 +356,6 @@ bool NvbloxHumanNode::processColorImage(
 
 void NvbloxHumanNode::publishHumanDebugOutput()
 {
-  timing::Timer ros_total_timer("ros/total");
   timing::Timer ros_human_total_timer("ros/humans");
   timing::Timer ros_human_debug_timer("ros/humans/output/debug");
 

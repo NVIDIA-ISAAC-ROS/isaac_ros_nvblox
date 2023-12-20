@@ -43,6 +43,8 @@ void NvbloxCostmapLayer::onInitialize()
 
   nvblox_map_slice_topic = node->declare_parameter<std::string>(
     getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);
+  convert_to_binary_costmap_ = node->declare_parameter<bool>(
+    getFullName("convert_to_binary_costmap"), convert_to_binary_costmap_);
   max_obstacle_distance_ = node->declare_parameter<float>(
     getFullName("max_obstacle_distance"), max_obstacle_distance_);
   inflation_distance_ = node->declare_parameter<float>(
@@ -53,6 +55,7 @@ void NvbloxCostmapLayer::onInitialize()
   RCLCPP_INFO_STREAM(
     node->get_logger(),
     "Name: " << name_ << " Topic name: " << nvblox_map_slice_topic <<
+      " Convert to binary costmap: " << convert_to_binary_costmap_ <<
       " Max obstacle distance: " << max_obstacle_distance_);
 
   // Add subscribers to the nvblox message.
@@ -158,13 +161,14 @@ void NvbloxCostmapLayer::updateCosts(
       uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
       if (valid) {
         // Convert the distance value to a costmap value.
+        // If convert_to_binary_costmap is enabled, only set the lethal obstacle cost.
         if (distance <= 0.0f) {
           cost = nav2_costmap_2d::LETHAL_OBSTACLE;
-        } else if (distance < inflation_distance_) {
+        } else if (distance < inflation_distance_ && !convert_to_binary_costmap_) {
           cost = nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
-        } else if (distance > max_obstacle_distance_) {
+        } else if (distance > max_obstacle_distance_ && !convert_to_binary_costmap_) {
           cost = nav2_costmap_2d::FREE_SPACE;
-        } else {
+        } else if (!convert_to_binary_costmap_) {
           cost = static_cast<uint8_t>(
             max_cost_value_ *
             (1.0f - std::min<float>(

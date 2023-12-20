@@ -1,0 +1,217 @@
+{
+  "configById": {
+    "3D!4l7oljz": {
+      "cameraState": {
+        "perspective": true,
+        "distance": 8.362406704349251,
+        "phi": 36.46105846246975,
+        "thetaOffset": 78.94644936321768,
+        "targetOffset": [
+          0.45051009338084075,
+          -0.3592675428679382,
+          -9.990531888173873e-23
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "transforms": {
+          "showLabel": true
+        },
+        "syncCamera": false,
+        "enableStats": false
+      },
+      "transforms": {
+        "frame:camera_link_right_optical": {
+          "visible": false
+        },
+        "frame:camera_link_left_optical": {
+          "visible": false
+        },
+        "frame:bmi088_frame": {
+          "visible": false
+        },
+        "frame:camera": {
+          "visible": false
+        },
+        "frame:camera_link": {
+          "visible": true
+        },
+        "frame:odom": {
+          "visible": true
+        },
+        "frame:odom_before_flattening": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/nvblox_node/mesh": {
+          "visible": true
+        },
+        "/nvblox_node/map_slice_bounds": {
+          "visible": false,
+          "namespaces": {
+            "bottom_slice_limit": {
+              "visible": false
+            },
+            "top_slice_limit": {
+              "visible": false
+            }
+          }
+        },
+        "/nvblox_node/static_esdf_pointcloud": {
+          "visible": true,
+          "colorField": "intensity",
+          "colorMode": "colormap",
+          "colorMap": "rainbow",
+          "pointSize": 6,
+          "pointShape": "square",
+          "explicitAlpha": 0.7,
+          "minValue": 0,
+          "maxValue": 1,
+          "stixelsEnabled": false
+        }
+      },
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {},
+      "foxglovePanelTitle": "3D reconstruction",
+      "followTf": "odom"
+    },
+    "Image!1npqdx0": {
+      "cameraState": {
+        "distance": 20,
+        "perspective": true,
+        "phi": 60,
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOffset": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "thetaOffset": 45,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {
+        "imageTopic": "/hawk/left/image_vis",
+        "colorMode": "gradient"
+      },
+      "foxglovePanelTitle": "Hawk Color Image"
+    },
+    "Image!40anpip": {
+      "cameraState": {
+        "distance": 20,
+        "perspective": true,
+        "phi": 60,
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOffset": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "thetaOffset": 45,
+        "fovy": 45,
+        "near": 0.5,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {},
+      "transforms": {},
+      "topics": {},
+      "layers": {},
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      },
+      "imageMode": {
+        "imageTopic": "/hawk/depth_vis",
+        "colorMode": "gradient",
+        "flipHorizontal": false,
+        "rotation": 0,
+        "gradient": [
+          "#000000ff",
+          "#ffffff"
+        ],
+        "colorMap": "rainbow"
+      },
+      "foxglovePanelTitle": "Hawk ESS Image"
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": "3D!4l7oljz",
+    "second": {
+      "first": "Image!1npqdx0",
+      "second": "Image!40anpip",
+      "direction": "row"
+    },
+    "direction": "column",
+    "splitPercentage": 78.719723183391
+  }
+}
