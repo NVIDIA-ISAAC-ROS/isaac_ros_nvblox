@@ -79,6 +79,10 @@ def generate_launch_description():
         description='A (quotation bounded) list of bag replay arguments. E.g.:'
         'bag_play_args:="--remap /old_topic:=/new_topic --qos-profile-overrides-path qos_overrides.yaml"'
     )
+    run_carter_teleop_arg = DeclareLaunchArgument(
+        "run_carter_teleop",
+        default_value="True",
+        description="Whether to run teleop for the carter robot.")
 
     # Create a shared container to hold composable nodes
     # for speed ups through intra process communication.
@@ -127,6 +131,18 @@ def generate_launch_description():
             "flatten_odometry_to_2d":
             LaunchConfiguration("flatten_odometry_to_2d"),
         }.items(),
+    )
+
+    carter_teleop_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([
+            os.path.join(bringup_dir, "launch", "carter",
+                         "carter_teleop.launch.py")
+        ]),
+        launch_arguments={
+            "attach_to_shared_component_container": "True",
+            "component_container_name": shared_container_name,
+        }.items(),
+        condition=IfCondition(LaunchConfiguration("run_carter_teleop")),
     )
 
     # Record
@@ -198,9 +214,8 @@ def generate_launch_description():
     return LaunchDescription([
         run_rviz_arg, from_bag_arg, bag_path_arg, record_arg,
         flatten_odometry_to_2d_arg, ess_engine_file_path_arg,
-        type_negotiation_duration_s_arg, hawk_module_id_arg, shared_container,
-        hawk_driver_launch, hawk_perception_launch,
-        record_launch, bag_play_args, bag_play,
-        decoders_launch, rviz_launch, foxglove_bridge_launch,
-        image_resize_launch
+        type_negotiation_duration_s_arg, hawk_module_id_arg, run_carter_teleop_arg,
+        shared_container, hawk_driver_launch, hawk_perception_launch, carter_teleop_launch, 
+        record_launch, bag_play_args, bag_play, decoders_launch,
+        rviz_launch, foxglove_bridge_launch, image_resize_launch
     ])

@@ -58,7 +58,7 @@ def generate_launch_description():
         executable='static_transform_publisher',
         arguments=[
             '0.0947', '0.0061', '0.0', '0.0', '0.70710678', '0.0',
-            '0.70710678', 'camera', 'bmi088_frame'
+            '0.70710678', 'camera_link', 'bmi088_frame'
         ])
 
     load_composable_nodes = LoadComposableNodes(
