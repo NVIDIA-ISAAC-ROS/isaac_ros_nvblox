@@ -1,0 +1,37 @@
+repositories:
+  isaac_ros_argus_camera:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_argus_camera.git
+    version: release-2.1
+  isaac_ros_common:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_common.git
+    version: release-2.1
+  isaac_ros_dnn_stereo_depth:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_dnn_stereo_depth.git
+    version: release-2.1
+  isaac_ros_image_pipeline:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_image_pipeline.git
+    version: release-2.1
+  isaac_ros_nitros:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nitros.git
+    version: release-2.1
+  isaac_ros_nova:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nova.git
+    version: release-2.1
+  isaac_ros_nvblox:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox.git
+    version: release-3.0-prerelease
+  isaac_ros_visual_slam:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_visual_slam.git
+    version: release-2.1
+  nova_carter:
+    type: git
+    url: https://github.com/NVIDIA-ISAAC-ROS/nova_carter.git
+    version: release-2.1
