@@ -83,6 +83,16 @@ def generate_launch_description():
         "run_carter_teleop",
         default_value="True",
         description="Whether to run teleop for the carter robot.")
+    # Parameters for extrinsic calibration between camera and ground plane
+    camera_height_arg = DeclareLaunchArgument(
+        "camera_height", default_value="0.3572",
+        description="The height of the camera above the ground plane "
+                    "(default is for carter v2.4).")
+    camera_pitch_radians_arg = DeclareLaunchArgument(
+        "camera_pitch_radians", default_value="0.0",
+        description="The pitch of the camera relative to the ground plane in radians "
+                    "(default is for carter v2.4). Positive number means downward pitch.")
+
 
     # Create a shared container to hold composable nodes
     # for speed ups through intra process communication.
@@ -211,11 +221,35 @@ def generate_launch_description():
             'type_negotiation_duration_s': LaunchConfiguration('type_negotiation_duration_s'),
             'component_container_name': shared_container_name}.items())
 
+    # Extrinsic calibration of Hawk Camera (base_link to camera_link)
+    static_tf_hawk_node = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        name='static_tf_publisher_base_to_camera_link', output='screen',
+        arguments=['0.0', '0.0', LaunchConfiguration('camera_height'),
+                   '0.0', LaunchConfiguration('camera_pitch_radians'), '0.0',
+                   'base_link', 'camera_link'],
+    )
+    # Publish left/right canonical camera frames (needed for vslam)
+    static_tf_left_hawk_node = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        name='static_tf_publisher_left_canonical', output='screen',
+        arguments=['0.0', '0.0', '0.0', '1.57079632679', '-1.57079632679', '0.0',
+                   'camera_link_left_optical', 'camera_link_left_canonical'],
+    )
+    static_tf_right_hawk_node = Node(
+        package='tf2_ros', executable='static_transform_publisher',
+        name='static_tf_publisher_right_canonical', output='screen',
+        arguments=['0.0', '0.0', '0.0', '1.57079632679', '-1.57079632679', '0.0',
+                   'camera_link_right_optical', 'camera_link_right_canonical'],
+    )
+
     return LaunchDescription([
         run_rviz_arg, from_bag_arg, bag_path_arg, record_arg,
         flatten_odometry_to_2d_arg, ess_engine_file_path_arg,
         type_negotiation_duration_s_arg, hawk_module_id_arg, run_carter_teleop_arg,
-        shared_container, hawk_driver_launch, hawk_perception_launch, carter_teleop_launch, 
+        camera_height_arg, camera_pitch_radians_arg, shared_container,
+        hawk_driver_launch, hawk_perception_launch, carter_teleop_launch,
         record_launch, bag_play_args, bag_play, decoders_launch,
-        rviz_launch, foxglove_bridge_launch, image_resize_launch
+        rviz_launch, foxglove_bridge_launch, image_resize_launch,
+        static_tf_hawk_node, static_tf_left_hawk_node, static_tf_right_hawk_node
     ])
