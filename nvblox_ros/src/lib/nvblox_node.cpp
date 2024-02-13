@@ -286,8 +286,12 @@ void NvbloxNode::advertiseTopics()
   // Static esdf
   static_esdf_pointcloud_publisher_ =
     create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud", 1);
+  static_esdf_pointcloud_publisher_2 =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud1", 1);
   static_map_slice_publisher_ =
     create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/static_map_slice", 1);
+  static_map_slice_publisher_2 =
+    create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/static_map_slice2", 1);
   // Static occupancy
   static_occupancy_publisher_ =
     create_publisher<sensor_msgs::msg::PointCloud2>("~/static_occupancy", 1);
@@ -502,8 +506,11 @@ void NvbloxNode::processEsdf()
 
   sliceAndPublishEsdf(
     "static", static_mapper_,
-    static_esdf_pointcloud_publisher_, static_map_slice_publisher_);
-
+    static_esdf_pointcloud_publisher_, static_map_slice_publisher_,nullptr, 0.4);
+  sliceAndPublishEsdf(
+    "static2", static_mapper_,
+    static_esdf_pointcloud_publisher_2, static_map_slice_publisher_2 ,nullptr, -0.2);
+  
   if (isUsingDynamicMapper(mapping_type_)) {
     sliceAndPublishEsdf(
       "dynamic", dynamic_mapper_,
@@ -542,7 +549,7 @@ void NvbloxNode::sliceAndPublishEsdf(
   const std::shared_ptr<Mapper> & mapper,
   const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pointcloud_publisher,
   const rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr & slice_publisher,
-  const Mapper * mapper_2)
+  const Mapper * mapper_2, const float slice_height)
 {
   // If anyone wants a slice
   if (pointcloud_publisher->get_subscription_count() > 0 ||
@@ -554,11 +561,11 @@ void NvbloxNode::sliceAndPublishEsdf(
     Image<float> map_slice_image(MemoryType::kDevice);
     if (mapper_2 != nullptr) {
       esdf_slice_converter_.sliceLayersToCombinedDistanceImage(
-        mapper->esdf_layer(), mapper_2->esdf_layer(), multi_mapper_params_.esdf_slice_height,
+        mapper->esdf_layer(), mapper_2->esdf_layer(), slice_height,
         &map_slice_image, &aabb);
     } else {
       esdf_slice_converter_.sliceLayerToDistanceImage(
-        mapper->esdf_layer(), multi_mapper_params_.esdf_slice_height, &map_slice_image, &aabb);
+        mapper->esdf_layer(), slice_height, &map_slice_image, &aabb);
     }
     slicing_timer.Stop();
 
@@ -567,11 +574,12 @@ void NvbloxNode::sliceAndPublishEsdf(
       timing::Timer pointcloud_msg_timer("ros/" + name + "/esdf/output/pointcloud");
       sensor_msgs::msg::PointCloud2 pointcloud_msg;
       esdf_slice_converter_.pointcloudMsgFromSliceImage(
-        map_slice_image, aabb, multi_mapper_params_.esdf_slice_height,
+        map_slice_image, aabb, slice_height,
         mapper->esdf_layer().voxel_size(), &pointcloud_msg);
       pointcloud_msg.header.frame_id = global_frame_;
       pointcloud_msg.header.stamp = get_clock()->now();
       pointcloud_publisher->publish(pointcloud_msg);
+      RCLCPP_INFO_STREAM_THROTTLE(get_logger(), *get_clock(), 5,"Published pointcloud " << name << " of ESDF slice.");
     }
 
     // Publish the distance map slice (costmap for nav2).
@@ -579,7 +587,7 @@ void NvbloxNode::sliceAndPublishEsdf(
       timing::Timer slice_msg_timer("ros/" + name + "/esdf/output/slice");
       nvblox_msgs::msg::DistanceMapSlice map_slice_msg;
       esdf_slice_converter_.distanceMapSliceMsgFromSliceImage(
-        map_slice_image, aabb, multi_mapper_params_.esdf_slice_height, mapper->voxel_size_m(),
+        map_slice_image, aabb, slice_height, mapper->voxel_size_m(),
         &map_slice_msg);
       map_slice_msg.header.frame_id = global_frame_;
       map_slice_msg.header.stamp = get_clock()->now();
