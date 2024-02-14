@@ -142,7 +142,7 @@ protected:
     const std::shared_ptr<Mapper> & mapper,
     const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pointcloud_publisher,
     const rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr & slice_publisher,
-    const Mapper * mapper_2 = nullptr);
+    const Mapper * mapper_2 = nullptr, const float slice_heigh = 0);
 
   // Map clearing
   void clearMapOutsideOfRadiusOfLastKnownPose();
@@ -231,9 +231,13 @@ protected:
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     static_esdf_pointcloud_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    static_esdf_pointcloud_publisher_2;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     static_occupancy_publisher_;
   rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
     static_map_slice_publisher_;
+  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+    static_map_slice_publisher_2;
   rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
     slice_bounds_publisher_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
