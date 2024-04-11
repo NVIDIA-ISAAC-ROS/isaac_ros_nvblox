@@ -114,8 +114,8 @@ void NvbloxNode::getParameters()
     declare_parameter<float>("esdf_2d_min_height", MultiMapper::kDefaultEsdf2dMinHeight);
   multi_mapper_params_.esdf_2d_max_height =
     declare_parameter<float>("esdf_2d_max_height", MultiMapper::kDefaultEsdf2dMaxHeight);
-  multi_mapper_params_.esdf_slice_height =
-    declare_parameter<float>("esdf_slice_height", MultiMapper::kDefaultEsdf2dSliceHeight);
+  // multi_mapper_params_.esdf_slice_height =
+  //   declare_parameter<float>("esdf_slice_height", MultiMapper::kDefaultEsdf2dSliceHeight);
   multi_mapper_params_.connected_mask_component_size_threshold =
     declare_parameter<int>(
     "connected_mask_component_size_threshold",
@@ -178,6 +178,9 @@ void NvbloxNode::getParameters()
     "map_clearing_frame_id", map_clearing_frame_id_);
   clear_outside_radius_rate_hz_ = declare_parameter<float>(
     "clear_outside_radius_rate_hz", clear_outside_radius_rate_hz_);
+
+  this->declare_parameter<float>("esdf_above_ground_slice_height", 0.2);
+  this->declare_parameter<float>("esdf_underground_detection", -0.6);
 }
 
 void NvbloxNode::initializeMultiMapper()
@@ -287,7 +290,7 @@ void NvbloxNode::advertiseTopics()
   static_esdf_pointcloud_publisher_ =
     create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud", 1);
   static_esdf_pointcloud_publisher_2 =
-    create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud1", 1);
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/static_esdf_pointcloud2", 1);
   static_map_slice_publisher_ =
     create_publisher<nvblox_msgs::msg::DistanceMapSlice>("~/static_map_slice", 1);
   static_map_slice_publisher_2 =
@@ -506,10 +509,14 @@ void NvbloxNode::processEsdf()
 
   sliceAndPublishEsdf(
     "static", static_mapper_,
-    static_esdf_pointcloud_publisher_, static_map_slice_publisher_,nullptr, 0.4);
+    // Now that we are using a 3D ESDF, this is no longer bound between -0.2 and -0.35
+    // The height seems to refer to the distance between the designated layer and
+    // the height of the ESDF slice we want to take.
+    // TODO: find optimal heights for holes
+    static_esdf_pointcloud_publisher_, static_map_slice_publisher_,nullptr, this->get_parameter("esdf_above_ground_slice_height").as_double());
   sliceAndPublishEsdf(
     "static2", static_mapper_,
-    static_esdf_pointcloud_publisher_2, static_map_slice_publisher_2 ,nullptr, -0.2);
+    static_esdf_pointcloud_publisher_2, static_map_slice_publisher_2 ,nullptr, this->get_parameter("esdf_underground_detection").as_double());
   
   if (isUsingDynamicMapper(mapping_type_)) {
     sliceAndPublishEsdf(
@@ -579,7 +586,7 @@ void NvbloxNode::sliceAndPublishEsdf(
       pointcloud_msg.header.frame_id = global_frame_;
       pointcloud_msg.header.stamp = get_clock()->now();
       pointcloud_publisher->publish(pointcloud_msg);
-      RCLCPP_INFO_STREAM_THROTTLE(get_logger(), *get_clock(), 5,"Published pointcloud " << name << " of ESDF slice.");
+      // RCLCPP_INFO_STREAM_THROTTLE(get_logger(), *get_clock(), 5,"Published pointcloud " << name << " of ESDF slice.");
     }
 
     // Publish the distance map slice (costmap for nav2).
