@@ -114,6 +114,8 @@ void NvbloxNode::getParameters()
     declare_parameter<float>("esdf_2d_min_height", MultiMapper::kDefaultEsdf2dMinHeight);
   multi_mapper_params_.esdf_2d_max_height =
     declare_parameter<float>("esdf_2d_max_height", MultiMapper::kDefaultEsdf2dMaxHeight);
+  multi_mapper_params_.esdf_slice_height =
+    declare_parameter<float>("esdf_slice_height", MultiMapper::kDefaultEsdf2dSliceHeight);
   multi_mapper_params_.connected_mask_component_size_threshold =
     declare_parameter<int>(
     "connected_mask_component_size_threshold",
@@ -178,6 +180,7 @@ void NvbloxNode::getParameters()
     "clear_outside_radius_rate_hz", clear_outside_radius_rate_hz_);
   this->declare_parameter<float>("esdf_above_ground_slice_height", 0.2);
   this->declare_parameter<float>("esdf_underground_detection", -0.6);
+  this->declare_parameter<bool>("combine_costmap", false);
 }
 
 void NvbloxNode::initializeMultiMapper()
@@ -503,14 +506,19 @@ void NvbloxNode::processEsdf()
   esdf_integration_timer.Stop();
 
   timing::Timer esdf_output_timer("ros/esdf/output");
+  if (this->get_parameter("combine_costmap").as_bool()) {
+    sliceAndPublishEsdf(
+      "static", static_mapper_,
+      static_esdf_pointcloud_publisher_, static_map_slice_publisher_,nullptr, this->get_parameter("esdf_above_ground_slice_height").as_double());
+    sliceAndPublishEsdf(
+      "static2", static_mapper_,
+      static_esdf_pointcloud_publisher_2, static_map_slice_publisher_2 ,nullptr, this->get_parameter("esdf_underground_detection").as_double());
+  } else {
+    sliceAndPublishEsdf(
+      "static", static_mapper_,
+      static_esdf_pointcloud_publisher_, static_map_slice_publisher_, nullptr, multi_mapper_params_.esdf_slice_height);
+  }
 
-  sliceAndPublishEsdf(
-    "static", static_mapper_,
-    static_esdf_pointcloud_publisher_, static_map_slice_publisher_,nullptr, this->get_parameter("esdf_above_ground_slice_height").as_double());
-  sliceAndPublishEsdf(
-    "static2", static_mapper_,
-    static_esdf_pointcloud_publisher_2, static_map_slice_publisher_2 ,nullptr, this->get_parameter("esdf_underground_detection").as_double());
-  
   if (isUsingDynamicMapper(mapping_type_)) {
     sliceAndPublishEsdf(
       "dynamic", dynamic_mapper_,
