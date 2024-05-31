@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,19 +23,21 @@
 
 #include <cv_bridge/cv_bridge.h>
 
-namespace nvblox {
+namespace nvblox
+{
 
-class ImagePaddingCroppingNode : public rclcpp::Node {
- public:
+class ImagePaddingCroppingNode : public rclcpp::Node
+{
+public:
   explicit ImagePaddingCroppingNode(
-      const rclcpp::NodeOptions& options = rclcpp::NodeOptions(),
-      const std::string& node_name = "image_padding_node");
+    const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
+    const std::string & node_name = "image_padding_node");
   virtual ~ImagePaddingCroppingNode() = default;
 
   // Callbacks
   void imageCallback(sensor_msgs::msg::Image::ConstSharedPtr image_ptr);
 
- private:
+private:
   // Image subscriber
   rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr image_sub_;
 
@@ -47,7 +49,7 @@ class ImagePaddingCroppingNode : public rclcpp::Node {
   int desired_width_ = -1;
 
   // Default subscription QoS
-  std::string image_qos_str_ = "SYSTEM_DEFAULT";
+  const std::string kDefaultImageQos_ = "SYSTEM_DEFAULT";
 };
 
 } // namespace nvblox

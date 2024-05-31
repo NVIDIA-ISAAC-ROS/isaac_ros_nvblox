@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -49,7 +49,8 @@ public:
   void sliceLayersToCombinedDistanceImage(
     const EsdfLayer & layer_1,
     const EsdfLayer & layer_2,
-    float slice_height,
+    float layer_1_slice_height,
+    float layer_2_slice_height,
     Image<float> * output_image,
     AxisAlignedBoundingBox * aabb);
 

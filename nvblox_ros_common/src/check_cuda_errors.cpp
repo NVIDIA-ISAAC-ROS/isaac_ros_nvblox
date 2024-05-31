@@ -17,14 +17,14 @@ limitations under the License.
 
 #include <iostream>
 
-namespace nvblox {
+namespace nvblox
+{
 
-void checkCuda(cudaError_t result, char const* const func,
-                const char* const file, int const line) {
+void checkCuda(cudaError_t result, char const * const func, const char * const file, int const line)
+{
   if (result) {
-    std::cerr << "CUDA error = " << static_cast<unsigned int>(result) << " at "
-              << file << ":" << line << " '" << func
-              << "'. Error string: " << cudaGetErrorString(result) << ".\n";
+    std::cerr << "CUDA error = " << static_cast<unsigned int>(result) << " at " << file << ":"
+              << line << " '" << func << "'. Error string: " << cudaGetErrorString(result) << ".\n";
     // Make sure we call CUDA Device Reset before exiting
     cudaDeviceReset();
     exit(99);

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
- 
+
 #pragma once
 
 #include <functional>
@@ -24,7 +24,8 @@
 
 #include <nvblox_msgs/msg/index3_d.hpp>
 
-namespace nvblox_rviz_plugin {
+namespace nvblox_rviz_plugin
+{
 
 // Minimal functions taken from nvblox/core/hash.h to remove dependency and
 // uses the ROS types instead.
@@ -36,21 +37,22 @@ typedef nvblox_msgs::msg::Index3D Index3D;
  * "Investigating the impact of Suboptimal Hashing Functions" by L. Buckley et
  * al.
  */
-struct Index3DHash {
+struct Index3DHash
+{
   /// number was arbitrarily chosen with no good justification
   static constexpr size_t sl = 17191;
   static constexpr size_t sl2 = sl * sl;
 
-  std::size_t operator()(const Index3D& index) const {
+  std::size_t operator()(const Index3D & index) const
+  {
     return static_cast<unsigned int>(index.x + index.y * sl + index.z * sl2);
   }
 };
 
-template <typename ValueType>
-struct Index3DHashMapType {
-  typedef std::unordered_map<Index3D, ValueType, Index3DHash,
-                             std::equal_to<Index3D>>
-      type;
+template<typename ValueType>
+struct Index3DHashMapType
+{
+  typedef std::unordered_map<Index3D, ValueType, Index3DHash, std::equal_to<Index3D>> type;
 };
 
 }  // namespace nvblox_rviz_plugin

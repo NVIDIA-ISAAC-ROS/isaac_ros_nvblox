@@ -25,7 +25,6 @@
 namespace nvblox {
 namespace conversions {
 
-
 void copyDevicePointcloudToMsg(
     const device_vector<PclPointXYZI>& pcl_pointcloud_device,
     sensor_msgs::msg::PointCloud2* pointcloud_msg) {
@@ -62,18 +61,16 @@ void copyDevicePointcloudToMsg(
   pointcloud_msg->fields.push_back(point_field);
 }
 
-
 PointcloudConverter::PointcloudConverter()
     : PointcloudConverter(std::make_shared<CudaStreamOwning>()) {}
 
-PointcloudConverter::PointcloudConverter(std::shared_ptr<CudaStream> cuda_stream)
+PointcloudConverter::PointcloudConverter(
+    std::shared_ptr<CudaStream> cuda_stream)
     : cuda_stream_(cuda_stream) {}
 
-
 bool PointcloudConverter::checkLidarPointcloud(
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
-  const Lidar & lidar)
-{
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud,
+    const Lidar& lidar) {
   // Check the cache
   if (checked_lidar_models_.find(lidar) != checked_lidar_models_.end()) {
     return true;
@@ -98,9 +95,8 @@ bool PointcloudConverter::checkLidarPointcloud(
 }
 
 void PointcloudConverter::writeLidarPointcloudToFile(
-  const std::string filepath_prefix,
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud)
-{
+    const std::string filepath_prefix,
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr& pointcloud) {
   // Write the dimensions
   std::ofstream width_file(filepath_prefix + "_dims.txt", std::ofstream::out);
   width_file << pointcloud->width << ", " << pointcloud->height;
@@ -116,7 +112,6 @@ void PointcloudConverter::writeLidarPointcloudToFile(
   }
   io::writeToCsv(filepath_prefix + ".csv", pointcloud_matrix);
 }
-
 
 __global__ void depthImageFromPointcloudKernel(
     const Vector3f* pointcloud,          // NOLINT
@@ -176,7 +171,7 @@ void PointcloudConverter::depthImageFromPointcloudGPU(
   const int num_points = pointcloud->width * pointcloud->height;
 
   // Expand buffers where required
-  if (lidar.numel() > lidar_pointcloud_host_.capacity()) {
+  if (static_cast<size_t>(lidar.numel()) > lidar_pointcloud_host_.capacity()) {
     const int new_size = static_cast<int>(lidar.numel());
     lidar_pointcloud_host_.reserve(new_size);
     lidar_pointcloud_device_.reserve(new_size);

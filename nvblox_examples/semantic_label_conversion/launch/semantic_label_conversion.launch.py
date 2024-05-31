@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,24 +25,23 @@ def generate_launch_description():
 
     # Config file
     config_file = os.path.join(
-        get_package_share_directory('semantic_label_conversion'),
-        'params', 'semantic_label_conversion.yaml')
+        get_package_share_directory('semantic_label_conversion'), 'params',
+        'semantic_label_conversion.yaml')
 
-    semantic_label_stamper = Node(package='semantic_label_conversion',
-                                  executable='semantic_label_stamper.py',
-                                  name='semantic_label_stamper',
-                                  output='screen',
-                                  emulate_tty=True,
-                                  parameters=[config_file])
+    semantic_label_stamper = Node(
+        package='semantic_label_conversion',
+        executable='semantic_label_stamper.py',
+        name='semantic_label_stamper',
+        output='screen',
+        emulate_tty=True,
+        parameters=[config_file])
 
-    semantic_label_converter = Node(package='semantic_label_conversion',
-                                    executable='semantic_label_converter.py',
-                                    name='semantic_label_converter',
-                                    output='screen',
-                                    emulate_tty=True,
-                                    parameters=[config_file])
+    semantic_label_converter = Node(
+        package='semantic_label_conversion',
+        executable='semantic_label_converter.py',
+        name='semantic_label_converter',
+        output='screen',
+        emulate_tty=True,
+        parameters=[config_file])
 
-    return LaunchDescription([
-        semantic_label_stamper,
-        semantic_label_converter
-    ])
+    return LaunchDescription([semantic_label_stamper, semantic_label_converter])

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@
 #include <nvblox/semantics/image_projector.h>
 #include <nvblox/sensors/pointcloud.h>
 
-#include <deque>
+#include <list>
 #include <memory>
 #include <tuple>
 
@@ -96,6 +96,13 @@ protected:
   std::shared_ptr<message_filters::Synchronizer<mask_exact_time_policy_t>>
   timesync_color_mask_;
 
+  // Rather than using the subscribers from the base class, we here define new ones that can be
+  // synchronized. TODO(dtingdahl) Harmonize this once we can use synced subscribers with nitros
+  message_filters::Subscriber<sensor_msgs::msg::Image> depth_image_sub_;
+  message_filters::Subscriber<sensor_msgs::msg::CameraInfo> depth_camera_info_sub_;
+  message_filters::Subscriber<sensor_msgs::msg::Image> color_image_sub_;
+  message_filters::Subscriber<sensor_msgs::msg::CameraInfo> color_camera_info_sub_;
+
   // Segmentation mask sub.
   message_filters::Subscriber<sensor_msgs::msg::Image> segmentation_mask_sub_;
   message_filters::Subscriber<sensor_msgs::msg::CameraInfo>
@@ -119,11 +126,14 @@ protected:
   // Note these differ from the base class image queues because they also
   // include segmentation images. The base class queue are disused in the
   // NvbloxHumanNode.
-  std::deque<ImageSegmentationMaskMsgTuple> depth_mask_image_queue_;
-  std::deque<ImageSegmentationMaskMsgTuple> color_mask_image_queue_;
+  std::list<ImageSegmentationMaskMsgTuple> depth_mask_image_queue_;
+  std::list<ImageSegmentationMaskMsgTuple> color_mask_image_queue_;
 
   // Cache for GPU image
   MonoImage mask_image_{MemoryType::kDevice};
+  Image<conversions::Rgb> rgb_image_tmp_{MemoryType::kDevice};
+  Image<conversions::Bgra> bgra_image_tmp_{MemoryType::kDevice};
+  Image<int16_t> depth_image_tmp_{MemoryType::kDevice};
 
   // Image queue mutexes.
   std::mutex depth_mask_queue_mutex_;
@@ -137,6 +147,12 @@ protected:
   // Caching data of last depth frame for debug outputs
   Camera depth_camera_;
   Transform T_L_C_depth_;
+
+  // TODO(dtingdah) switch to base class collector when human node use nitros
+  libstatistics_collector::topic_statistics_collector::
+  ReceivedMessagePeriodCollector<sensor_msgs::msg::Image> depth_frame_statistics_legacy_;
+  libstatistics_collector::topic_statistics_collector::
+  ReceivedMessagePeriodCollector<sensor_msgs::msg::Image> rgb_frame_statistics_legacy_;
 };
 
 }  // namespace nvblox

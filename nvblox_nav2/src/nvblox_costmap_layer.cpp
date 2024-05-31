@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,50 +37,77 @@ void NvbloxCostmapLayer::onInitialize()
     throw std::runtime_error{"Failed to lock node"};
   }
   enabled_ = node->declare_parameter(name_ + "." + "enabled", true);
+  nav2_costmap_global_frame_ = node->declare_parameter(
+    name_ + "." + "nav2_costmap_global_frame",
+    nav2_costmap_global_frame_);
 
   // Get the path of the map slice topic.
   std::string nvblox_map_slice_topic = "/nvblox_node/static_map_slice";
 
   nvblox_map_slice_topic = node->declare_parameter<std::string>(
     getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);
-  max_obstacle_distance_ = node->declare_parameter<float>(
-    getFullName("max_obstacle_distance"), max_obstacle_distance_);
-  inflation_distance_ = node->declare_parameter<float>(
-    getFullName("inflation_distance"), inflation_distance_);
-  max_cost_value_ = node->declare_parameter<uint8_t>(
-    getFullName("max_cost_value"), max_cost_value_);
+  convert_to_binary_costmap_ = node->declare_parameter<bool>(
+    getFullName("convert_to_binary_costmap"), convert_to_binary_costmap_);
+  max_obstacle_distance_ =
+    node->declare_parameter<float>(getFullName("max_obstacle_distance"), max_obstacle_distance_);
+  inflation_distance_ =
+    node->declare_parameter<float>(getFullName("inflation_distance"), inflation_distance_);
+  max_cost_value_ =
+    node->declare_parameter<uint8_t>(getFullName("max_cost_value"), max_cost_value_);
 
   RCLCPP_INFO_STREAM(
     node->get_logger(),
-    "Name: " << name_ << " Topic name: " << nvblox_map_slice_topic <<
-      " Max obstacle distance: " << max_obstacle_distance_);
+    "Name: " << name_ << " Topic name: " << nvblox_map_slice_topic
+             << " Convert to binary costmap: " << convert_to_binary_costmap_
+             << " Max obstacle distance: " << max_obstacle_distance_);
 
   // Add subscribers to the nvblox message.
   slice_sub_ = node->create_subscription<nvblox_msgs::msg::DistanceMapSlice>(
     nvblox_map_slice_topic, 1,
-    std::bind(
-      &NvbloxCostmapLayer::sliceCallback, this,
-      std::placeholders::_1));
+    std::bind(&NvbloxCostmapLayer::sliceCallback, this, std::placeholders::_1));
+
+  // Init transform and listener.
+  T_G_S_ = Eigen::Isometry2f::Identity();
+  tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node->get_clock());
+  transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
   current_ = true;
 }
 
 // The method is called to ask the plugin: which area of costmap it needs to
 // update.
 void NvbloxCostmapLayer::updateBounds(
-  double /*robot_x*/, double /*robot_y*/,
-  double /*robot_yaw*/, double * min_x,
-  double * min_y, double * max_x,
-  double * max_y)
+  double /*robot_x*/, double /*robot_y*/, double /*robot_yaw*/,
+  double * min_x, double * min_y, double * max_x, double * max_y)
 {
   // We give the full AABB of the map that we have available to the
   // upstream controller.
   // According to nav2 the bounds can only grow bigger. So we only update the
   // bounds if it grows bigger or we keep the old values
   if (slice_ != nullptr) {
-    const double current_plugin_min_x = slice_->origin.x;
-    const double current_plugin_min_y = slice_->origin.y;
-    const double current_plugin_max_x = current_plugin_min_x + slice_->width * slice_->resolution;
-    const double current_plugin_max_y = current_plugin_min_y + slice_->height * slice_->resolution;
+    double current_plugin_min_x = slice_->origin.x;
+    double current_plugin_min_y = slice_->origin.y;
+    double current_plugin_max_x = current_plugin_min_x + slice_->width * slice_->resolution;
+    double current_plugin_max_y = current_plugin_min_y + slice_->height * slice_->resolution;
+
+    // If the slice is not in the nav2 costmap global frame,
+    // we need to convert the bounds.
+    if (!T_G_S_.matrix().isIdentity()) {
+      // Define the a matrix containg the corners of the bounds in the slice frame.
+      Eigen::Matrix<float, 2, 4> corners_S;
+      corners_S << current_plugin_min_x, current_plugin_min_x, current_plugin_max_x,
+        current_plugin_max_x, current_plugin_min_y, current_plugin_max_y, current_plugin_min_y,
+        current_plugin_max_y;
+
+      // Convert the corners to the nav2_costmap_global_frame.
+      Eigen::Matrix<float, 2, 4> corners_G = (T_G_S_ * corners_S.colwise().homogeneous());
+
+      // Get the max/min x/y bounds in the slice frame
+      current_plugin_min_x = corners_G.row(0).minCoeff();
+      current_plugin_min_y = corners_G.row(1).minCoeff();
+      current_plugin_max_x = corners_G.row(0).maxCoeff();
+      current_plugin_max_y = corners_G.row(1).maxCoeff();
+    }
 
     if (current_plugin_min_x < *min_x) {
       *min_x = current_plugin_min_x;
@@ -102,8 +129,7 @@ void NvbloxCostmapLayer::updateBounds(
   }
 
   RCLCPP_DEBUG(
-    node->get_logger(),
-    "Update bounds: Min x: %f Min y: %f Max x: %f Max y: %f", *min_x,
+    node->get_logger(), "Update bounds: Min x: %f Min y: %f Max x: %f Max y: %f", *min_x,
     *min_y, *max_x, *max_y);
 }
 
@@ -113,9 +139,8 @@ void NvbloxCostmapLayer::updateBounds(
 // to the resulting costmap master_grid without any merging with previous
 // layers.
 void NvbloxCostmapLayer::updateCosts(
-  nav2_costmap_2d::Costmap2D & master_grid,
-  int min_i, int min_j, int max_i,
-  int max_j)
+  nav2_costmap_2d::Costmap2D & master_grid, int min_i, int min_j,
+  int max_i, int max_j)
 {
   if (!enabled_) {
     return;
@@ -127,8 +152,7 @@ void NvbloxCostmapLayer::updateCosts(
   }
 
   RCLCPP_DEBUG(
-    node->get_logger(),
-    "Update costs: Min i: %d Min j: %d Max i: %d Max j: %d", min_i,
+    node->get_logger(), "Update costs: Min i: %d Min j: %d Max i: %d Max j: %d", min_i,
     min_j, max_i, max_j);
   // Copy over the relevant values to the internal costmap.
   // We need to convert from meters to cell units.
@@ -138,9 +162,7 @@ void NvbloxCostmapLayer::updateCosts(
   uint8_t * costmap_array = getCharMap();
   unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
 
-  RCLCPP_DEBUG(
-    node->get_logger(), "Size in cells x: %d size in cells y: %d",
-    size_x, size_y);
+  RCLCPP_DEBUG(node->get_logger(), "Size in cells x: %d size in cells y: %d", size_x, size_y);
 
   for (int j = min_j; j < max_j; j++) {
     for (int i = min_i; i < max_i; i++) {
@@ -150,27 +172,42 @@ void NvbloxCostmapLayer::updateCosts(
       double world_x, world_y;
       mapToWorld(i, j, world_x, world_y);
 
-      // Look up the corresponding cell in our latest map.
-      float distance = 0.0f;
-      bool valid = lookupInSlice(Eigen::Vector2f(world_x, world_y), &distance);
+      // Transform the pose from nav2 costmap global frame to the slice frame.
+      Eigen::Vector2f pos_G(world_x, world_y);
+      Eigen::Vector2f pos_S = T_G_S_.inverse() * pos_G;
 
-      // Calculate what this maps to in the original structure.
+      // Look up the corresponding cell in our latest slice.
+      float distance = 0.0f;
+      bool valid = lookupInSlice(Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
+
+      // Convert the distance value to a costmap value if valid.
       uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
       if (valid) {
-        // Convert the distance value to a costmap value.
         if (distance <= 0.0f) {
+          // Inside obstacle. Never go here.
           cost = nav2_costmap_2d::LETHAL_OBSTACLE;
-        } else if (distance < inflation_distance_) {
-          cost = nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
-        } else if (distance > max_obstacle_distance_) {
-          cost = nav2_costmap_2d::FREE_SPACE;
         } else {
-          cost = static_cast<uint8_t>(
-            max_cost_value_ *
-            (1.0f - std::min<float>(
-              (distance - inflation_distance_) /
-              max_obstacle_distance_,
-              1.0f)));
+          if (convert_to_binary_costmap_) {
+            // If convert_to_binary_costmap is enabled,
+            // we only distinguish between lethal obstacle and free space.
+            cost = nav2_costmap_2d::FREE_SPACE;
+          } else {
+            // If convert_to_binary_costmap is disabled,
+            // we distinguish between lethal obstacle, inflation layer, interpolation layer and
+            // free space.
+            if (distance < inflation_distance_) {
+              cost = nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+            } else if (distance > max_obstacle_distance_) {
+              cost = nav2_costmap_2d::FREE_SPACE;
+            } else {
+              // Interpolate between inflation layer and free space.
+              cost = static_cast<uint8_t>(
+                max_cost_value_ *
+                (1.0f - std::min<float>(
+                  (distance - inflation_distance_) / max_obstacle_distance_,
+                  1.0f)));
+            }
+          }
         }
       }
       costmap_array[index] = cost;
@@ -187,21 +224,70 @@ void NvbloxCostmapLayer::updateCosts(
 void NvbloxCostmapLayer::sliceCallback(
   const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice)
 {
+  if (!enabled_) {
+    return;
+  }
+
   auto node = node_.lock();
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
+  }
+
+  // If the slice frame is not equal to the nav2 costmap global frame,
+  // we listen for the transform.
+  std::string slice_frame = slice->header.frame_id;
+  if (nav2_costmap_global_frame_ != slice_frame) {
+    rclcpp::Time timestamp = slice->header.stamp;
+    geometry_msgs::msg::Transform T_G_S_msg;
+
+    // Logging.
+    auto & clk = *node->get_clock();
+    constexpr int kWarnMessagePeriodMs = 1000;
+
+    // Get the transform from tf.
+    try {
+      T_G_S_msg =
+        tf_buffer_->lookupTransform(nav2_costmap_global_frame_, slice_frame, timestamp).transform;
+    } catch (tf2::TransformException & e) {
+      RCLCPP_WARN_STREAM_THROTTLE(
+        node->get_logger(), clk, kWarnMessagePeriodMs,
+        "[NvbloxCostmapLayer] Can't transform: "
+          << nav2_costmap_global_frame_ << " to " << slice_frame
+          << ". Error: " << e.what());
+    }
+
+    // Convert rotation to roll/pitch/yaw.
+    Eigen::Vector3f rpy = Eigen::Quaternionf(
+      T_G_S_msg.rotation.w, T_G_S_msg.rotation.x,
+      T_G_S_msg.rotation.y, T_G_S_msg.rotation.z)
+      .toRotationMatrix()
+      .eulerAngles(0, 1, 2);
+
+    // Check that the transform is 2d (roll/pitch/z-axis are zero).
+    bool is_2d_transform = std::abs(rpy(0)) <= 1e-3;               // roll
+    is_2d_transform &= std::abs(rpy(1)) <= 1e-3;                   // pitch
+    is_2d_transform &= std::abs(T_G_S_msg.translation.z) <= 1e-3;  // z-axis
+    if (!is_2d_transform) {
+      RCLCPP_WARN_STREAM_THROTTLE(
+        node->get_logger(), clk, kWarnMessagePeriodMs,
+        "[NvbloxCostmapLayer] Transformation from "
+          << nav2_costmap_global_frame_ << " to " << slice_frame
+          << " must be 2d, but it is 3d.");
+    }
+
+    // Update the 2d transform
+    T_G_S_ =
+      Eigen::Isometry2f(
+      Eigen::Translation2f(T_G_S_msg.translation.x, T_G_S_msg.translation.y) *
+      Eigen::Rotation2Df(rpy(2)));
   }
 
   RCLCPP_DEBUG(node->get_logger(), "Slice callback.");
   slice_ = slice;
 }
 
-bool NvbloxCostmapLayer::lookupInSlice(
-  const Eigen::Vector2f & pos,
-  float * distance)
+bool NvbloxCostmapLayer::lookupInSlice(const Eigen::Vector2f & pos, float * distance)
 {
-  // TODO(helen): if coordinate systems don't match, look up in TF.
-  // This would allow our map to also be used for global planning.
   // If we don't have any slice, we don't have any costs. :(
   if (slice_ == nullptr) {
     return false;
@@ -209,12 +295,11 @@ bool NvbloxCostmapLayer::lookupInSlice(
 
   // Else look up in the actual slice.
   Eigen::Vector2f scaled_position =
-    (pos - Eigen::Vector2f(slice_->origin.x, slice_->origin.y)) /
-    slice_->resolution;
+    (pos - Eigen::Vector2f(slice_->origin.x, slice_->origin.y)) / slice_->resolution;
   Eigen::Vector2i pos_index = scaled_position.array().round().cast<int>();
 
-  if (pos_index.x() < 0 || pos_index.x() >= static_cast<int>(slice_->width) ||
-    pos_index.y() < 0 || pos_index.y() >= static_cast<int>(slice_->height))
+  if (pos_index.x() < 0 || pos_index.x() >= static_cast<int>(slice_->width) || pos_index.y() < 0 ||
+    pos_index.y() >= static_cast<int>(slice_->height))
   {
     return false;
   }

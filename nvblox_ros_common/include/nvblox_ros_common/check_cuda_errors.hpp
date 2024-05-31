@@ -18,10 +18,12 @@ limitations under the License.
 
 #include <cuda_runtime.h>
 
-namespace nvblox {
+namespace nvblox
+{
 
-void checkCuda(cudaError_t result, char const* const func,
-                const char* const file, int const line);
+void checkCuda(
+  cudaError_t result, char const * const func,
+  const char * const file, int const line);
 
 #define checkCudaErrors(val) checkCuda((val), #val, __FILE__, __LINE__)
 

@@ -89,13 +89,15 @@ void EsdfSliceConverter::sliceLayerToDistanceImage(
 }
 
 void EsdfSliceConverter::sliceLayersToCombinedDistanceImage(
-    const EsdfLayer& layer_1, const EsdfLayer& layer_2, float slice_height,
+    const EsdfLayer& layer_1, const EsdfLayer& layer_2,
+    float layer_1_slice_height, float layer_2_slice_height,
     Image<float>* output_image, AxisAlignedBoundingBox* aabb) {
   CHECK_NOTNULL(aabb);
-  *aabb = esdf_slicer_.getCombinedAabbOfLayersAtHeight(layer_1, layer_2, slice_height);
+  *aabb = esdf_slicer_.getCombinedAabbOfLayersAtHeight(
+      layer_1, layer_2, layer_1_slice_height, layer_2_slice_height);
   esdf_slicer_.sliceLayersToCombinedDistanceImage(
-      layer_1, layer_2, slice_height, kDistanceMapSliceUnknownValue,
-      *aabb, output_image);
+      layer_1, layer_2, layer_1_slice_height, layer_2_slice_height,
+      kDistanceMapSliceUnknownValue, *aabb, output_image);
 }
 
 void EsdfSliceConverter::distanceMapSliceMsgFromSliceImage(

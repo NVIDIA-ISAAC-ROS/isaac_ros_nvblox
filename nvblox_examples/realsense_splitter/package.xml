@@ -21,9 +21,9 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>realsense_splitter</name>
-  <version>2.1.0</version>
+  <version>3.0.0</version>
   <description>Splits realsense outputs based on emitter status.</description>
-  <maintainer email="amillane@nvidia.com">alex</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
 
@@ -37,7 +37,7 @@
   <depend>sensor_msgs</depend>
   <depend>message_filters</depend>
   <depend>realsense2_camera_msgs</depend>
-  <depend>nvblox_ros_common</depend>
+  <depend>isaac_ros_common</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

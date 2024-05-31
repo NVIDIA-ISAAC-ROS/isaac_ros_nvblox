@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2021-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2021-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ find_package(rclcpp_components REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(realsense2_camera_msgs REQUIRED)
-find_package(nvblox_ros_common REQUIRED)
+find_package(isaac_ros_common REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 
 
@@ -47,7 +47,7 @@ ament_target_dependencies(realsense_splitter_component
   sensor_msgs
   message_filters
   realsense2_camera_msgs
-  nvblox_ros_common
+  isaac_ros_common
 )
 target_include_directories(realsense_splitter_component PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

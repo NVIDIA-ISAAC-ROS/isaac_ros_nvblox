@@ -21,11 +21,11 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros</name>
-  <version>2.1.0</version>
+  <version>3.0.0</version>
   <description>NVBlox ROS 2 interface</description>
 
-  <maintainer email="amillane@nvidia.com">Alexander Millane</maintainer>
-  <maintainer email="hemals@nvidia.com">Hemal Shah</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Helen Oleynikova</author>
@@ -46,8 +46,13 @@
   <depend>tf2_ros</depend>
   <depend>message_filters</depend>
   <depend>cv_bridge</depend>
-  <depend>nvblox</depend>
   <depend>nvblox_ros_common</depend>
+  <depend>nvblox_ros_python_utils</depend>
+  <depend>nvblox_rviz_plugin</depend>
+  <depend>isaac_ros_managed_nitros</depend>
+  <depend>isaac_ros_nitros_image_type</depend>
+  <depend>isaac_ros_gxf</depend>
+  <depend>isaac_ros_common</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

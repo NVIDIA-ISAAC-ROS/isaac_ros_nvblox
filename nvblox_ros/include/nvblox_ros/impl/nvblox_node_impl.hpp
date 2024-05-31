@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,8 +19,10 @@
 #define NVBLOX_ROS__IMPL__NVBLOX_NODE_IMPL_HPP_
 
 #include <nvblox/utils/timing.h>
+#include <nvblox/utils/rates.h>
+#include <nvblox/utils/delays.h>
 
-#include <deque>
+#include <list>
 #include <string>
 #include <vector>
 
@@ -29,113 +31,72 @@ namespace nvblox
 
 template<typename QueuedType>
 void NvbloxNode::processMessageQueue(
-  std::deque<QueuedType> * queue_ptr, std::mutex * queue_mutex_ptr,
+  std::list<QueuedType> * queue_ptr, std::mutex * queue_mutex_ptr,
   MessageReadyCallback<QueuedType> message_ready_check,
   ProcessMessageCallback<QueuedType> callback)
 {
-  timing::Timer ros_total_timer("ros/total");
+  timing::Timer ros_total_timer("ros/process_message_queue");
 
-  // Copy over all the pointers we actually want to process here.
-  std::vector<QueuedType> items_to_process;
-
+  // Iterate over all items in the queue and delete the ones processed.
   std::unique_lock<std::mutex> lock(*queue_mutex_ptr);
-
-  if (queue_ptr->empty()) {
-    lock.unlock();
-    return;
-  }
-
-  auto it_first_valid = queue_ptr->end();
-  auto it_last_valid = queue_ptr->begin();
-
-  for (auto it = queue_ptr->begin(); it != queue_ptr->end(); it++) {
-    // Process this image in the queue
+  auto it = queue_ptr->begin();
+  while (it != queue_ptr->end()) {
+    auto next = std::next(it);
     if (message_ready_check(*it)) {
-      items_to_process.push_back(*it);
-    } else {
-      continue;
+      callback(*it);
+      queue_ptr->erase(it);
     }
-
-    // If we processed this frame, keep track of that fact so we can delete it
-    // at the end.
-    if (it_first_valid == queue_ptr->end()) {
-      it_first_valid = it;
-    }
-    if (it_last_valid <= it) {
-      it_last_valid = it;
-    }
-  }
-
-  // Now we have 2 iterators pointing to what we want to delete.
-  if (it_first_valid != queue_ptr->end()) {
-    // Actually erase from the beginning of the queue.
-    queue_ptr->erase(queue_ptr->begin(), ++it_last_valid);
-    // Warn user if we're loosing messages unprocessed
-    const int num_messages_deleted = it_last_valid - queue_ptr->begin();
-    const int num_messages_processed = items_to_process.size();
-    if (num_messages_deleted > num_messages_processed) {
-      const int num_messages_lost = num_messages_deleted - num_messages_processed;
-      constexpr int kLostMessagesPublishPeriodMs = 1000;
-      auto & clk = *get_clock();
-      RCLCPP_WARN_STREAM_THROTTLE(
-        get_logger(), clk, kLostMessagesPublishPeriodMs,
-        "Deleted " << num_messages_lost << "because we could not interpolate transforms.");
-    }
+    it = next;
   }
   lock.unlock();
 
-  // Process everything that was found to be ready
-  if (items_to_process.empty()) {
-    return;
-  }
-  rclcpp::Time last_timestamp;
-  for (auto image_pair : items_to_process) {
-    callback(image_pair);
-  }
 
   // nvblox statistics
-  constexpr int kPublishPeriodMs = 10000;
   auto & clk = *get_clock();
-  RCLCPP_INFO_STREAM_THROTTLE(
-    get_logger(), clk, kPublishPeriodMs,
-    "Timing statistics: \n" <<
-      nvblox::timing::Timing::Print());
+  if (params_.print_timings_to_console) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_logger(), clk, params_.print_statistics_on_console_period_ms,
+      "Timing statistics: \n" <<
+        nvblox::timing::Timing::Print());
+  }
+  if (params_.print_rates_to_console) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_logger(), clk, params_.print_statistics_on_console_period_ms,
+      "Rates statistics: \n" <<
+        nvblox::timing::Rates::Print());
+  }
+  if (params_.print_delays_to_console) {
+    RCLCPP_INFO_STREAM_THROTTLE(
+      get_logger(), clk, params_.print_statistics_on_console_period_ms,
+      "Delay statistics: \n" <<
+        nvblox::timing::Delays::Print());
+  }
 }
 
 template<typename MessageType>
 void NvbloxNode::pushMessageOntoQueue(
+  const std::string & queue_name,
   MessageType message,
-  std::deque<MessageType> * queue_ptr,
+  std::list<MessageType> * queue_ptr,
   std::mutex * queue_mutex_ptr)
 {
-  // Push it into the queue.
-  timing::Timer ros_total_timer("ros/total");
-  {
-    const std::lock_guard<std::mutex> lock(*queue_mutex_ptr);
-    queue_ptr->emplace_back(message);
-  }
-}
-
-template<typename MessageType>
-void NvbloxNode::limitQueueSizeByDeletingOldestMessages(
-  const int max_num_messages, const std::string & queue_name,
-  std::deque<MessageType> * queue_ptr, std::mutex * queue_mutex_ptr)
-{
-  // Delete extra elements in the queue.
-  timing::Timer ros_total_timer("ros/total");
   const std::lock_guard<std::mutex> lock(*queue_mutex_ptr);
-  if (queue_ptr->size() > max_num_messages) {
-    const int num_elements_to_delete = queue_ptr->size() - max_num_messages;
-    queue_ptr->erase(
-      queue_ptr->begin(),
-      queue_ptr->begin() + num_elements_to_delete);
+  // Size should never grow larger than allowed if this is the only place we modify the queue.
+  CHECK(queue_ptr->size() <= static_cast<size_t>(params_.maximum_sensor_message_queue_length));
+
+  // Make room for the new message if queue is full
+  if (queue_ptr->size() == static_cast<size_t>(params_.maximum_sensor_message_queue_length)) {
+    queue_ptr->pop_front();
+    number_of_dropped_messages_[queue_name]++;
     constexpr int kPublishPeriodMs = 1000;
     auto & clk = *get_clock();
     RCLCPP_INFO_STREAM_THROTTLE(
       get_logger(), clk, kPublishPeriodMs,
-      queue_name << " queue was longer than " << max_num_messages <<
-        " deleted " << num_elements_to_delete << " messages.");
+      "Dropped an item from: " << queue_name << ". Size of queue: " << queue_ptr->size() <<
+        ". Total number of dropped messages is: " <<
+        number_of_dropped_messages_[queue_name]);
   }
+  queue_ptr->emplace_back(message);
 }
 
 template<typename MessageType>

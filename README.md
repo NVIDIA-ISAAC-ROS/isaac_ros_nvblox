@@ -33,14 +33,14 @@ to RViz to update the reconstruction in real-time as it is built.
 
 `isaac_ros_nvblox` offers several modes of operation. In its default mode
 the environment is assumed to be static. Two additional modes of operation are provided
-to support mapping scenes which contain dynamic elements: human reconstruction, for
-mapping scenes containing humans, and dynamic reconstruction, for mapping
+to support mapping scenes which contain dynamic elements: people reconstruction, for
+mapping scenes containing people, and dynamic reconstruction, for mapping
 scenes containing more general dynamic objects.
-The graph above shows `isaac_ros_nvblox` operating in human reconstruction
+The graph above shows `isaac_ros_nvblox` operating in people reconstruction
 mode. The color image corresponding to the depth image is processed with `unet`, using
 the PeopleSemSegNet DNN model to estimate a segmentation mask for
 persons in the color image. Nvblox uses this mask to separate reconstructed persons into a
-separate humans-only part of the reconstruction. The [Technical Details](https://nvidia-isaac-ros.github.io/concepts/scene_reconstruction/nvblox/technical_details.html)
+separate people-only part of the reconstruction. The [Technical Details](https://nvidia-isaac-ros.github.io/concepts/scene_reconstruction/nvblox/technical_details.html)
 provide more information on these three types of mapping.
 
 ## Performance
@@ -127,6 +127,10 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 * [`isaac_ros_nvblox`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html)
   * [Quickstart](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#quickstart)
+    * [Set Up Development Environment](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#set-up-development-environment)
+    * [Download Quickstart Assets](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#download-quickstart-assets)
+    * [Set Up `isaac_ros_nvblox`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#set-up-package-name)
+    * [Run Example Launch File](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#run-example-launch-file)
   * [Try More Examples](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#try-more-examples)
   * [API](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/index.html#api)
     * [ROS Parameters](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/api/parameters.html)
@@ -149,4 +153,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2023-10-18: General dynamic reconstruction.
+Update 2024-05-30: Multi-camera support, NITROS integration and performance improvements.

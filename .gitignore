@@ -45,3 +45,10 @@
 
 # Reconstructions
 *.ply
+
+# Node.js stuff
+**/node_modules
+**/dist
+
+# Rosbag folder for tests
+nvblox_test/test/test_cases

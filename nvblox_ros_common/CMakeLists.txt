@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,6 @@ find_package(CUDAToolkit REQUIRED)
 # LIBRARIES #
 #############
 add_library(${PROJECT_NAME}_lib SHARED
-  src/qos.cpp
   src/check_cuda_errors.cpp
 )
 ament_target_dependencies(${PROJECT_NAME}_lib

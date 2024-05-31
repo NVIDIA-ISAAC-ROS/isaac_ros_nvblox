@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,34 +28,37 @@
 
 #include "nvblox_rviz_plugin/nvblox_mesh_visual.h"
 
-namespace nvblox_rviz_plugin {
+namespace nvblox_rviz_plugin
+{
 
 class NvbloxMeshVisual;
 
 class __attribute__((visibility("default"))) NvbloxMeshDisplay
-    : public rviz_common::MessageFilterDisplay<nvblox_msgs::msg::Mesh> {
+  : public rviz_common::MessageFilterDisplay<nvblox_msgs::msg::Mesh>
+{
   Q_OBJECT
- public:
+
+public:
   NvbloxMeshDisplay();
   virtual ~NvbloxMeshDisplay();
 
- public Q_SLOTS:
+public Q_SLOTS:
   virtual void updateCeilingOptions();
- public Q_SLOTS:
+
+public Q_SLOTS:
   virtual void updateMeshColorOptions();
 
- protected:
+protected:
   virtual void onInitialize();
 
   virtual void reset();
 
- private:
-  void processMessage(
-      const nvblox_msgs::msg::Mesh::ConstSharedPtr msg) override;
+private:
+  void processMessage(const nvblox_msgs::msg::Mesh::ConstSharedPtr msg) override;
 
-  rviz_common::properties::BoolProperty* cut_ceiling_property_;
-  rviz_common::properties::FloatProperty* ceiling_height_property_;
-  rviz_common::properties::EnumProperty* mesh_color_property_;
+  rviz_common::properties::BoolProperty * cut_ceiling_property_;
+  rviz_common::properties::FloatProperty * ceiling_height_property_;
+  rviz_common::properties::EnumProperty * mesh_color_property_;
 
   std::unique_ptr<NvbloxMeshVisual> visual_;
 };

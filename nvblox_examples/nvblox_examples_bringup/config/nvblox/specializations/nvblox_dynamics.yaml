@@ -6,8 +6,6 @@
     use_lidar: false
 
     static_mapper:
-      # projective integrator (tsdf/color)
-      projective_integrator_max_integration_distance_m: 4.0
       # freespace integrator
       max_tsdf_distance_for_occupancy_m: 0.15
       max_unobserved_to_keep_consecutive_occupancy_ms: 200
@@ -17,7 +15,7 @@
 
     dynamic_mapper:
       # occupancy integrator
-      projective_integrator_max_integration_distance_m: 4.0
+      projective_integrator_max_integration_distance_m: 5.0
       projective_integrator_truncation_distance_vox: 4.0
       free_region_occupancy_probability: 0.2
       occupied_region_occupancy_probability: 0.9

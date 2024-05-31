@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -30,6 +30,7 @@ from sensor_msgs.msg import Image
 
 
 class SemanticConverter(Node):
+
     def __init__(self) -> None:
         '''
         Helper node to convert IsaacSim Semantic Labels to a consistent semantic segmentation image
@@ -44,16 +45,11 @@ class SemanticConverter(Node):
         self.declare_parameter('labels.names', ['unlabelled', 'person'])
 
         # Get params
-        camera_1_enabled = self.get_parameter(
-            'camera_1_enabled').get_parameter_value().bool_value
-        camera_2_enabled = self.get_parameter(
-            'camera_2_enabled').get_parameter_value().bool_value
-        camera_1_name = self.get_parameter(
-            'camera_1_name').get_parameter_value().string_value
-        camera_2_name = self.get_parameter(
-            'camera_2_name').get_parameter_value().string_value
-        label_names = self.get_parameter(
-            'labels.names').get_parameter_value().string_array_value
+        camera_1_enabled = self.get_parameter('camera_1_enabled').get_parameter_value().bool_value
+        camera_2_enabled = self.get_parameter('camera_2_enabled').get_parameter_value().bool_value
+        camera_1_name = self.get_parameter('camera_1_name').get_parameter_value().string_value
+        camera_2_name = self.get_parameter('camera_2_name').get_parameter_value().string_value
+        label_names = self.get_parameter('labels.names').get_parameter_value().string_array_value
 
         # Get dictionary that defines
         # how label names are converted to ids and color
@@ -67,8 +63,9 @@ class SemanticConverter(Node):
 
             output_id = self.get_parameter(
                 output_id_param_name).get_parameter_value().integer_value
-            output_color = list(self.get_parameter(
-                output_color_param_name).get_parameter_value().integer_array_value)
+            output_color = list(
+                self.get_parameter(
+                    output_color_param_name).get_parameter_value().integer_array_value)
 
             self.label_conversion_dict[label_name] = {
                 'output_id': output_id,
@@ -89,11 +86,9 @@ class SemanticConverter(Node):
             camera_name (str): The name of the camera
         '''
         # Subscriber
-        image_subscriber = message_filters.Subscriber(
-            self, Image, f"/{camera_name}/semantic")
+        image_subscriber = message_filters.Subscriber(self, Image, f"/{camera_name}/semantics/ground_truth")
         labels_subscriber = message_filters.Subscriber(
-            self, SemanticLabelsStamped,
-            f"/semantic_conversion/{camera_name}/labels_stamped")
+            self, SemanticLabelsStamped, f"/semantic_conversion/{camera_name}/labels_stamped")
 
         # Publisher
         publisher_mono8 = self.create_publisher(
@@ -102,11 +97,11 @@ class SemanticConverter(Node):
             Image, f"/semantic_conversion/{camera_name}/semantic_colorized", 1)
 
         # Synchronized callback
-        def on_camera_image_received(image_msg, label_msg): return \
-            self.on_image_received(
+        def on_camera_image_received(image_msg, label_msg):            return \
+self.on_image_received(
                 publisher_mono8, publisher_colorized, image_msg, label_msg)
-        ts = message_filters.TimeSynchronizer(
-            [image_subscriber, labels_subscriber], 10)
+
+        ts = message_filters.TimeSynchronizer([image_subscriber, labels_subscriber], 10)
         ts.registerCallback(on_camera_image_received)
 
     def on_image_received(self, publisher_mono8, publisher_colorized, image_msg: Image,
@@ -144,10 +139,8 @@ class SemanticConverter(Node):
         publisher_mono8.publish(labels_msg)
         publisher_colorized.publish(colors_msg)
 
-    def build_labels_lut(
-        self, current_labels: Dict[str,
-                                   Dict[str,
-                                        str]]) -> Tuple[np.array, np.array]:
+    def build_labels_lut(self, current_labels: Dict[str, Dict[str,
+                                                              str]]) -> Tuple[np.array, np.array]:
         '''
         Build labels lookup table (LUT) from current labels dictionary. The dictionary is formatted as
         {<class_id_0>: {"class": <class_name_x>}} where class_id_x is the id of the class in the
@@ -179,10 +172,9 @@ class SemanticConverter(Node):
                 continue
             label_name = label_name.lower()
             # Look for the output id / color if if exists
-            target_label = self.label_conversion_dict.get(
-                label_name, {}).get("output_id", 0)
-            target_color = self.label_conversion_dict.get(label_name, {}).get(
-                "output_color", [0, 0, 0])
+            target_label = self.label_conversion_dict.get(label_name, {}).get("output_id", 0)
+            target_color = self.label_conversion_dict.get(label_name,
+                                                          {}).get("output_color", [0, 0, 0])
             # Update the remap
             lut_labels[label_id_int] = target_label
             lut_colors[label_id_int] = target_color

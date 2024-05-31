@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -19,6 +19,10 @@
 #define NVBLOX_NAV2__NVBLOX_COSTMAP_LAYER_HPP_
 
 #include <Eigen/Core>
+#include <Eigen/Geometry>
+#include <tf2_ros/transform_listener.h>
+#include <string>
+#include <memory>
 #include <nav2_costmap_2d/costmap_layer.hpp>
 #include <nav2_costmap_2d/layer.hpp>
 #include <nav2_costmap_2d/layered_costmap.hpp>
@@ -55,6 +59,7 @@ private:
   bool lookupInSlice(const Eigen::Vector2f & pos, float * distance);
 
   // Settings
+  bool convert_to_binary_costmap_ = false;
   float max_obstacle_distance_ = 1.0f;
   float inflation_distance_ = 0.5f;
   // This should not include any "special" values like 255.
@@ -66,6 +71,15 @@ private:
 
   // State
   nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice_;
+
+  // Global frame of the nav2 costmap.
+  // This should match with the global_frame of the corresponding global_costmap/local_costmap.
+  std::string nav2_costmap_global_frame_ = "odom";
+
+  // Listener for slice to global frame transform.
+  std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
+  std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
+  Eigen::Isometry2f T_G_S_;
 };
 
 }  // namespace nav2

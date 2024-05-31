@@ -21,10 +21,10 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_rviz_plugin</name>
-  <version>2.1.0</version>
+  <version>3.0.0</version>
   <description>RViz visualization plugin for Nvblox meshes</description>
 
-  <maintainer email="amillane@nvidia.com">Alexander Millane</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros/</url>
   <author>Helen Oleynikova</author>

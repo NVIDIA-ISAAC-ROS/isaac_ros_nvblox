@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@
 #include <memory>
 #include <string>
 
-
 namespace nvblox
 {
 
@@ -29,17 +28,14 @@ Transformer::Transformer(rclcpp::Node * node)
 : node_(node)
 {
   // Get params like "use_tf_transforms".
-  use_tf_transforms_ =
-    node->declare_parameter<bool>("use_tf_transforms", use_tf_transforms_);
-  use_topic_transforms_ = node->declare_parameter<bool>(
-    "use_topic_transforms",
-    use_topic_transforms_);
+  use_tf_transforms_ = node->declare_parameter<bool>("use_tf_transforms", use_tf_transforms_);
+  use_topic_transforms_ =
+    node->declare_parameter<bool>("use_topic_transforms", use_topic_transforms_);
 
   // Init the transform listeners if we ARE using TF at all.
   if (use_tf_transforms_) {
     tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node->get_clock());
-    transform_listener_ =
-      std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
   }
 }
 
@@ -90,8 +86,7 @@ void Transformer::transformCallback(
   const geometry_msgs::msg::TransformStamped::ConstSharedPtr transform_msg)
 {
   rclcpp::Time timestamp = transform_msg->header.stamp;
-  transform_queue_[timestamp.nanoseconds()] =
-    transformToEigen(transform_msg->transform);
+  transform_queue_[timestamp.nanoseconds()] = transformToEigen(transform_msg->transform);
 }
 
 void Transformer::poseCallback(
@@ -102,10 +97,8 @@ void Transformer::poseCallback(
 }
 
 bool Transformer::lookupTransformTf(
-  const std::string & from_frame,
-  const std::string & to_frame,
-  const rclcpp::Time & timestamp,
-  Transform * transform)
+  const std::string & from_frame, const std::string & to_frame,
+  const rclcpp::Time & timestamp, Transform * transform)
 {
   geometry_msgs::msg::TransformStamped T_L_C_msg;
   try {
@@ -118,14 +111,15 @@ bool Transformer::lookupTransformTf(
     } else {
       RCLCPP_DEBUG_STREAM(
         node_->get_logger(),
-        "Cant transform: from:" << from_frame << " to " << to_frame << ". Error string: " <<
-          error_string);
+        "Cant transform: from:" << from_frame << " to " << to_frame
+                                << ". Error string: " << error_string);
       return false;
     }
   } catch (tf2::TransformException & e) {
     RCLCPP_DEBUG_STREAM(
-      node_->get_logger(),
-      "Cant transform: from:" << from_frame << " to " << to_frame << ". Error: " << e.what());
+      node_->get_logger(), "Cant transform: from:" << from_frame << " to "
+                                                   << to_frame
+                                                   << ". Error: " << e.what());
     return false;
   }
 
@@ -133,9 +127,7 @@ bool Transformer::lookupTransformTf(
   return true;
 }
 
-bool Transformer::lookupTransformQueue(
-  const rclcpp::Time & timestamp,
-  Transform * transform)
+bool Transformer::lookupTransformQueue(const rclcpp::Time & timestamp, Transform * transform)
 {
   // Get latest transform
   if (timestamp == rclcpp::Time(0)) {
@@ -155,8 +147,8 @@ bool Transformer::lookupTransformQueue(
     }
 
     // If we're too far off on the timestamp:
-    uint64_t distance = std::max(closest_match->first, timestamp_ns) -
-      std::min(closest_match->first, timestamp_ns);
+    uint64_t distance =
+      std::max(closest_match->first, timestamp_ns) - std::min(closest_match->first, timestamp_ns);
     if (distance > timestamp_tolerance_ns_) {
       return false;
     }
@@ -168,9 +160,7 @@ bool Transformer::lookupTransformQueue(
   }
 }
 
-bool Transformer::lookupSensorTransform(
-  const std::string & sensor_frame,
-  Transform * transform)
+bool Transformer::lookupSensorTransform(const std::string & sensor_frame, Transform * transform)
 {
   auto it = sensor_transforms_.find(sensor_frame);
   if (it == sensor_transforms_.end()) {
@@ -179,15 +169,12 @@ bool Transformer::lookupSensorTransform(
       // Well we're kind out out of options here.
       return false;
     }
-    bool success = lookupTransformTf(
-      pose_frame_, sensor_frame,
-      node_->get_clock()->now(), transform);
+    bool success =
+      lookupTransformTf(pose_frame_, sensor_frame, node_->get_clock()->now(), transform);
     if (success) {
       sensor_transforms_[sensor_frame] = *transform;
     } else {
-      RCLCPP_INFO(
-        node_->get_logger(),
-        "Could not look up transform to sensor.");
+      RCLCPP_INFO(node_->get_logger(), "Could not look up transform to sensor.");
     }
     return success;
   } else {
@@ -196,16 +183,11 @@ bool Transformer::lookupSensorTransform(
   }
 }
 
-Transform Transformer::transformToEigen(
-  const geometry_msgs::msg::Transform & msg) const
+Transform Transformer::transformToEigen(const geometry_msgs::msg::Transform & msg) const
 {
   return Transform(
-    Eigen::Translation3f(
-      msg.translation.x, msg.translation.y,
-      msg.translation.z) *
-    Eigen::Quaternionf(
-      msg.rotation.w, msg.rotation.x,
-      msg.rotation.y, msg.rotation.z));
+    Eigen::Translation3f(msg.translation.x, msg.translation.y, msg.translation.z) *
+    Eigen::Quaternionf(msg.rotation.w, msg.rotation.x, msg.rotation.y, msg.rotation.z));
 }
 
 Transform Transformer::poseToEigen(const geometry_msgs::msg::Pose & msg) const
@@ -213,8 +195,8 @@ Transform Transformer::poseToEigen(const geometry_msgs::msg::Pose & msg) const
   return Transform(
     Eigen::Translation3d(msg.position.x, msg.position.y, msg.position.z) *
     Eigen::Quaterniond(
-      msg.orientation.w, msg.orientation.x,
-      msg.orientation.y, msg.orientation.z));
+      msg.orientation.w, msg.orientation.x, msg.orientation.y,
+      msg.orientation.z));
 }
 
 }  // namespace nvblox

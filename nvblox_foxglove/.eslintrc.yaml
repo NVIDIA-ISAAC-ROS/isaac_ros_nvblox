@@ -1,0 +1,27 @@
+root: true
+
+env:
+  browser: true
+  es2020: true
+  node: false
+
+ignorePatterns:
+  - dist
+
+plugins:
+  - jest
+
+extends:
+  - plugin:@foxglove/base
+  - plugin:@foxglove/react
+
+rules:
+  react-hooks/exhaustive-deps: [error]
+  typescript-eslint/no-explicit-any: [off]
+
+overrides:
+  - files: ["*.ts", "*.tsx"]
+    extends:
+      - plugin:@foxglove/typescript
+    parserOptions:
+      project: ./tsconfig.json

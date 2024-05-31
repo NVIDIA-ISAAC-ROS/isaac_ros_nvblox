@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,201 +16,149 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import os
+from typing import List
 
-from ament_index_python.packages import get_package_share_directory
-from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument
-from launch.substitutions import LaunchConfiguration
-from launch_ros.actions import LoadComposableNodes, Node
-from launch_ros.descriptions import ComposableNode
-from launch.conditions import UnlessCondition
+from isaac_ros_launch_utils.all_types import *
+import isaac_ros_launch_utils as lu
+
+from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxPeopleSegmentation
+from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME, \
+    SEMSEGNET_INPUT_IMAGE_WIDTH, SEMSEGNET_INPUT_IMAGE_HEIGHT
 
 
-def generate_launch_description():
-    
-    """Launch the DNN Image encoder, Triton node and UNet decoder node, with the padding and depadding nodes"""
-    launch_args = [
-        DeclareLaunchArgument(
-            'network_image_width',
-            default_value='960',
-            description='The input image width that the network expects'),
-        DeclareLaunchArgument(
-            'network_image_height',
-            default_value='544',
-            description='The input image height that the network expects'),
-        DeclareLaunchArgument(
-            'encoder_image_mean',
-            default_value='[0.5, 0.5, 0.5]',
-            description='The mean for image normalization'),
-        DeclareLaunchArgument(
-            'encoder_image_stddev',
-            default_value='[0.5, 0.5, 0.5]',
-            description='The standard deviation for image normalization'),
-        DeclareLaunchArgument(
-            'model_name',
-            default_value='',
-            description='The name of the model'),
-        DeclareLaunchArgument(
-            'model_repository_paths',
-            default_value='[""]',
-            description='The absolute path to the repository of models'),
-        DeclareLaunchArgument(
-            'max_batch_size',
-            default_value='0',
-            description='The maximum allowed batch size of the model'),
-        DeclareLaunchArgument(
-            'input_tensor_names',
-            default_value='["input_tensor"]',
-            description='A list of tensor names to bound to the specified input binding names'),
-        DeclareLaunchArgument(
-            'input_binding_names',
-            default_value='["input_1"]',
-            description='A list of input tensor binding names (specified by model)'),
-        DeclareLaunchArgument(
-            'input_tensor_formats',
-            default_value='["nitros_tensor_list_nchw_rgb_f32"]',
-            description='The nitros format of the input tensors'),
-        DeclareLaunchArgument(
-            'output_tensor_names',
-            default_value='["output_tensor"]',
-            description='A list of tensor names to bound to the specified output binding names'),
-        DeclareLaunchArgument(
-            'output_binding_names',
-            default_value='["softmax_1"]',
-            description='A  list of output tensor binding names (specified by model)'),
-        DeclareLaunchArgument(
-            'output_tensor_formats',
-            default_value='["nitros_tensor_list_nhwc_rgb_f32"]',
-            description='The nitros format of the output tensors'),
-        DeclareLaunchArgument(
-            'network_output_type',
-            default_value='argmax',
-            description='The output type that the network provides (softmax, sigmoid or argmax)'),
-        DeclareLaunchArgument(
-            'color_segmentation_mask_encoding',
-            default_value='rgb8',
-            description='The image encoding of the colored segmentation mask (rgb8 or bgr8)'),
-        DeclareLaunchArgument(
-            'mask_width',
-            default_value='960',
-            description='The width of the segmentation mask'),
-        DeclareLaunchArgument(
-            'mask_height',
-            default_value='544',
-            description='The height of the segmentation mask'),
-    ]
-    
-    # DNN Image Encoder parameters
-    network_image_width = LaunchConfiguration('network_image_width')
-    network_image_height = LaunchConfiguration('network_image_height')
-    encoder_image_mean = LaunchConfiguration('encoder_image_mean')
-    encoder_image_stddev = LaunchConfiguration('encoder_image_stddev')
-    
-    # Triton parameters
-    model_name = LaunchConfiguration('model_name')
-    model_repository_paths = LaunchConfiguration('model_repository_paths')
-    max_batch_size = LaunchConfiguration('max_batch_size')
-    input_tensor_names = LaunchConfiguration('input_tensor_names')
-    input_binding_names = LaunchConfiguration('input_binding_names')
-    input_tensor_formats = LaunchConfiguration('input_tensor_formats')
-    output_tensor_names = LaunchConfiguration('output_tensor_names')
-    output_binding_names = LaunchConfiguration('output_binding_names')
-    output_tensor_formats = LaunchConfiguration('output_tensor_formats')
+def add_segmentation(args: lu.ArgumentContainer) -> List[Action]:
+    people_segmentation = NvbloxPeopleSegmentation[args.people_segmentation]
+    if people_segmentation is NvbloxPeopleSegmentation.peoplesemsegnet_vanilla:
+        model_name = 'deployable_quantized_vanilla_unet_v2.0'
+        input_binding_names = ['input_1:0']
+    elif people_segmentation is NvbloxPeopleSegmentation.peoplesemsegnet_shuffleseg:
+        model_name = 'deployable_shuffleseg_unet_amr_v1.0'
+        input_binding_names = ['input_2:0']
+    else:
+        raise Exception(f'People segmentation mode {people_segmentation} not implemented.')
 
-    # U-Net Decoder parameters
-    network_output_type = LaunchConfiguration('network_output_type')
-    color_segmentation_mask_encoding = LaunchConfiguration(
-        'color_segmentation_mask_encoding')
-    mask_width = LaunchConfiguration('mask_width')
-    mask_height = LaunchConfiguration('mask_height')
-
-    # Padding and De-padding parameters
-    padding_input_topic = LaunchConfiguration('padding_input_topic', default='/camera/color/image_raw')
-    
-    # Option to attach the nodes to a shared component container for speed ups through intra process communication.
-    # Make sure to set the 'component_container_name' to the name of the component container you want to attach to.
-    attach_to_shared_component_container_arg = LaunchConfiguration('attach_to_shared_component_container', default=False)
-    component_container_name_arg = LaunchConfiguration('component_container_name', default='segmentation_container')
-
-    # If we do not attach to a shared component container we have to create our own container.
-    segmentation_container = Node(
-        name=component_container_name_arg,
-        package='rclcpp_components',
-        executable='component_container_mt',
-        output='screen',
-        condition=UnlessCondition(attach_to_shared_component_container_arg)
-    )
 
     # Semantic segmentation
-    load_composable_nodes = LoadComposableNodes(
-        target_container=component_container_name_arg,
-        composable_node_descriptions=[
-            ComposableNode(
-                name='dnn_image_encoder',
-                package='isaac_ros_dnn_image_encoder',
-                plugin='nvidia::isaac_ros::dnn_inference::DnnImageEncoderNode',
-                parameters=[{
-                    'input_image_width': network_image_width,
-                    'input_image_height': network_image_height,
-                    'network_image_width': network_image_width,
-                    'network_image_height': network_image_height,
-                    'image_mean': encoder_image_mean,
-                    'image_stddev': encoder_image_stddev,
-                }],
-                remappings=[('encoded_tensor', 'tensor_pub'), ('image', '/camera/color/image_raw_padded')]
-            ),
-            # Triton Node
-            ComposableNode(
-                name='triton_node',
-                package='isaac_ros_triton',
-                plugin='nvidia::isaac_ros::dnn_inference::TritonNode',
-                parameters=[{
-                    'model_name': model_name,
-                    'model_repository_paths': model_repository_paths,
-                    'max_batch_size': max_batch_size,
-                    'input_tensor_names': input_tensor_names,
-                    'input_binding_names': input_binding_names,
-                    'input_tensor_formats': input_tensor_formats,
-                    'output_tensor_names': output_tensor_names,
-                    'output_binding_names': output_binding_names,
-                    'output_tensor_formats': output_tensor_formats,
-                }]),
-            # Unet Decoder Node
-            ComposableNode(
-                name='unet_decoder_node',
-                package='isaac_ros_unet',
-                plugin='nvidia::isaac_ros::unet::UNetDecoderNode',
-                parameters=[{
-                    'network_output_type': network_output_type,
-                    'color_segmentation_mask_encoding': color_segmentation_mask_encoding,
-                    'mask_width': mask_width,
-                    'mask_height': mask_height,
-                    'color_palette': [0x556B2F, 0x800000, 0x008080, 0x000080, 0x9ACD32, 0xFF0000, 0xFF8C00,
-                                      0xFFD700, 0x00FF00, 0xBA55D3, 0x00FA9A, 0x00FFFF, 0x0000FF, 0xF08080,
-                                      0xFF00FF, 0x1E90FF, 0xDDA0DD, 0xFF1493, 0x87CEFA, 0xFFDEAD],
-                }]),
-            # Encoder - Padding
-            ComposableNode(
-            name='image_padding_node',
-            package='nvblox_image_padding',
-            plugin='nvblox::ImagePaddingCroppingNode',
-            parameters=[{'image_qos': 'SYSTEM_DEFAULT',
-                         'desired_height': 544,
-                         'desired_width': 960
-                         }],
-            remappings=[('~/image_in', padding_input_topic),
-                        ('~/image_out', '/camera/color/image_raw_padded')]),
-            # Decoder - Depadding
-            ComposableNode(
-            name='image_cropping_node',
-            package='nvblox_image_padding',
-            plugin='nvblox::ImagePaddingCroppingNode',
-            parameters=[{'image_qos': 'SENSOR_DATA',
-                         'desired_height': 480,
-                         'desired_width': 640
-                         }],
-            remappings=[('~/image_in', '/unet/raw_segmentation_mask'),
-                        ('~/image_out', '/unet/raw_segmentation_mask_depadded')])])
+    # 1) Input Padding / Cropping:
+    #    - Input Resolution:  input_image_resolution
+    #    - Output Resolution: network_image_resolution
+    # 2) Unet Encoder + Triton Node + Unet Decoder
+    #    - Resolution:        network_image_resolution
+    # 1) Output Padding / Cropping:
+    #    - Input Resolution:  network_image_resolution
+    #    - Output Resolution: input_image_resolution
 
-    final_launch_description = launch_args + [segmentation_container, load_composable_nodes]
-    return LaunchDescription(final_launch_description)
+    resize_node = ComposableNode(
+        name='segmentation_resize_node',
+        package='isaac_ros_image_proc',
+        plugin='nvidia::isaac_ros::image_proc::ResizeNode',
+        parameters=[{
+            'output_width': args.network_image_width,
+            'output_height': args.network_image_height,
+            'keep_aspect_ratio': False,
+            'input_qos': 'SENSOR_DATA',
+        }],
+        remappings=[
+            ('image', args.input_topic),
+            ('camera_info', args.input_camera_info_topic),
+            ('resize/image', '/segmentation/image_resized'),
+            ('resize/camera_info', '/segmentation/camera_info_resized'),
+        ]
+    )
+
+    unet_encoder_node = ComposableNode(
+        name='dnn_image_encoder',
+        package='isaac_ros_dnn_image_encoder',
+        plugin='nvidia::isaac_ros::dnn_inference::DnnImageEncoderNode',
+        parameters=[{
+            # Do not resize (we do padding / cropping):
+            # input resolution = network resolution
+            'input_image_width': args.network_image_width,
+            'input_image_height': args.network_image_height,
+            'network_image_width': args.network_image_width,
+            'network_image_height': args.network_image_height,
+            'image_mean': args.encoder_image_mean,
+            'image_stddev': args.encoder_image_stddev,
+        }],
+        remappings=[
+            ('encoded_tensor', 'tensor_pub'),
+            ('image', '/segmentation/image_resized')])
+
+    triton_node = ComposableNode(
+        name='triton_node',
+        package='isaac_ros_triton',
+        plugin='nvidia::isaac_ros::dnn_inference::TritonNode',
+        parameters=[{
+            'model_name': model_name,
+            'model_repository_paths': args.model_repository_paths,
+            'max_batch_size': args.max_batch_size,
+            'input_tensor_names': args.input_tensor_names,
+            'input_binding_names': input_binding_names,
+            'input_tensor_formats': args.input_tensor_formats,
+            'output_tensor_names': args.output_tensor_names,
+            'output_binding_names': args.output_binding_names,
+            'output_tensor_formats': args.output_tensor_formats,
+        }])
+
+    unet_decoder_node = ComposableNode(
+        name='unet_decoder_node',
+        package='isaac_ros_unet',
+        plugin='nvidia::isaac_ros::unet::UNetDecoderNode',
+        parameters=[{
+            'network_output_type': args.network_output_type,
+            'color_segmentation_mask_encoding': args.color_segmentation_mask_encoding,
+            # Do not resize (we do padding / cropping):
+            # network resolution = output mask resolution
+            'mask_width': args.network_image_width,
+            'mask_height': args.network_image_height,
+            'color_palette': [
+                0x556B2F, 0x800000, 0x008080, 0x000080, 0x9ACD32, 0xFF0000, 0xFF8C00, 0xFFD700,
+                0x00FF00, 0xBA55D3, 0x00FA9A, 0x00FFFF, 0x0000FF, 0xF08080, 0xFF00FF, 0x1E90FF,
+                0xDDA0DD, 0xFF1493, 0x87CEFA, 0xFFDEAD
+            ],
+        }])
+
+    actions = []
+    if args.run_standalone:
+        actions.append(lu.component_container(args.container_name))
+    actions.append(
+        lu.load_composable_nodes(
+            args.container_name,
+            [
+                unet_encoder_node, triton_node, unet_decoder_node, resize_node,
+            ],
+        ))
+
+    return actions
+
+
+def generate_launch_description() -> LaunchDescription:
+    """Launch the DNN Image encoder, Triton node and UNet decoder node, with the padding and depadding nodes"""
+    args = lu.ArgumentContainer()
+    args.add_arg('people_segmentation', NvbloxPeopleSegmentation.peoplesemsegnet_vanilla)
+    # Inputs
+    args.add_arg('input_topic')
+    args.add_arg('input_camera_info_topic')
+    # DNN Image Encoder parameters
+    args.add_arg('network_image_width', SEMSEGNET_INPUT_IMAGE_WIDTH)
+    args.add_arg('network_image_height', SEMSEGNET_INPUT_IMAGE_HEIGHT)
+    args.add_arg('encoder_image_mean', '[0.5, 0.5, 0.5]')
+    args.add_arg('encoder_image_stddev', '[0.5, 0.5, 0.5]')
+    # Triton parameters
+    args.add_arg('model_repository_paths',
+                 '["' + lu.get_isaac_ros_ws_path() + '/isaac_ros_assets/models/peoplesemsegnet"]')
+    args.add_arg('max_batch_size', '0')
+    args.add_arg('input_tensor_names', '["input_tensor"]')
+    args.add_arg('input_tensor_formats', '["nitros_tensor_list_nchw_rgb_f32"]')
+    args.add_arg('output_tensor_names', '["output_tensor"]')
+    args.add_arg('output_binding_names', '["argmax_1"]')
+    args.add_arg('output_tensor_formats', '["nitros_tensor_list_nhwc_rgb_f32"]')
+    # U-Net Decoder parameters
+    args.add_arg('network_output_type', 'argmax')
+    args.add_arg('color_segmentation_mask_encoding', 'rgb8')
+    # Additional arguments
+    args.add_arg('container_name', NVBLOX_CONTAINER_NAME)
+    args.add_arg('run_standalone', 'False')
+
+    args.add_opaque_function(add_segmentation)
+    return LaunchDescription(args.get_launch_actions())
