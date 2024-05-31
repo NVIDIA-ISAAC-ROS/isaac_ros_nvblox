@@ -1,7 +1,0 @@
-
----
-TopicStamps[] topic_stamps
-std_msgs/Float32[] cpu_percentage_samples
-std_msgs/Float32[] gpu_percentage_samples
-std_msgs/Float32[] network_mean_iou_percentage_samples
-std_msgs/String timers_string

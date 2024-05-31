@@ -1,5 +1,5 @@
 # SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-# Copyright (c) 2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2023-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(nvblox_ros_common REQUIRED)
 find_package(CUDAToolkit REQUIRED)
+find_package(isaac_ros_common REQUIRED)
 
 #############
 # LIBRARIES #
@@ -41,13 +42,14 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   sensor_msgs
   cv_bridge
   nvblox_ros_common
+  isaac_ros_common
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
 rclcpp_components_register_nodes(${PROJECT_NAME}_lib "nvblox::ImagePaddingCroppingNode")
-  
+
 ############
 # BINARIES #
 ############

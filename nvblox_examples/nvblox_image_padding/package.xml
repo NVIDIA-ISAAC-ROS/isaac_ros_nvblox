@@ -21,12 +21,12 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_image_padding</name>
-  <version>2.1.0</version>
+  <version>3.0.0</version>
   <description>Image padding for nvblox_ros</description>
 
-  <maintainer email="amillane@nvidia.com">Alexander Millane</maintainer>
-  <maintainer email="remos@nvidia.com">Remo Steiner</maintainer>
-  <maintainer email="hemals@nvidia.com">Hemal Shah</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
   <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
   <author>Alexander Millane</author>
@@ -42,6 +42,7 @@
   <depend>sensor_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>nvblox_ros_common</depend>
+  <depend>isaac_ros_common</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

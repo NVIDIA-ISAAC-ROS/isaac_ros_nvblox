@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,8 @@ namespace nvblox
 {
 
 WeightingFunctionType weighting_function_type_from_string(
-  const std::string & weighting_function_str, rclcpp::Node * node)
+  const std::string & weighting_function_str,
+  rclcpp::Node * node)
 {
   if (weighting_function_str == "constant") {
     return WeightingFunctionType::kConstantWeight;
@@ -37,19 +38,19 @@ WeightingFunctionType weighting_function_type_from_string(
     return WeightingFunctionType::kInverseSquareDropoffWeight;
   } else if (weighting_function_str == "inverse_square_tsdf_distance_penalty") {
     return WeightingFunctionType::kInverseSquareTsdfDistancePenalty;
+  } else if (weighting_function_str == "linear_with_max") {
+    return WeightingFunctionType::kLinearWithMax;
   } else {
     RCLCPP_WARN_STREAM(
       node->get_logger(),
       "Requested weighting function: \""
-        << weighting_function_str
-        << "\" not recognized. Defaulting to: "
-        << ProjectiveIntegrator<void>::kDefaultWeightingFunctionType);
-    return ProjectiveIntegrator<void>::kDefaultWeightingFunctionType;
+        << weighting_function_str << "\" not recognized. Defaulting to: "
+        << kProjectiveIntegratorWeightingModeParamDesc.default_value);
+    return kProjectiveIntegratorWeightingModeParamDesc.default_value;
   }
 }
 
-MappingType mapping_type_from_string(
-  const std::string & mapping_type_str, rclcpp::Node * node)
+MappingType mapping_type_from_string(const std::string & mapping_type_str, rclcpp::Node * node)
 {
   if (mapping_type_str == "static_tsdf") {
     return MappingType::kStaticTsdf;
@@ -63,8 +64,7 @@ MappingType mapping_type_from_string(
     return MappingType::kHumanWithStaticOccupancy;
   } else {
     RCLCPP_WARN_STREAM(
-      node->get_logger(),
-      "Requested mapping type: \""
+      node->get_logger(), "Requested mapping type: \""
         << mapping_type_str
         << "\" not recognized. Defaulting to: "
         << toString(MappingType::kStaticTsdf));
@@ -72,78 +72,73 @@ MappingType mapping_type_from_string(
   }
 }
 
-
-void declareMapperParameters(
-  const std::string & mapper_name,
-  rclcpp::Node * node)
+void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * node)
 {
-  // Declare parameters
-  // NOTE(alexmillane): We have to use the insane syntax in
-  // declareParameterWithoutDefault() order to avoid passing a default value to
-  // declare_parameter(). The problem with using a default value is that when we
-  // later call node->get_parameter() in initialize_mapper(), it will always
-  // return true, even if the user has not set the parameter. To me this appears
-  // like a bug in ROS 2. After hours of trying, the insane combination of
-  // syntaxes in this function and initialize_mapper() was the only this I found
-  // that worked. UPDATE(helzor): Apparently this issue is fixed in later ROS 2
-  // versions.
-
   // ======= MAPPER =======
-  declareParameterWithoutDefault<bool>(
-    mapper_name + ".do_depth_preprocessing", node);
-  declareParameterWithoutDefault<int64_t>(
-    mapper_name + ".depth_preprocessing_num_dilations", node);
+  // depth preprocessing
+  declareParameter<bool>(mapper_name, kDoDepthPrepocessingParamDesc, node);
+  declareParameter<int>(mapper_name, kDepthPreprocessingNumDilationsParamDesc, node);
+
+  // mesh streaming
+  declareParameter<float>(mapper_name, kMeshBandwidthLimitMbpsParamDesc, node);
+  // 2D esdf slice
+  declareParameter<float>(mapper_name, kEsdfSliceMinHeightParamDesc, node);
+  declareParameter<float>(mapper_name, kEsdfSliceMaxHeightParamDesc, node);
+  declareParameter<float>(mapper_name, kEsdfSliceHeightParamDesc, node);
+  // Decay
+  declareParameter<bool>(mapper_name, kExcludeLastViewFromDecayParamDesc, node);
+
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".projective_integrator_max_integration_distance_m", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".lidar_projective_integrator_max_integration_distance_m", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".projective_integrator_truncation_distance_vox", node);
-  declareParameterWithoutDefault<std::string>(
-    mapper_name + ".weighting_mode", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".projective_integrator_max_weight", node);
+  declareParameter<float>(mapper_name, kProjectiveIntegratorMaxIntegrationDistanceMParamDesc, node);
+  declareParameter<float>(
+    mapper_name, kLidarProjectiveIntegratorMaxIntegrationDistanceMParamDesc,
+    node);
+  declareParameter<float>(mapper_name, kProjectiveIntegratorTruncationDistanceVoxParamDesc, node);
+  declareParameter<WeightingFunctionType, std::string>(
+    mapper_name, kProjectiveIntegratorWeightingModeParamDesc, node,
+    [](WeightingFunctionType default_value) {return to_string(default_value);});
+  declareParameter<float>(mapper_name, kProjectiveIntegratorMaxWeightParamDesc, node);
   // ======= OCCUPANCY INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".free_region_occupancy_probability", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".occupied_region_occupancy_probability", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".unobserved_region_occupancy_probability", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".occupied_region_half_width_m", node);
+  declareParameter<float>(mapper_name, kFreeRegionOccupancyProbabilityParamDesc, node);
+  declareParameter<float>(mapper_name, kOccupiedRegionOccupancyProbabilityParamDesc, node);
+  declareParameter<float>(mapper_name, kUnobservedRegionOccupancyProbabilityParamDesc, node);
+  declareParameter<float>(mapper_name, kOccupiedRegionHalfWidthMParamDesc, node);
   // ======= ESDF INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".esdf_integrator_min_weight", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".esdf_integrator_max_site_distance_vox", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".esdf_integrator_max_distance_m", node);
+  declareParameter<float>(mapper_name, kEsdfIntegratorMinWeightParamDesc, node);
+  declareParameter<float>(mapper_name, kEsdfIntegratorMaxSiteDistanceVoxParamDesc, node);
+  declareParameter<float>(mapper_name, kEsdfIntegratorMaxDistanceMParamDesc, node);
   // ======= MESH INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".mesh_integrator_min_weight", node);
-  declareParameterWithoutDefault<bool>(
-    mapper_name + ".mesh_integrator_weld_vertices", node);
+  declareParameter<float>(mapper_name, kMeshIntegratorMinWeightParamDesc, node);
+  declareParameter<bool>(mapper_name, kMeshIntegratorWeldVerticesParamDesc, node);
   // ======= TSDF DECAY INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".tsdf_decay_factor", node);
+  declareParameter<float>(mapper_name, kTsdfDecayFactorParamDesc, node);
+  declareParameter<float>(mapper_name, kTsdfDecayedWeightThresholdDesc, node);
+  declareParameter<bool>(mapper_name, kTsdfSetFreeDistanceOnDecayedDesc, node);
+  declareParameter<float>(mapper_name, kTsdfDecayedFreeDistanceVoxDesc, node);
+  declareParameter<bool, bool>(
+    mapper_name, kDecayIntegratorBaseDeallocateDecayedBlocks, node,
+    DefaultParamConverter<bool>(), "tsdf_deallocate_on_decayed");
+
   // ======= OCCUPANCY DECAY INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".free_region_decay_probability", node);
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".occupied_region_decay_probability", node);
+  declareParameter<float>(mapper_name, kFreeRegionDecayProbabilityParamDesc, node);
+  declareParameter<float>(mapper_name, kOccupiedRegionDecayProbabilityParamDesc, node);
+  declareParameter<bool, bool>(
+    mapper_name, kDecayIntegratorBaseDeallocateDecayedBlocks, node,
+    DefaultParamConverter<bool>(), "occupancy_deallocate_on_decayed");
+
   // ======= FREESPACE INTEGRATOR =======
-  declareParameterWithoutDefault<float>(
-    mapper_name + ".max_tsdf_distance_for_occupancy_m", node);
-  declareParameterWithoutDefault<int>(
-    mapper_name + ".max_unobserved_to_keep_consecutive_occupancy_ms", node);
-  declareParameterWithoutDefault<int>(
-    mapper_name + ".min_duration_since_occupied_for_freespace_ms", node);
-  declareParameterWithoutDefault<int>(
-    mapper_name + ".min_consecutive_occupancy_duration_for_reset_ms", node);
-  declareParameterWithoutDefault<bool>(
-    mapper_name + ".check_neighborhood", node);
+  declareParameter<float>(mapper_name, kMaxTsdfDistanceForOccupancyMParamDesc, node);
+  declareParameter<nvblox::Time, int64_t>(
+    mapper_name, kMaxUnobservedToKeepConsecutiveOccupancyMsParamDesc, node);
+  declareParameter<nvblox::Time, int64_t>(
+    mapper_name,
+    kMinDurationSinceOccupiedForFreespaceMsParamDesc, node);
+  declareParameter<nvblox::Time, int64_t>(
+    mapper_name, kMinConsecutiveOccupancyDurationForResetMsParamDesc, node);
+  declareParameter<bool>(mapper_name, kCheckNeighborhoodParamDesc, node);
+  // ======= MESH STREAMER =======
+  declareParameter<float>(mapper_name, kMeshStreamerExclusionHeightMParamDesc, node);
+  declareParameter<float>(mapper_name, kMeshStreamerExclusionRadiusMParamDesc, node);
 }
 
 MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Node * node)
@@ -155,113 +150,143 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   // ======= MAPPER =======
   // depth preprocessing
   set_mapper_parameter<bool>(
-    mapper_name, "do_depth_preprocessing",
+    mapper_name, kDoDepthPrepocessingParamDesc.name,
     [&](auto value) {params.do_depth_preprocessing = value;}, node);
-  set_mapper_parameter<int64_t>(
-    mapper_name, "depth_preprocessing_num_dilations",
+  set_mapper_parameter<int>(
+    mapper_name, kDepthPreprocessingNumDilationsParamDesc.name,
     [&](auto value) {params.depth_preprocessing_num_dilations = value;}, node);
+  // mesh streaming
+  set_mapper_parameter<float>(
+    mapper_name, kMeshBandwidthLimitMbpsParamDesc.name,
+    [&](auto value) {params.mesh_bandwidth_limit_mbps = value;}, node);
+  // 2D esdf slice
+  set_mapper_parameter<float>(
+    mapper_name, kEsdfSliceMinHeightParamDesc.name,
+    [&](auto value) {params.esdf_slice_min_height = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, kEsdfSliceMaxHeightParamDesc.name,
+    [&](auto value) {params.esdf_slice_max_height = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, kEsdfSliceHeightParamDesc.name,
+    [&](auto value) {params.esdf_slice_height = value;}, node);
+  // Decay
+  set_mapper_parameter<bool>(
+    mapper_name, kExcludeLastViewFromDecayParamDesc.name,
+    [&](auto value) {params.exclude_last_view_from_decay = value;}, node);
 
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
   // max integration distance
   set_mapper_parameter<float>(
-    mapper_name, "projective_integrator_max_integration_distance_m",
-    [&](auto value) {
-      params.projective_integrator_max_integration_distance_m = value;
-    }, node);
+    mapper_name, kProjectiveIntegratorMaxIntegrationDistanceMParamDesc.name,
+    [&](auto value) {params.projective_integrator_max_integration_distance_m = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "lidar_projective_integrator_max_integration_distance_m",
-    [&](auto value) {
-      params.lidar_projective_integrator_max_integration_distance_m = value;
-    }, node);
+    mapper_name, kLidarProjectiveIntegratorMaxIntegrationDistanceMParamDesc.name,
+    [&](auto value) {params.lidar_projective_integrator_max_integration_distance_m = value;},
+    node);
   // truncation distance
   set_mapper_parameter<float>(
-    mapper_name, "projective_integrator_truncation_distance_vox",
-    [&](auto value) {
-      params.projective_integrator_truncation_distance_vox = value;
-    }, node);
+    mapper_name, kProjectiveIntegratorTruncationDistanceVoxParamDesc.name,
+    [&](auto value) {params.projective_integrator_truncation_distance_vox = value;}, node);
   // weighting
   set_mapper_parameter<std::string>(
-    mapper_name, "weighting_mode",
+    mapper_name, kProjectiveIntegratorWeightingModeParamDesc.name,
     [&](auto value) {
-      const WeightingFunctionType weight_mode =
-      weighting_function_type_from_string(value, node);
+      const WeightingFunctionType weight_mode = weighting_function_type_from_string(value, node);
       params.projective_integrator_weighting_mode = weight_mode;
-    }, node);
+    },
+    node);
   // max weight
   set_mapper_parameter<float>(
-    mapper_name, "projective_integrator_max_weight",
+    mapper_name, kProjectiveIntegratorMaxWeightParamDesc.name,
     [&](auto value) {params.projective_integrator_max_weight = value;}, node);
 
   // ======= OCCUPANCY INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "free_region_occupancy_probability",
+    mapper_name, kFreeRegionOccupancyProbabilityParamDesc.name,
     [&](auto value) {params.free_region_occupancy_probability = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "occupied_region_occupancy_probability",
+    mapper_name, kOccupiedRegionOccupancyProbabilityParamDesc.name,
     [&](auto value) {params.occupied_region_occupancy_probability = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "unobserved_region_occupancy_probability",
-    [&](auto value) {
-      params.unobserved_region_occupancy_probability = value;
-    }, node);
+    mapper_name, kUnobservedRegionOccupancyProbabilityParamDesc.name,
+    [&](auto value) {params.unobserved_region_occupancy_probability = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "occupied_region_half_width_m",
+    mapper_name, kOccupiedRegionHalfWidthMParamDesc.name,
     [&](auto value) {params.occupied_region_half_width_m = value;}, node);
 
   // ======= ESDF INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "esdf_integrator_min_weight",
+    mapper_name, kEsdfIntegratorMinWeightParamDesc.name,
     [&](auto value) {params.esdf_integrator_min_weight = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "esdf_integrator_max_site_distance_vox",
+    mapper_name, kEsdfIntegratorMaxSiteDistanceVoxParamDesc.name,
     [&](auto value) {params.esdf_integrator_max_site_distance_vox = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "esdf_integrator_max_distance_m",
+    mapper_name, kEsdfIntegratorMaxDistanceMParamDesc.name,
     [&](auto value) {params.esdf_integrator_max_distance_m = value;}, node);
 
   // ======= MESH INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "mesh_integrator_min_weight",
+    mapper_name, kMeshIntegratorMinWeightParamDesc.name,
     [&](auto value) {params.mesh_integrator_min_weight = value;}, node);
   set_mapper_parameter<bool>(
-    mapper_name, "mesh_integrator_weld_vertices",
+    mapper_name, kMeshIntegratorWeldVerticesParamDesc.name,
     [&](auto value) {params.mesh_integrator_weld_vertices = value;}, node);
 
   // ======= TSDF DECAY INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "tsdf_decay_factor",
+    mapper_name, kTsdfDecayFactorParamDesc.name,
     [&](auto value) {params.tsdf_decay_factor = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, kTsdfDecayedWeightThresholdDesc.name,
+    [&](auto value) {params.tsdf_decayed_weight_threshold = value;}, node);
+  set_mapper_parameter<bool>(
+    mapper_name, kTsdfSetFreeDistanceOnDecayedDesc.name,
+    [&](auto value) {params.tsdf_set_free_distance_on_decayed = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, kTsdfDecayedFreeDistanceVoxDesc.name,
+    [&](auto value) {params.tsdf_decayed_free_distance_vox = value;}, node);
+  set_mapper_parameter<bool>(
+    mapper_name, "tsdf_deallocate_on_decayed",
+    [&](auto value) {params.tsdf_deallocate_decayed_blocks = value;}, node);
 
   // ======= OCCUPANCY DECAY INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "free_region_decay_probability",
+    mapper_name, kFreeRegionDecayProbabilityParamDesc.name,
     [&](auto value) {params.free_region_decay_probability = value;}, node);
   set_mapper_parameter<float>(
-    mapper_name, "occupied_region_decay_probability",
+    mapper_name, kOccupiedRegionDecayProbabilityParamDesc.name,
     [&](auto value) {params.occupied_region_decay_probability = value;}, node);
+  set_mapper_parameter<bool>(
+    mapper_name, "occupancy_deallocate_on_decayed",
+    [&](auto value) {params.occupancy_deallocate_decayed_blocks = value;}, node);
 
   // ======= FREESPACE INTEGRATOR =======
   set_mapper_parameter<float>(
-    mapper_name, "max_tsdf_distance_for_occupancy_m",
+    mapper_name, kMaxTsdfDistanceForOccupancyMParamDesc.name,
     [&](auto value) {params.max_tsdf_distance_for_occupancy_m = value;}, node);
   set_mapper_parameter<int64_t>(
-    mapper_name, "max_unobserved_to_keep_consecutive_occupancy_ms",
-    [&](auto value) {
-      params.max_unobserved_to_keep_consecutive_occupancy_ms = Time(value);
-    }, node);
+    mapper_name, kMaxUnobservedToKeepConsecutiveOccupancyMsParamDesc.name,
+    [&](auto value) {params.max_unobserved_to_keep_consecutive_occupancy_ms = Time(value);},
+    node);
   set_mapper_parameter<int64_t>(
-    mapper_name, "min_duration_since_occupied_for_freespace_ms",
-    [&](auto value) {
-      params.min_duration_since_occupied_for_freespace_ms = Time(value);
-    }, node);
+    mapper_name, kMinDurationSinceOccupiedForFreespaceMsParamDesc.name,
+    [&](auto value) {params.min_duration_since_occupied_for_freespace_ms = Time(value);}, node);
   set_mapper_parameter<int64_t>(
-    mapper_name, "min_consecutive_occupancy_duration_for_reset_ms",
-    [&](auto value) {
-      params.min_consecutive_occupancy_duration_for_reset_ms = Time(value);
-    }, node);
+    mapper_name, kMinConsecutiveOccupancyDurationForResetMsParamDesc.name,
+    [&](auto value) {params.min_consecutive_occupancy_duration_for_reset_ms = Time(value);},
+    node);
   set_mapper_parameter<bool>(
-    mapper_name, "check_neighborhood",
+    mapper_name, kCheckNeighborhoodParamDesc.name,
     [&](auto value) {params.check_neighborhood = value;}, node);
+
+  // ======= MESH STREAMER =======
+  set_mapper_parameter<float>(
+    mapper_name, kMeshStreamerExclusionHeightMParamDesc.name,
+    [&](auto value) {params.mesh_streamer_exclusion_height_m = value;}, node);
+  set_mapper_parameter<float>(
+    mapper_name, kMeshStreamerExclusionRadiusMParamDesc.name,
+    [&](auto value) {params.mesh_streamer_exclusion_radius_m = value;}, node);
 
   return params;
 }

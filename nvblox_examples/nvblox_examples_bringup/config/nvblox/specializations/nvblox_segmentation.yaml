@@ -1,0 +1,24 @@
+/**:
+  ros__parameters:
+    # multi mapper
+    mapping_type: "human_with_static_tsdf"  # ["human_with_static_tsdf", "human_with_static_occupancy"]
+    # lidar settings
+    use_lidar: false
+    # human node specific settings
+    human_debug_publish_rate_hz: 1.0
+
+    dynamic_mapper:
+      # occupancy integrator
+      projective_integrator_max_integration_distance_m: 5.0
+      projective_integrator_truncation_distance_vox: 4.0
+      free_region_occupancy_probability: 0.3
+      occupied_region_occupancy_probability: 0.9
+      unobserved_region_occupancy_probability: 0.35
+      occupied_region_half_width_m: 0.2
+      # esdf integrator
+      esdf_integrator_min_weight: 2.0
+      esdf_integrator_max_distance_m: 2.0
+      esdf_integrator_max_site_distance_vox: 5.0
+      # occupancy decay integrator
+      free_region_decay_probability: 0.55
+      occupied_region_decay_probability: 0.45

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -26,10 +26,15 @@
 namespace nvblox
 {
 
+enum class SliceLimitMarkerType
+{
+  kTopSliceLimit, kBottomSliceLimit
+};
+
 visualization_msgs::msg::Marker sliceLimitsToMarker(
   const Transform & T_G_PB, const float slice_visualization_side_length,
   const rclcpp::Time & timestamp, const std::string & global_frame_id,
-  const float min_height, const float max_height);
+  const float height, const SliceLimitMarkerType slice_limit_type);
 
 }  // namespace nvblox
 

@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
-// Copyright (c) 2022-2023 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright (c) 2022-2024 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,8 +22,7 @@ namespace nvblox
 namespace conversions
 {
 
-geometry_msgs::msg::Point32 point32MessageFromVector(
-  const Eigen::Vector3f & vector)
+geometry_msgs::msg::Point32 point32MessageFromVector(const Eigen::Vector3f & vector)
 {
   geometry_msgs::msg::Point32 point;
   point.x = vector.x();
@@ -32,8 +31,7 @@ geometry_msgs::msg::Point32 point32MessageFromVector(
   return point;
 }
 
-geometry_msgs::msg::Point pointMessageFromVector(
-  const Eigen::Vector3f & vector)
+geometry_msgs::msg::Point pointMessageFromVector(const Eigen::Vector3f & vector)
 {
   geometry_msgs::msg::Point point;
   point.x = vector.x();
@@ -61,138 +59,117 @@ nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(const Index3D & index)
   return index_msg;
 }
 
-void meshMessageFromMeshLayer(
-  const BlockLayer<MeshBlock> & mesh_layer,
+void meshMessageFromSerializedMesh(
+  const std::shared_ptr<const SerializedMesh> serialized_mesh,
+  const rclcpp::Time & timestamp, const std::string & frame_name,
+  const float mesh_layer_block_size, const bool resend_full_mesh,
   nvblox_msgs::msg::Mesh * mesh_msg)
 {
-  std::vector<Index3D> block_indices = mesh_layer.getAllBlockIndices();
-  meshMessageFromMeshBlocks(mesh_layer, block_indices, mesh_msg);
-}
+  const size_t num_blocks = serialized_mesh->block_indices.size();
 
-void meshBlockMessageFromMeshBlock(
-  const MeshBlock & mesh_block, nvblox_msgs::msg::MeshBlock * mesh_block_msg)
-{
-  CHECK_NOTNULL(mesh_block_msg);
+  // Clear the previous map in case we are resending the full map.
+  mesh_msg->clear = resend_full_mesh;
+  mesh_msg->header.stamp = timestamp;
+  mesh_msg->header.frame_id = frame_name;
+  mesh_msg->block_size = mesh_layer_block_size;
+  mesh_msg->block_indices.resize(num_blocks);
+  mesh_msg->blocks.resize(num_blocks);
 
-  size_t num_vertices = mesh_block.vertices.size();
+  // Create one marker per mesh block
+  for (size_t i_block = 0; i_block < num_blocks; ++i_block) {
+    const int num_vertices = serialized_mesh->getNumVerticesInBlock(i_block);
+    const int num_triangle_indices = serialized_mesh->getNumTriangleIndicesInBlock(i_block);
 
-  mesh_block_msg->vertices.resize(num_vertices);
-  mesh_block_msg->normals.resize(num_vertices);
-  mesh_block_msg->colors.resize(mesh_block.colors.size());
-  mesh_block_msg->triangles.resize(mesh_block.triangles.size());
+    mesh_msg->block_indices[i_block] =
+      index3DMessageFromIndex3D(serialized_mesh->block_indices[i_block]);
 
-  std::vector<Vector3f> vertices = mesh_block.vertices.toVector();
-  std::vector<Vector3f> normals = mesh_block.normals.toVector();
-  std::vector<Color> colors = mesh_block.colors.toVector();
+    mesh_msg->blocks[i_block].vertices.resize(num_vertices);
+    mesh_msg->blocks[i_block].colors.resize(num_vertices);
+    mesh_msg->blocks[i_block].triangles.resize(num_triangle_indices);
 
-  // Copy over vertices and normals.
-  for (size_t i = 0; i < num_vertices; i++) {
-    mesh_block_msg->vertices[i] = point32MessageFromVector(vertices[i]);
-    mesh_block_msg->normals[i] = point32MessageFromVector(normals[i]);
-  }
+    CHECK(serialized_mesh->colors.size() == serialized_mesh->vertices.size());
 
-  // Copy over colors if available.
-  for (size_t i = 0; i < mesh_block.colors.size(); i++) {
-    mesh_block_msg->colors[i] = colorMessageFromColor(colors[i]);
-  }
-
-  // Copying over triangles is thankfully easy.
-  mesh_block_msg->triangles = mesh_block.triangles.toVector();
-}
-
-void meshMessageFromMeshBlocks(
-  const BlockLayer<MeshBlock> & mesh_layer,
-  const std::vector<Index3D> & block_indices, nvblox_msgs::msg::Mesh * mesh_msg,
-  const std::vector<Index3D> & block_indices_to_delete)
-{
-  // Go through all the blocks, converting each individual one.
-  mesh_msg->block_size = mesh_layer.block_size();
-  mesh_msg->block_indices.resize(block_indices.size());
-  mesh_msg->blocks.resize(block_indices.size());
-
-  for (size_t i = 0; i < block_indices.size(); i++) {
-    // Get the block origin.
-    mesh_msg->block_indices[i] = index3DMessageFromIndex3D(block_indices[i]);
-
-    MeshBlock::ConstPtr mesh_block =
-      mesh_layer.getBlockAtIndex(block_indices[i]);
-    if (mesh_block == nullptr) {
-      continue;
+    for (size_t i_vert = 0; i_vert < static_cast<size_t>(num_vertices); ++i_vert) {
+      mesh_msg->blocks[i_block].vertices[i_vert] =
+        point32MessageFromVector(serialized_mesh->getVertex(i_block, i_vert));
+      mesh_msg->blocks[i_block].colors[i_vert] =
+        colorMessageFromColor(serialized_mesh->getColor(i_block, i_vert));
     }
 
-    // Convert the actual block.
-    meshBlockMessageFromMeshBlock(*mesh_block, &mesh_msg->blocks[i]);
-  }
-
-  for (const Index3D & block_index : block_indices_to_delete) {
-    mesh_msg->block_indices.push_back(index3DMessageFromIndex3D(block_index));
-    mesh_msg->blocks.push_back(nvblox_msgs::msg::MeshBlock());
+    for (size_t i_tri = 0; i_tri < static_cast<size_t>(num_triangle_indices); ++i_tri) {
+      mesh_msg->blocks[i_block].triangles[i_tri] =
+        serialized_mesh->getTriangleIndex(i_block, i_tri);
+    }
   }
 }
 
-void markerMessageFromMeshBlock(
-  const MeshBlock::ConstPtr & mesh_block,
-  const std::string & frame_id,
-  visualization_msgs::msg::Marker * marker)
+void meshMessageFromBlocksToDelete(
+  const std::vector<Index3D> & block_indices_to_delete,
+  const rclcpp::Time & timestamp, const std::string & frame_name,
+  const float mesh_layer_block_size,
+  nvblox_msgs::msg::Mesh * mesh_msg)
 {
-  marker->header.frame_id = frame_id;
-  marker->ns = "mesh";
-  marker->scale.x = 1;
-  marker->scale.y = 1;
-  marker->scale.z = 1;
-  marker->pose.orientation.x = 0;
-  marker->pose.orientation.y = 0;
-  marker->pose.orientation.z = 0;
-  marker->pose.orientation.w = 1;
-  marker->type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+  const size_t num_blocks = block_indices_to_delete.size();
 
-  // Assumes UNWELDED mesh: all vertices in order.
-  std::vector<Vector3f> vertices = mesh_block->vertices.toVector();
-  std::vector<Color> colors = mesh_block->colors.toVector();
-  std::vector<int> triangles = mesh_block->triangles.toVector();
+  mesh_msg->header.stamp = timestamp;
+  mesh_msg->header.frame_id = frame_name;
+  mesh_msg->block_size = mesh_layer_block_size;
+  mesh_msg->block_indices.resize(num_blocks);
+  mesh_msg->blocks.resize(num_blocks);
 
-  CHECK_EQ(vertices.size(), colors.size());
-
-  marker->points.reserve(triangles.size());
-  marker->colors.reserve(triangles.size());
-
-  for (size_t i = 0; i < triangles.size(); i++) {
-    int index = triangles[i];
-    if (index >= colors.size() || index >= vertices.size()) {
-      continue;
-    }
-    marker->points.push_back(pointMessageFromVector(vertices[index]));
-    marker->colors.push_back(colorMessageFromColor(colors[index]));
+  // Add empty blocks for each index that should be deleted
+  for (size_t i_block = 0; i_block < num_blocks; ++i_block) {
+    const Index3D & block_index = block_indices_to_delete[i_block];
+    mesh_msg->block_indices[i_block] = index3DMessageFromIndex3D(block_index);
+    mesh_msg->blocks[i_block] = nvblox_msgs::msg::MeshBlock();
   }
 }
 
 // Convert a mesh to a marker array.
-void markerMessageFromMeshLayer(
-  const BlockLayer<MeshBlock> & mesh_layer, const std::string & frame_id,
-  visualization_msgs::msg::MarkerArray * marker_msg)
+void markerMessageFromSerializedMesh(
+  const std::shared_ptr<const nvblox::SerializedMesh> & serialized_mesh,
+  const std::string & frame_id, visualization_msgs::msg::MarkerArray * marker_msg)
 {
-  // Get all the mesh blocks.
-  std::vector<Index3D> indices = mesh_layer.getAllBlockIndices();
-
-  marker_msg->markers.resize(indices.size());
-
-  size_t output_index = 0;
-  for (size_t i = 0; i < indices.size(); i++) {
-    MeshBlock::ConstPtr mesh_block = mesh_layer.getBlockAtIndex(indices[i]);
-    if (mesh_block->size() == 0) {
+  const size_t num_blocks = serialized_mesh->block_indices.size();
+  marker_msg->markers.reserve(num_blocks);
+  // Create one marker per mesh block
+  for (size_t i_block = 0; i_block < num_blocks; ++i_block) {
+    const int num_triangle_indices = serialized_mesh->getNumTriangleIndicesInBlock(i_block);
+    if (num_triangle_indices == 0) {
       continue;
     }
-    markerMessageFromMeshBlock(
-      mesh_block, frame_id,
-      &marker_msg->markers[output_index]);
-    marker_msg->markers[output_index].id = output_index;
+    marker_msg->markers.emplace_back(visualization_msgs::msg::Marker());
+    visualization_msgs::msg::Marker & marker = marker_msg->markers.back();
+
+    marker.points.reserve(num_triangle_indices);
+    marker.colors.reserve(num_triangle_indices);
+
+    // Get vertices and colors for all triangle indices in this block.
+    // Assumes UNWELDED mesh: all vertices in order.
+    for (auto itr = serialized_mesh->triangleBlockItr(i_block);
+      itr != serialized_mesh->triangleBlockItr(i_block + 1); ++itr)
+    {
+      marker.points.emplace_back(pointMessageFromVector(serialized_mesh->getVertex(i_block, *itr)));
+      marker.colors.emplace_back(colorMessageFromColor(serialized_mesh->getColor(i_block, *itr)));
+    }
+
+    marker.header.frame_id = frame_id;
+    marker.scale.x = 1;
+    marker.scale.y = 1;
+    marker.scale.z = 1;
+    marker.pose.orientation.x = 0;
+    marker.pose.orientation.y = 0;
+    marker.pose.orientation.z = 0;
+    marker.pose.orientation.w = 1;
+    marker.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+
+    // Create an unique identifier for the marker
     std::stringstream ns_stream;
-    ns_stream << indices[i].x() << "_" << indices[i].y() << "_"
-              << indices[i].z();
-    marker_msg->markers[output_index].ns = ns_stream.str();
-    output_index++;
+    ns_stream << serialized_mesh->block_indices[i_block].x() << "_"
+              << serialized_mesh->block_indices[i_block].y() << "_"
+              << serialized_mesh->block_indices[i_block].z();
+    marker.ns = ns_stream.str();
   }
-  marker_msg->markers.resize(output_index);
 }
 
 }  // namespace conversions

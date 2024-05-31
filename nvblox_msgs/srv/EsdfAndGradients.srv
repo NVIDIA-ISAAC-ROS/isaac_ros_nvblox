@@ -1,0 +1,5 @@
+geometry_msgs/Point aabb_min_m
+geometry_msgs/Vector3 aabb_size_m
+---
+std_msgs/Float32 voxel_size
+std_msgs/Float32MultiArray esdf_and_gradients

@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # Lidar settings
+    use_lidar: false
+    # QoS settings
+    input_qos: "SENSOR_DATA"
+    # Map clearing settings
+    map_clearing_radius_m: 15.0 # no map clearing if < 0.0
+    map_clearing_frame_id: "base_link"
+    # Rviz visualization
+    slice_visualization_attachment_frame_id: "base_link"
+
+    # Increase visualization distance (due to lidar)
+    layer_visualization_exclusion_radius_m: 15.0
+
+    static_mapper:
+      # lidar integration
+      lidar_projective_integrator_max_integration_distance_m: 10.0
+      # esdf integrator
+      esdf_slice_height: 0.09
+      esdf_slice_min_height: 0.09
+      esdf_slice_max_height: 0.65
+      # mesh streamer
+      mesh_streamer_exclusion_radius_m: 15.0
+
+    dynamic_mapper:
+      esdf_slice_height: 0.09
+      esdf_slice_min_height: 0.09
+      esdf_slice_max_height: 0.65

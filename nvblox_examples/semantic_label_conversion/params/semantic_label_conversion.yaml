@@ -1,9 +1,9 @@
 /**:
   ros__parameters:
     camera_1_enabled: true
-    camera_1_name: front/stereo_camera/left
+    camera_1_name: front_stereo_camera
     camera_2_enabled: false
-    camera_2_name: front/stereo_camera/right
+    camera_2_name: back_stereo_camera
 
     labels:
       # Semantic label names defined in Isaac Sim
