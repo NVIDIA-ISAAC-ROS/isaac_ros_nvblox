@@ -625,7 +625,7 @@ void NvbloxNode::processMesh()
         << ". Mesh not published");
     return;
   }
-  bool serialize_full_mesh = true;
+  bool serialize_full_mesh = false;
   size_t new_subscriber_count = mesh_publisher_->get_subscription_count();
   // In case we have new subscribers, publish the ENTIRE map once.
   nvblox_msgs::msg::Mesh mesh_msg;
@@ -662,9 +662,10 @@ void NvbloxNode::processMesh()
 
     // Publish mesh blocks from serialized mesh
     if (!serialized_mesh->block_indices.empty()) {
+      const bool resend_full_mesh = serialize_full_mesh;
       conversions::meshMessageFromSerializedMesh(
         serialized_mesh, timestamp, params_.global_frame.get(),
-        static_mapper_->mesh_layer().block_size(), serialize_full_mesh, &mesh_msg);
+        static_mapper_->mesh_layer().block_size(), resend_full_mesh, &mesh_msg);
       mesh_publisher_->publish(mesh_msg);
       timing::Rates::tick("ros/mesh");
     }

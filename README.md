@@ -54,8 +54,8 @@ The following tables provides timings for various functions of
             <th class="head">Dataset</th>
             <th class="head">Voxel Size (m)</th>
             <th class="head">Component</th>
-            <th class="head">x86_64 w/ 4090 Ti (Desktop)</th>
-            <th class="head">x86_64 w/ RTX3000 Ti (Laptop)</th>
+            <th class="head">x86_64 w/ 4090 (Desktop)</th>
+            <th class="head">x86_64 w/ RTX3500 Ada (Laptop)</th>
             <th class="head">AGX Orin</th>
         </tr>
     </thead>
@@ -64,27 +64,27 @@ The following tables provides timings for various functions of
             <td rowspan="4">Replica</td>
             <td rowspan="4">0.05</td>
             <td>TSDF</td>
-            <td>0.4 ms</td>
-            <td>3.6 ms</td>
-            <td>1.6 ms</td>
+            <td>0.2 ms</td>
+            <td>0.2 ms</td>
+            <td>0.8 ms</td>
         </tr>
         <tr class="row-odd">
             <td>Color</td>
-            <td>1.7 ms</td>
-            <td>2.5 ms</td>
-            <td>4.2 ms</td>
+            <td>0.4 ms</td>
+            <td>0.5 ms</td>
+            <td>1.2 ms</td>
         </tr>
         <tr class="row-even">
             <td>Meshing</td>
-            <td>1.6 ms</td>
-            <td>4.0 ms</td>
-            <td>12.3 ms</td>
+            <td>0.8 ms</td>
+            <td>1.1 ms</td>
+            <td>2.5 ms</td>
         </tr>
         <tr class="row-odd">
             <td>ESDF</td>
-            <td>1.9 ms</td>
-            <td>8.4 ms</td>
-            <td>8.4 ms</td>
+            <td>0.7 ms</td>
+            <td>0.8 ms</td>
+            <td>1.7 ms</td>
         </tr>
         <tr class="row-even">
             <td rowspan="4">Redwood</td>
@@ -92,25 +92,25 @@ The following tables provides timings for various functions of
             <td>TSDF</td>
             <td>0.2 ms</td>
             <td>0.2 ms</td>
-            <td>0.5 ms</td>
+            <td>0.6 ms</td>
         </tr>
         <tr class="row-odd">
             <td>Color</td>
+            <td>0.4 ms</td>
+            <td>0.5 ms</td>
             <td>1.1 ms</td>
-            <td>1.6 ms</td>
-            <td>2.4 ms</td>
         </tr>
         <tr class="row-even">
             <td>Meshing</td>
-            <td>0.6 ms</td>
-            <td>1.5 ms</td>
-            <td>2.7 ms</td>
+            <td>0.4 ms</td>
+            <td>0.5 ms</td>
+            <td>1.1 ms</td>
         </tr>
         <tr class="row-odd">
             <td>ESDF</td>
-            <td>1.5 ms</td>
-            <td>2.6 ms</td>
-            <td>4.2 ms</td>
+            <td>0.8 ms</td>
+            <td>1.1 ms</td>
+            <td>1.7 ms</td>
         </tr>
     </tbody>
 </table>
