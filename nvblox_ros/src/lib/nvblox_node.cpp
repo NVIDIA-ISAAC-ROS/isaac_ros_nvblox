@@ -925,10 +925,12 @@ bool NvbloxNode::processLidarPointcloud(
   Lidar lidar =
     (params_.use_non_equal_vertical_fov_lidar_params) ?
     Lidar(
-    params_.lidar_width, params_.lidar_height,
-    params_.min_angle_below_zero_elevation_rad,
+    params_.lidar_width, params_.lidar_height, params_.lidar_min_valid_range_m,
+    params_.lidar_max_valid_range_m, params_.min_angle_below_zero_elevation_rad,
     params_.max_angle_above_zero_elevation_rad) :
-    Lidar(params_.lidar_width, params_.lidar_height, params_.lidar_vertical_fov_rad);
+    Lidar(
+    params_.lidar_width, params_.lidar_height, params_.lidar_min_valid_range_m,
+    params_.lidar_max_valid_range_m, params_.lidar_vertical_fov_rad);
 
   // We check that the pointcloud is consistent with this LiDAR model
   // NOTE(alexmillane): If the check fails we return true which indicates that

@@ -153,4 +153,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2024-05-30: Multi-camera support, NITROS integration and performance improvements.
+Update 2024-09-26: Update for ZED compatibility

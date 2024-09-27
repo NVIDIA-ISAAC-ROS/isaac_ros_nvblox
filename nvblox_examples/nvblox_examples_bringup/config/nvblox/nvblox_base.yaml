@@ -38,6 +38,8 @@
     use_lidar: true
     lidar_width: 1800
     lidar_height: 31
+    lidar_min_valid_range_m: 0.1
+    lidar_max_valid_range_m: 50.0
     use_non_equal_vertical_fov_lidar_params: false
     # Input queues
     maximum_sensor_message_queue_length: 10

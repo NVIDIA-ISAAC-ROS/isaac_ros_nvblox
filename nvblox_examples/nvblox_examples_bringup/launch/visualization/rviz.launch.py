@@ -29,13 +29,17 @@ def add_rviz(args: lu.ArgumentContainer) -> list[Action]:
     else:
         mode = NvbloxMode[args.mode]
         camera = NvbloxCamera[args.camera]
+        if camera in [NvbloxCamera.zed2, NvbloxCamera.zedx]:
+            camera_str = 'zed'
+        else:
+            camera_str = str(camera)
 
         if mode is NvbloxMode.people:
-            rviz_config_name = str(camera) + "_people_example.rviz"
+            rviz_config_name = camera_str + "_people_example.rviz"
         elif mode is NvbloxMode.dynamic:
-            rviz_config_name = str(camera) + "_dynamics_example.rviz"
+            rviz_config_name = camera_str + "_dynamics_example.rviz"
         else:
-            rviz_config_name = str(camera) + "_example.rviz"
+            rviz_config_name = camera_str + "_example.rviz"
 
         rviz_config_path = lu.get_path('nvblox_examples_bringup',
                                        'config/visualization/' + rviz_config_name)

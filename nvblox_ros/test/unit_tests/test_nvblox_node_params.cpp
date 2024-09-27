@@ -42,7 +42,7 @@ void testStringParam(rclcpp::Node * node, StringParam & param)
 }
 
 TEST(NvbloxNodeParams, initialize) {
-  constexpr size_t kExpectedParamSize = 1536;
+  constexpr size_t kExpectedParamSize = 1600;
   if (sizeof(NvbloxNodeParams) != kExpectedParamSize) {
     std::cout << "Size of NvbloxNodeParams has changed. Add tests below for any new parameters and "
       "update "
@@ -83,6 +83,8 @@ TEST(NvbloxNodeParams, initialize) {
   testParam<int>(node.get(), params.lidar_height);
 
   testParam<float>(node.get(), params.lidar_vertical_fov_rad);
+  testParam<float>(node.get(), params.lidar_min_valid_range_m);
+  testParam<float>(node.get(), params.lidar_max_valid_range_m);
   testParam<float>(node.get(), params.voxel_size);
   testParam<float>(node.get(), params.min_angle_below_zero_elevation_rad);
   testParam<float>(node.get(), params.max_angle_above_zero_elevation_rad);
