@@ -99,6 +99,14 @@ constexpr Param<float>::Description kLidarVerticalFovRadParamDesc{
   "The vertical field of view of the LIDAR scan, in radians (assuming beams are centered around 0 "
   " elevation). Default is for the *VLP16*."};
 
+constexpr Param<float>::Description kLidarMinRangeM{
+  "lidar_min_valid_range_m", 0.1F,
+  "The minimum valid range of the lidar."};
+
+constexpr Param<float>::Description kLidarMaxRangeM{
+  "lidar_max_valid_range_m", 50.0F,
+  "The maximum valid range of the lidar."};
+
 constexpr Param<bool>::Description kUseNonEqualVerticalFovLidarParamsParamDesc{
   "use_non_equal_vertical_fov_lidar_params", false,
   "Whether to use non equal vertical FoV for the LiDAR (not centered around 0 elevation). "
@@ -249,6 +257,8 @@ public:
   Param<int> lidar_height{kLidarHeightParamDesc};
 
   Param<float> lidar_vertical_fov_rad{kLidarVerticalFovRadParamDesc};
+  Param<float> lidar_min_valid_range_m{kLidarMinRangeM};
+  Param<float> lidar_max_valid_range_m{kLidarMaxRangeM};
   Param<float> voxel_size{kVoxelSizeParamDesc};
   Param<float> min_angle_below_zero_elevation_rad{kMinAngleBelowZeroElevationRadParamDesc};
   Param<float> max_angle_above_zero_elevation_rad{kMaxAngleAboveZeroElevationRadParamDesc};

@@ -58,6 +58,17 @@ def get_realsense_remappings(mode: NvbloxMode) -> List[Tuple[str, str]]:
     return remappings
 
 
+def get_zed_remappings(mode: NvbloxMode) -> List[Tuple[str, str]]:
+    assert mode is NvbloxMode.static, 'Nvblox only supports static mode for ZED cameras.'
+    remappings = []
+    remappings.append(('camera_0/depth/image', '/zed/zed_node/depth/depth_registered'))
+    remappings.append(('camera_0/depth/camera_info', '/zed/zed_node/depth/camera_info'))
+    remappings.append(('camera_0/color/image', '/zed/zed_node/rgb/image_rect_color'))
+    remappings.append(('camera_0/color/camera_info', '/zed/zed_node/rgb/camera_info'))
+    remappings.append(('pose', '/zed/zed_node/pose'))
+    return remappings
+
+
 def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
     mode = NvbloxMode[args.mode]
     camera = NvbloxCamera[args.camera]
@@ -73,6 +84,8 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
                                    'config/nvblox/specializations/nvblox_sim.yaml')
     realsense_config = lu.get_path('nvblox_examples_bringup',
                                    'config/nvblox/specializations/nvblox_realsense.yaml')
+    zed_config = lu.get_path('nvblox_examples_bringup',
+                             'config/nvblox/specializations/nvblox_zed.yaml')
 
     if mode is NvbloxMode.static:
         mode_config = {}
@@ -93,8 +106,11 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
         camera_config = realsense_config
         assert num_cameras == 1, 'Realsense example can only run with 1 camera.'
         assert not use_lidar, 'Can not run lidar for realsense example.'
-    elif camera is NvbloxCamera.zed:
-        raise Exception(f'Zed camera currently not supported for Isaac 3.0.')
+    elif camera in [NvbloxCamera.zed2, NvbloxCamera.zedx]:
+        remappings = get_zed_remappings(mode)
+        camera_config = zed_config
+        assert num_cameras == 1, 'Zed example can only run with 1 camera.'
+        assert not use_lidar, 'Can not run lidar for zed example.'
     else:
         raise Exception(f'Camera {camera} not implemented for nvblox.')
 

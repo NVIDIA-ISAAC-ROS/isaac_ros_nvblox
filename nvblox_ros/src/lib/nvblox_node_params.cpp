@@ -92,6 +92,8 @@ void initializeRosParams(
   initParam<int>(node, &params->back_projection_subsampling, parameter_tree);
 
   initParam<float>(node, &params->lidar_vertical_fov_rad, parameter_tree);
+  initParam<float>(node, &params->lidar_min_valid_range_m, parameter_tree);
+  initParam<float>(node, &params->lidar_max_valid_range_m, parameter_tree);
   initParam<float>(node, &params->voxel_size, parameter_tree);
   initParam<float>(node, &params->min_angle_below_zero_elevation_rad, parameter_tree);
   initParam<float>(node, &params->max_angle_above_zero_elevation_rad, parameter_tree);

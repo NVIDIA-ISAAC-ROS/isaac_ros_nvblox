@@ -81,7 +81,7 @@ bool PointcloudConverter::checkLidarPointcloud(
   sensor_msgs::PointCloud2ConstIterator<float> iter_xyz(*pointcloud, "x");
   for (; iter_xyz != iter_xyz.end(); ++iter_xyz) {
     Vector3f point(iter_xyz[0], iter_xyz[1], iter_xyz[2]);
-    if (point.hasNaN()) {
+    if (point.hasNaN() || !lidar.isInValidRange(point)) {
       continue;
     }
     Vector2f u_C;
