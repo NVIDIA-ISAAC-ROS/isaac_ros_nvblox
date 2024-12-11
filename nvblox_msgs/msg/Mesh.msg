@@ -2,7 +2,7 @@ std_msgs/Header header
 
 # Block origins and block sizes must match.
 # Block size is the physical size (in meters) of a block of the mesh.
-float32 block_size
+float32 block_size_m
 # Block indices are the 3D indices of the blocks; to get the origin of the
 # block, simply multiply its index by the block size.
 # Note that we consider a block's origin to be the low-side corner of

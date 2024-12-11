@@ -19,8 +19,20 @@ cmake_minimum_required(VERSION 3.5)
 project(nvblox_examples_bringup)
 
 find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
 
 install(DIRECTORY config launch
   DESTINATION share/${PROJECT_NAME})
+
+if(BUILD_TESTING)
+  find_package(isaac_ros_test_cmake)
+  find_package(ament_cmake_copyright REQUIRED)
+  ament_copyright()
+  find_package(ament_cmake_lint_cmake REQUIRED)
+  ament_lint_cmake()
+
+  add_subdirectory(test)
+endif()
 
 ament_package()

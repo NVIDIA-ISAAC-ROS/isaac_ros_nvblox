@@ -7,7 +7,7 @@
     # Map clearing settings
     map_clearing_frame_id: "zed_camera_link"
     # Rviz visualization
-    slice_visualization_attachment_frame_id: "zed_camera_link"
+    esdf_slice_bounds_visualization_attachment_frame_id: "zed_camera_link"
 
     static_mapper:
       esdf_slice_height: 0.0

@@ -21,8 +21,8 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_rviz_plugin</name>
-  <version>3.1.0</version>
-  <description>RViz visualization plugin for Nvblox meshes</description>
+  <version>3.2.0</version>
+  <description>RViz visualization plugin for Nvblox</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>Apache-2.0</license>
@@ -31,6 +31,7 @@
   <author>Alexander Millane</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
 
   <depend>nvblox_msgs</depend>
   <depend>pluginlib</depend>

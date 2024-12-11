@@ -68,6 +68,11 @@ bool depthFromIntHostAsync(
   Image<int16_t> * image_tmp,
   const CudaStream & cuda_stream);
 
+bool monoFromIntDeviceAsync(
+  const uint8_t * ptr_device, const int height,
+  const int width, MonoImage * image_out,
+  const CudaStream & cuda_stream);
+
 
 }  // namespace conversions
 }  // namespace nvblox

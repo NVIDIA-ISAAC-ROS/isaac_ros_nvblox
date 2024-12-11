@@ -33,22 +33,22 @@ Camera cameraFromMessage(const sensor_msgs::msg::CameraInfo & camera_info)
 
 // Convert image to GPU image
 bool colorImageFromImageMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+  const sensor_msgs::msg::Image & image_msg,
   ColorImage * color_image, Image<Rgb> * rgb_image_tmp,
   Image<Bgra> * bgra_image_tmp, rclcpp::Logger logger,
   const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(color_image);
 
-  const std::string encoding = image_msg->encoding;
+  const std::string encoding = image_msg.encoding;
   if (encoding == "rgb8") {
     return rgbaFromHostAsync(
-      reinterpret_cast<const Rgb *>(&image_msg->data[0]), image_msg->height,
-      image_msg->width, color_image, rgb_image_tmp, cuda_stream);
+      reinterpret_cast<const Rgb *>(&image_msg.data[0]), image_msg.height,
+      image_msg.width, color_image, rgb_image_tmp, cuda_stream);
   } else if (encoding == "bgra8") {
     return rgbaFromHostAsync(
-      reinterpret_cast<const Bgra *>(&image_msg->data[0]), image_msg->height,
-      image_msg->width, color_image, bgra_image_tmp, cuda_stream);
+      reinterpret_cast<const Bgra *>(&image_msg.data[0]), image_msg.height,
+      image_msg.width, color_image, bgra_image_tmp, cuda_stream);
   } else {
     RCLCPP_ERROR_STREAM(logger, "Invalid color image encoding: " << encoding);
     return false;
@@ -57,17 +57,17 @@ bool colorImageFromImageMessageAsync(
 
 // Convert image to GPU image
 bool monoImageFromImageMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
-  MonoImage * mono_image, const CudaStream & cuda_stream)
+  const sensor_msgs::msg::Image & image_msg, MonoImage * mono_image,
+  const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(mono_image);
 
   // First check if we actually have a valid image here.
-  if (image_msg->encoding != "mono8") {
+  if (image_msg.encoding != "mono8") {
     return false;
   }
 
-  mono_image->copyFromAsync(image_msg->height, image_msg->width, &image_msg->data[0], cuda_stream);
+  mono_image->copyFromAsync(image_msg.height, image_msg.width, &image_msg.data[0], cuda_stream);
   return true;
 }
 
@@ -115,24 +115,24 @@ void imageMessageFromColorImage(
 }
 
 bool depthImageFromRosMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+  const sensor_msgs::msg::Image & image_msg,
   DepthImage * depth_image, Image<int16_t> * image_tmp,
   rclcpp::Logger logger, const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(depth_image);
 
-  if (image_msg->encoding == "32FC1") {
+  if (image_msg.encoding == "32FC1") {
     return depthFromFloatHostOrDeviceAsync(
-      reinterpret_cast<const float *>(&image_msg->data[0]),
-      image_msg->height, image_msg->width, depth_image,
+      reinterpret_cast<const float *>(&image_msg.data[0]),
+      image_msg.height, image_msg.width, depth_image,
       cuda_stream);
-  } else if (image_msg->encoding == "16UC1") {
+  } else if (image_msg.encoding == "16UC1") {
     return depthFromIntHostAsync(
-      reinterpret_cast<const int16_t *>(&image_msg->data[0]),
-      image_msg->height, image_msg->width, depth_image, image_tmp,
+      reinterpret_cast<const int16_t *>(&image_msg.data[0]),
+      image_msg.height, image_msg.width, depth_image, image_tmp,
       cuda_stream);
   } else {
-    RCLCPP_ERROR_STREAM(logger, "Invalid depth image encoding: " << image_msg->encoding);
+    RCLCPP_ERROR_STREAM(logger, "Invalid depth image encoding: " << image_msg.encoding);
     return false;
   }
 }
@@ -177,6 +177,24 @@ bool colorImageFromNitrosViewAsync(
     RCLCPP_ERROR_STREAM(logger, "Invalid color image encoding: " << encoding);
     return false;
   }
+}
+
+bool monoImageFromNitrosViewAsync(
+  const NitrosView & view, MonoImage * mono_image,
+  rclcpp::Logger logger, const CudaStream & cuda_stream)
+{
+  CHECK_NOTNULL(mono_image);
+
+  // First check if we actually have a valid image here.
+  const std::string encoding = view.GetEncoding();
+  if (view.GetEncoding() != "mono8") {
+    RCLCPP_ERROR_STREAM(logger, "Invalid mask image encoding: " << encoding);
+    return false;
+  }
+
+  return monoFromIntDeviceAsync(
+    reinterpret_cast<const uint8_t *>(view.GetGpuData()),
+    view.GetHeight(), view.GetWidth(), mono_image, cuda_stream);
 }
 
 }  // namespace conversions

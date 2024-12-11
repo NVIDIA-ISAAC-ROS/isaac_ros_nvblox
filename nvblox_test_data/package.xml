@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+
+<!--
+Copyright (c) 2024, NVIDIA CORPORATION.  All rights reserved.
+
+NVIDIA CORPORATION and its licensors retain all intellectual property
+and proprietary rights in and to this software, related documentation
+and any modifications thereto.  Any use, reproduction, disclosure or
+distribution of this software and related documentation without an express
+license agreement from NVIDIA CORPORATION is strictly prohibited.
+-->
+
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>nvblox_test_data</name>
+  <version>3.2.0</version>
+  <description>Example data for use in the Isaac ROS nvblox package.</description>
+
+  <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
+  <license>Apache-2.0</license>
+  <url type="website">https://developer.nvidia.com/isaac-ros-gems/</url>
+  <author>Alexander Millane</author>
+
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

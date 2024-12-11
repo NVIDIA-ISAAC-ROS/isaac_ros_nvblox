@@ -77,7 +77,7 @@ def generate_launch_description() -> LaunchDescription:
         lu.include(
             'semantic_label_conversion',
             'launch/semantic_label_conversion.launch.py',
-            condition=IfCondition(lu.has_substring(args.mode, NvbloxMode.people))))
+            condition=IfCondition(lu.has_substring(args.mode, NvbloxMode.people_segmentation))))
 
     # Nvblox
     actions.append(

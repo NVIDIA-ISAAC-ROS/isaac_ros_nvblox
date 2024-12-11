@@ -162,7 +162,7 @@ void PointcloudConverter::depthImageFromPointcloudGPU(
   }
 
   // Set the entire image to 0.
-  depth_image_ptr->setZero();
+  depth_image_ptr->setZeroAsync(*cuda_stream_);
 
   // Get a pointer to the pointcloud
   sensor_msgs::PointCloud2ConstIterator<float> iter_xyz(*pointcloud, "x");
@@ -173,12 +173,13 @@ void PointcloudConverter::depthImageFromPointcloudGPU(
   // Expand buffers where required
   if (static_cast<size_t>(lidar.numel()) > lidar_pointcloud_host_.capacity()) {
     const int new_size = static_cast<int>(lidar.numel());
-    lidar_pointcloud_host_.reserve(new_size);
-    lidar_pointcloud_device_.reserve(new_size);
+    lidar_pointcloud_host_.reserveAsync(new_size, *cuda_stream_);
+    lidar_pointcloud_device_.reserveAsync(new_size, *cuda_stream_);
+    cuda_stream_->synchronize();
   }
 
   // Copy the pointcloud into pinned host memory
-  lidar_pointcloud_host_.clear();
+  lidar_pointcloud_host_.clearNoDeallocate();
   for (; iter_xyz != iter_xyz.end(); ++iter_xyz) {
     lidar_pointcloud_host_.push_back(
         Vector3f(iter_xyz[0], iter_xyz[1], iter_xyz[2]));
@@ -216,7 +217,7 @@ void PointcloudConverter::pointcloudMsgFromPointcloud(
   CHECK(pointcloud.memory_type() == MemoryType::kDevice ||
         pointcloud.memory_type() == MemoryType::kUnified);
 
-  pcl_pointcloud_device_.resize(pointcloud.size());
+  pcl_pointcloud_device_.resizeAsync(pointcloud.size(), *cuda_stream_);
 
   thrust::transform(thrust::device, pointcloud.points().begin(),
                     pointcloud.points().end(), pcl_pointcloud_device_.begin(),

@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros</name>
-  <version>3.1.0</version>
+  <version>3.2.0</version>
   <description>NVBlox ROS 2 interface</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -39,18 +39,22 @@
   <depend>nvblox_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>rosbag2_cpp</depend>
   <depend>sensor_msgs</depend>
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
   <depend>std_srvs</depend>
   <depend>tf2_ros</depend>
+  <depend>tf2_eigen</depend>
   <depend>message_filters</depend>
+  <depend>nav_msgs</depend>
   <depend>cv_bridge</depend>
   <depend>nvblox_ros_common</depend>
   <depend>nvblox_ros_python_utils</depend>
   <depend>nvblox_rviz_plugin</depend>
   <depend>isaac_ros_managed_nitros</depend>
   <depend>isaac_ros_nitros_image_type</depend>
+  <depend>isaac_ros_nitros_camera_info_type</depend>
   <depend>isaac_ros_gxf</depend>
   <depend>isaac_ros_common</depend>
 

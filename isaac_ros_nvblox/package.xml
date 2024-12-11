@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>isaac_ros_nvblox</name>
-  <version>3.1.0</version>
+  <version>3.2.0</version>
   <description>Nvblox ROS 2 metapackage</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -31,14 +31,18 @@
   <author>Alexander Millane</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
 
-  <depend>nvblox_ros</depend>
-  <depend>nvblox_msgs</depend>
   <depend>nvblox_examples_bringup</depend>
+  <depend>nvblox_msgs</depend>
+  <depend>nvblox_nav2</depend>
+  <depend>nvblox_ros_common</depend>
+  <depend>nvblox_ros_python_utils</depend>
+  <depend>nvblox_ros</depend>
+  <depend>nvblox_rviz_plugin</depend>
+  <depend>ament_lint_auto</depend>
 
-  <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>
-
   <export>
     <build_type>ament_cmake</build_type>
   </export>

@@ -20,7 +20,14 @@
 
 #include <nvblox/nvblox.h>
 
+#include <memory>
+#include <vector>
+
+#include <rclcpp/rclcpp.hpp>
+
 #include <std_msgs/msg/float32_multi_array.hpp>
+
+#include <nvblox_msgs/srv/esdf_and_gradients.hpp>
 
 namespace nvblox
 {
@@ -34,6 +41,20 @@ public:
   : gpu_grid_(MemoryType::kDevice), cpu_grid_(MemoryType::kHost) {}
   ~EsdfAndGradientsConverter() = default;
 
+  /// @brief Returns the response to a EsdfAndGradients request.
+  /// @param esdf_layer The layer used to fill the EsdfAndGradients grid.
+  /// @param default_value The value array entry should take where the layer has
+  /// no observation.
+  /// @param request Pointer to request defining the AABB.
+  /// @param response Pointer to the response we provide.
+  /// @param cuda_stream  The stream to do the conversion on.
+  void getEsdfAndGradientResponse(
+    const EsdfLayer & esdf_layer,          // NOLINT
+    const float default_value,             // NOLINT
+    const std::shared_ptr<nvblox_msgs::srv::EsdfAndGradients::Request> request,
+    std::shared_ptr<nvblox_msgs::srv::EsdfAndGradients::Response> response,
+    const CudaStream & cuda_stream);
+
   /// Converts an ESDF Layer within an AABB to a ROS array message.
   /// @param esdf_layer The layer to convert.
   /// @param aabb The AABB describing the region to be converted. The output
@@ -46,13 +67,21 @@ public:
     const EsdfLayer & esdf_layer,          // NOLINT
     const AxisAlignedBoundingBox & aabb,   // NOLINT
     const float default_value,             // NOLINT
-    CudaStream cuda_stream);
+    const CudaStream & cuda_stream);
 
 protected:
   // Staging space on the device
   Unified3DGrid<float> gpu_grid_;
   Unified3DGrid<float> cpu_grid_;
 };
+
+/// @brief Get the list of shapes to clear from the EsdfAndGradients service request.
+/// @param request Pointer to request defining the shapes.
+/// @param logger ROS logger.
+/// @return List of shapes that should be cleared.
+std::vector<BoundingShape> getShapesToClear(
+  const std::shared_ptr<nvblox_msgs::srv::EsdfAndGradients::Request> request,
+  rclcpp::Logger logger);
 
 }  // namespace conversions
 }  // namespace nvblox

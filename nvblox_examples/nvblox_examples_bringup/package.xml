@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_examples_bringup</name>
-  <version>3.1.0</version>
+  <version>3.2.0</version>
   <description>Launchfiles for nvblox examples</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -35,6 +35,7 @@
   <author>David Tingdahl</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
 
   <!-- Utils -->
   <exec_depend>isaac_ros_launch_utils</exec_depend>
@@ -46,9 +47,6 @@
   <!-- Visual SLAM -->
   <exec_depend>isaac_ros_visual_slam</exec_depend>
 
-  <!-- Nova Carter -->
-  <exec_depend>nova_carter_navigation</exec_depend>
-
   <!-- Segmentation -->
   <depend>isaac_ros_peoplesemseg_models_install</depend>
   <exec_depend>nvblox_image_padding</exec_depend>
@@ -57,8 +55,13 @@
   <exec_depend>isaac_ros_unet</exec_depend>
   <exec_depend>semantic_label_conversion</exec_depend>
 
-  <test_depend>ament_lint_auto</test_depend>
-  <test_depend>ament_lint_common</test_depend>
+  <!-- Detection -->
+  <depend>isaac_ros_peoplenet_models_install</depend>
+  <exec_depend>isaac_ros_detectnet</exec_depend>
+
+  <test_depend>ament_cmake_copyright</test_depend>
+  <test_depend>ament_cmake_lint_cmake</test_depend>
+  <test_depend>isaac_ros_test_cmake</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

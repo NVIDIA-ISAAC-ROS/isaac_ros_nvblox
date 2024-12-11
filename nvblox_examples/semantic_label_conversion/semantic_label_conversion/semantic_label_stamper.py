@@ -61,7 +61,8 @@ class LabelsConverter(Node):
         def on_camera_labels(msg):
             return self.on_labels(labels_publisher, msg)
 
-        self.create_subscription(String, f"/{camera_name}/semantics/semantic_labels", on_camera_labels, 10)
+        self.create_subscription(String, f"/{camera_name}/semantics/semantic_labels",
+                                 on_camera_labels, 10)
 
     def on_labels(self, publisher, labels_string: String) -> None:
         '''

@@ -20,24 +20,28 @@
 
 #include <nvblox/nvblox.h>
 
+#include <geometry_msgs/msg/vector3.h>
 #include <message_filters/subscriber.h>
 #include <message_filters/sync_policies/approximate_time.h>
 #include <message_filters/sync_policies/exact_time.h>
-#include <message_filters/synchronizer.h>
 
 #include <chrono>
 #include <list>
 #include <functional>
 #include <limits>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
-#include <libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -47,8 +51,8 @@
 #include <nvblox_msgs/srv/file_path.hpp>
 #include <nvblox_msgs/srv/esdf_and_gradients.hpp>
 
+#include "nvblox_ros/layer_publishing.hpp"
 #include "nvblox_ros/conversions/image_conversions.hpp"
-#include "nvblox_ros/conversions/layer_conversions.hpp"
 #include "nvblox_ros/conversions/mesh_conversions.hpp"
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
 #include "nvblox_ros/conversions/esdf_slice_conversions.hpp"
@@ -57,17 +61,28 @@
 #include "nvblox_ros/transformer.hpp"
 #include "nvblox_ros/camera_cache.hpp"
 #include "nvblox_ros/nitros_types.hpp"
-#include "nvblox_ros/nvblox_node_params.hpp"
+#include "nvblox_ros/node_params.hpp"
+#include "nvblox_ros/service_request_task.hpp"
+
+#include "isaac_ros_managed_nitros/managed_nitros_message_filters_subscriber.hpp"
+#include "isaac_ros_managed_nitros/managed_nitros_publisher.hpp"
+#include "isaac_ros_managed_nitros/managed_nitros_subscriber.hpp"
+#include "isaac_ros_nitros_camera_info_type/nitros_camera_info.hpp"
+#include "isaac_ros_nitros_image_type/nitros_image.hpp"
+#include "isaac_ros_nitros_image_type/nitros_image_view.hpp"
 
 namespace nvblox
 {
+
+constexpr int8_t kOccupancyGridUnknownValue = -1;
 
 class NvbloxNode : public rclcpp::Node
 {
 public:
   explicit NvbloxNode(
     const rclcpp::NodeOptions & options = rclcpp::NodeOptions(),
-    const std::string & node_name = "nvblox_node");
+    const std::string & node_name = "nvblox_node", std::shared_ptr<CudaStream> cuda_stream =
+    std::make_shared<CudaStreamOwning>());
   virtual ~NvbloxNode();
 
   // Setup. These are called by the constructor.
@@ -77,11 +92,53 @@ public:
   void advertiseServices();
   void setupTimers();
 
+  // Internal types for passing around images, their matching
+  // segmentation masks, as well as the camera intrinsics.
+  using ImageSegmentationMaskMsgTuple =
+    std::tuple<NitrosViewPtr,
+      sensor_msgs::msg::CameraInfo::ConstSharedPtr,
+      NitrosViewPtr,
+      sensor_msgs::msg::CameraInfo::ConstSharedPtr>;
+
+  using ImageMsgTuple =
+    std::tuple<NitrosViewPtr,
+      sensor_msgs::msg::CameraInfo::ConstSharedPtr>;
+
+  // Expresses the various types of Images that can be queued in the node for processing.
+  using ImageTypeVariant = std::variant<ImageMsgTuple, ImageSegmentationMaskMsgTuple>;
+
+  // Internal type of an image message with an *optional* mask.
+  using ImageMsgOptionalMaskMsgTuple =
+    std::tuple<NitrosViewPtr, sensor_msgs::msg::CameraInfo::ConstSharedPtr,
+      std::optional<NitrosViewPtr>,
+      std::optional<sensor_msgs::msg::CameraInfo::ConstSharedPtr>>;
+
+  // Named indices for the MsgTuple members.
+  static constexpr size_t kMsgTupleImageIdx = 0;
+  static constexpr size_t kMsgTupleCameraInfoIdx = 1;
+  static constexpr size_t kMsgTupleMaskIdx = 2;
+  static constexpr size_t kMsgTupleMaskCameraInfoIdx = 3;
+
   // Callback functions. These just stick images in a queue.
-  void depthImageCallback(const NitrosView & image_view);
-  void colorImageCallback(const NitrosView & image_view);
+  void depthPlusMaskImageCallback(
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info,
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info);
+  void depthImageCallback(
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info);
+  void colorPlusMaskImageCallback(
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info,
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info);
+  void colorImageCallback(
+    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+    const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info);
   void pointcloudCallback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud);
+
   void savePly(
     const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
     std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
@@ -107,10 +164,12 @@ public:
   // Publish data on fixed frequency
   void publishLayers();
 
-  // Process data
-  virtual bool processDepthImage(const NitrosViewPtrAndFrameId & depth_image_view);
-  virtual bool processColorImage(const NitrosViewPtrAndFrameId & color_image_view);
+  // Publish debug visualizations for rviz
+  void publishDebugVisualizations();
 
+  // Process data
+  virtual bool processDepthImage(const ImageTypeVariant & depth_mask_msg);
+  virtual bool processColorImage(const ImageTypeVariant & color_mask_msg);
   virtual bool processLidarPointcloud(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_ptr);
 
@@ -128,8 +187,8 @@ protected:
   virtual void processDepthQueue();
   virtual void processColorQueue();
   virtual void processPointcloudQueue();
+  virtual void processServiceRequestTaskQueue();
   virtual void processEsdf();
-  virtual void processMesh();
 
   // Return true if the time between the two passed timestamps is sufficient to trigger an action
   // under the requested rate.
@@ -141,8 +200,12 @@ protected:
   void publishDynamics(
     const std::string & camera_frame_id);
 
+  // Publish human debug output
+  void publishHumanDebugOutput(const std::string & camera_frame_id, const Camera & camera);
+
   // Publish the back projected depth image for debug purposes
-  void publishBackProjectedDepth(const Camera & camera, const Transform & T_L_C);
+  void publishBackProjectedDepth(
+    const Camera & camera, const std::string & frame, const rclcpp::Time & timestamp);
 
   // Helper function to update the esdf of a specific mapper
   void updateEsdf(
@@ -155,49 +218,63 @@ protected:
     const std::shared_ptr<Mapper> & mapper,
     const rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr & pointcloud_publisher,
     const rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr & slice_publisher,
-    const Mapper * mapper_2 = nullptr);
+    const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr & occupancy_grid_publisher,
+    const float unknown_value, const Mapper * mapper_2 = nullptr);
+
+  // Publish an occupancy grid message from a slice image.
+  void publishOccupancyGridMsg(
+    const float voxel_size, const int width,
+    const int height, const double origin_x_position,
+    const double origin_y_position, const nvblox::Image<float> & map_slice_image,
+    const float unknown_value,
+    const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr & occupancy_grid_publisher);
 
   // Map clearing
   void clearMapOutsideOfRadiusOfLastKnownPose();
 
-  /// Used by callbacks (internally) to add messages to queues.
-  /// @tparam MessageType The type of the Message stored by the queue.
+  /// Used by callbacks (internally) to add input items to queues.
+  /// @tparam QueuedType The type of the input item stored by the queue.
   /// @param queue_name Name of the queue, used for logging.
-  /// @param message Message to be added to the queue.
-  /// @param queue_ptr Queue where to add the message.
+  /// @param item Item to be added to the queue.
+  /// @param queue_ptr Queue where to add the item.
   /// @param queue_mutex_ptr Mutex protecting the queue.
-  template<typename MessageType>
-  void pushMessageOntoQueue(
+  template<typename QueuedType>
+  void pushOntoQueue(
     const std::string & queue_name,
-    MessageType message,
-    std::list<MessageType> * queue_ptr,
+    QueuedType item,
+    std::unique_ptr<std::list<QueuedType>> & queue_ptr,
     std::mutex * queue_mutex_ptr);
-  template<typename MessageType>
-  void printMessageArrivalStatistics(
-    const MessageType & message, const std::string & output_prefix,
-    libstatistics_collector::topic_statistics_collector::
-    ReceivedMessagePeriodCollector<MessageType> * statistics_collector);
 
-  // Used internally to unify processing of queues that process a message and a
-  // matching transform.
-  template<typename MessageType>
-  using ProcessMessageCallback = std::function<bool (const MessageType &)>;
-  template<typename MessageType>
-  using MessageReadyCallback = std::function<bool (const MessageType &)>;
+  // Used internally to unify processing of queues
+  // that process an input item based on a ready check.
+  template<typename QueuedType>
+  using ProcessFunctionType = std::function<bool (const QueuedType &)>;
+  template<typename QueuedType>
+  using ReadyCheckFunctionType = std::function<bool (const QueuedType &)>;
 
-  /// Processes a queue of messages by detecting if they're ready and then
-  /// passing them to a callback.
-  /// @tparam MessageType The type of the messages in the queue.
-  /// @param queue_ptr Queue of messages to process.
+  /// Returns true if pose(s) for the image message is available.
+  /// @param variant_msg The image(s) + cam_info message.
+  /// @return True if poses are available.
+  bool isPoseAvailable(const ImageTypeVariant & variant_msg);
+
+  /// Takes an ImageTypeVariant and decomposes it into an image with an optional mask.
+  /// @param msg The image(s) + cam_info message.
+  /// @return A tuple of an image, camera_info, and optional mask.
+  ImageMsgOptionalMaskMsgTuple decomposeImageTypeVariant(const ImageTypeVariant & msg);
+
+  /// Processes a queue of input items by detecting if they're ready and then
+  /// calling a process function.
+  /// @tparam QueuedType The type of the input items in the queue.
+  /// @param queue_ptr Queue of input items to process.
   /// @param queue_mutex_ptr Mutex protecting the queue.
-  /// @param message_ready_check Callback called on each message to check if
+  /// @param ready_check_function Function called on each item to check if
   /// it's ready to be processed
-  /// @param callback Callback to process each ready message.
-  template<typename MessageType>
-  void processMessageQueue(
-    std::list<MessageType> * queue_ptr, std::mutex * queue_mutex_ptr,
-    MessageReadyCallback<MessageType> message_ready_check,
-    ProcessMessageCallback<MessageType> callback);
+  /// @param process_function Function to process each ready item.
+  template<typename QueuedType>
+  void processQueue(
+    std::unique_ptr<std::list<QueuedType>> & queue_ptr, std::mutex * queue_mutex_ptr,
+    ReadyCheckFunctionType<QueuedType> ready_check_function,
+    ProcessFunctionType<QueuedType> process_function);
 
   // Declares a ROS parameter.
   // Calls the underlying method from rclcpp, but also adds the parameter and value to
@@ -241,10 +318,52 @@ protected:
     "camera_3/color",
   };
 
+  /// Color topics to listen to.
+  static constexpr std::array<const char *,
+    kMaxNumCameras> kSegTopicBaseNames =
+  {
+    // Multi-camera topics
+    "camera_0/mask",
+    "camera_1/mask",
+    "camera_2/mask",
+    "camera_3/mask",
+  };
+
 
   /// Image + info subscribers
-  std::vector<rclcpp::Subscription<sensor_msgs::msg::CameraInfo>::SharedPtr> camera_info_subs_;
-  std::vector<std::shared_ptr<NitrosViewSubscriber>> nitros_image_subs_;
+  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  depth_image_subs_;
+  std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
+  depth_camera_info_subs_;
+  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  color_image_subs_;
+  std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
+  color_camera_info_subs_;
+  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  segmentation_image_subs_;
+  std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
+  segmentation_camera_info_subs_;
+
+  // Sync Policies
+  using image_mask_approx_policy = ::message_filters::sync_policies::ApproximateTime<
+    nvidia::isaac_ros::nitros::NitrosImage, sensor_msgs::msg::CameraInfo,
+    nvidia::isaac_ros::nitros::NitrosImage, sensor_msgs::msg::CameraInfo>;
+  using image_mask_approx_sync = ::message_filters::Synchronizer<image_mask_approx_policy>;
+
+  using image_exact_policy = ::message_filters::sync_policies::ExactTime<
+    nvidia::isaac_ros::nitros::NitrosImage, sensor_msgs::msg::CameraInfo>;
+  using image_exact_sync = ::message_filters::Synchronizer<image_exact_policy>;
+
+  using image_mask_exact_policy = ::message_filters::sync_policies::ExactTime<
+    nvidia::isaac_ros::nitros::NitrosImage, sensor_msgs::msg::CameraInfo,
+    nvidia::isaac_ros::nitros::NitrosImage, sensor_msgs::msg::CameraInfo>;
+  using image_mask_exact_sync = ::message_filters::Synchronizer<image_mask_exact_policy>;
+
+  std::vector<std::shared_ptr<image_mask_approx_sync>> timesync_depth_mask_;
+  std::vector<std::shared_ptr<image_mask_exact_sync>> timesync_color_mask_;
+  std::vector<std::shared_ptr<image_exact_sync>> timesync_depth_;
+  std::vector<std::shared_ptr<image_exact_sync>> timesync_color_;
+
 
   // Pointcloud sub.
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr
@@ -256,27 +375,25 @@ protected:
   rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_sub_;
 
   // Publishers
-  rclcpp::Publisher<nvblox_msgs::msg::Mesh>::SharedPtr mesh_publisher_;
+  std::unique_ptr<LayerPublisher> layer_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     static_esdf_pointcloud_publisher_;
   rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
     static_map_slice_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    slice_bounds_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-    mesh_marker_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    tsdf_layer_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    occupancy_layer_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    color_layer_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    freespace_layer_publisher_;
-  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
-    dynamic_occupancy_layer_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
-    back_projected_depth_publisher_;
+    pessimistic_static_esdf_pointcloud_publisher_;
+  rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
+    pessimistic_static_map_slice_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
+    esdf_slice_bounds_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
+    workspace_bounds_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
+    shapes_to_clear_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
+    color_frame_overlay_publisher_;
+  std::map<std::string, rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr>
+  back_projected_depth_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     dynamic_points_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
@@ -289,6 +406,12 @@ protected:
     dynamic_map_slice_publisher_;
   rclcpp::Publisher<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
     combined_map_slice_publisher_;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr
+    static_occupancy_grid_publisher_;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr
+    dynamic_occupancy_grid_publisher_;
+  rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr
+    combined_occupancy_grid_publisher_;
 
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
@@ -304,14 +427,11 @@ protected:
   // Timers.
   rclcpp::TimerBase::SharedPtr queue_processing_timer_;
 
-  // ROS & nvblox settings
-  MultiMapper::Params multi_mapper_params_;
-
   // Collection of params for the nvblox node
   NvbloxNodeParams params_;
 
   // Counter for back projection subsampling
-  uint32_t back_projection_idx_ = 0;
+  std::map<std::string, uint32_t> back_projection_idx_;
 
   /// The last time processing occurred. Used to maintain rates.
   /// NOTE: Because we support multiple cameras, the first two maps map from the frame_id
@@ -322,12 +442,16 @@ protected:
   rclcpp::Time update_mesh_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   rclcpp::Time update_esdf_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   rclcpp::Time publish_layer_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+  rclcpp::Time publish_debug_vis_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   rclcpp::Time decay_tsdf_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   rclcpp::Time decay_dynamic_occupancy_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
   rclcpp::Time clear_map_outside_radius_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   /// The time stamp of the last frame contributing to the reconstruction.
   rclcpp::Time newest_integrated_depth_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
+  /// The time stamp when we last cleared shapes in the reconstruction.
+  rclcpp::Time shape_clearing_last_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
   // The QoS settings for the image input topics
   const std::string kDefaultInputQos_ = "SYSTEM_DEFAULT";
@@ -344,7 +468,6 @@ protected:
   std::shared_ptr<Mapper> dynamic_mapper_;
 
   // Various converters for ROS message generation.
-  conversions::LayerConverter layer_converter_;
   conversions::PointcloudConverter pointcloud_converter_;
   conversions::EsdfSliceConverter esdf_slice_converter_;
   conversions::EsdfAndGradientsConverter esdf_and_gradients_converter_;
@@ -352,42 +475,59 @@ protected:
   // Caches for GPU images
   ColorImage color_image_{MemoryType::kDevice};
   DepthImage depth_image_{MemoryType::kDevice};
+  MonoImage mask_image_{MemoryType::kDevice};
   DepthImage pointcloud_image_{MemoryType::kDevice};
   Image<conversions::Rgb> rgb_image_tmp_{MemoryType::kDevice};
 
   // Object for back projecting image to a pointcloud.
   DepthImageBackProjector image_back_projector_;
 
-  // Message statistics (useful for debugging)
-  libstatistics_collector::topic_statistics_collector::
-  ReceivedMessagePeriodCollector<NitrosView> depth_frame_statistics_;
-  libstatistics_collector::topic_statistics_collector::
-  ReceivedMessagePeriodCollector<NitrosView> rgb_frame_statistics_;
-  libstatistics_collector::topic_statistics_collector::
-  ReceivedMessagePeriodCollector<sensor_msgs::msg::PointCloud2>
-  pointcloud_frame_statistics_;
-
   // Cache the last known number of subscribers.
   size_t mesh_subscriber_count_ = 0;
 
-  // Sensor data queues.
-  std::list<NitrosViewPtrAndFrameId> depth_image_queue_;
-  std::list<NitrosViewPtrAndFrameId> color_image_queue_;
+  // Whether a service call requested the layers to be visualized.
+  bool publish_layers_requested_ = false;
 
-  std::list<sensor_msgs::msg::PointCloud2::ConstSharedPtr> pointcloud_queue_;
+  // Types of items queued in service call queues.
+  using EsdfServiceQueuedType = std::shared_ptr<ServiceRequestTask<NvbloxNode,
+      nvblox_msgs::srv::EsdfAndGradients>>;
+  using FilePathServiceQueuedType = std::shared_ptr<ServiceRequestTask<NvbloxNode,
+      nvblox_msgs::srv::FilePath>>;
 
-  // Image queue mutexes.
+  // Input queues. Unique pointers are used to enable more flexibility when deallocating.
+  std::unique_ptr<std::list<sensor_msgs::msg::PointCloud2::ConstSharedPtr>> pointcloud_queue_;
+  std::unique_ptr<std::list<EsdfServiceQueuedType>> esdf_service_queue_;
+  std::unique_ptr<std::list<FilePathServiceQueuedType>> file_path_service_queue_;
+  std::unique_ptr<std::list<ImageTypeVariant>> depth_image_queue_;
+  std::unique_ptr<std::list<ImageTypeVariant>>
+  color_image_queue_;
+
+  // Input queue names.
+  static constexpr char kDepthQueueName[] = "depth_queue";
+  static constexpr char kColorQueueName[] = "color_queue";
+  static constexpr char kPointcloudQueueName[] = "pointcloud_queue";
+  static constexpr char kFilePathServiceQueueName[] = "file_path_service_queue";
+  static constexpr char kEsdfServiceQueueName[] = "esdf_service_queue";
+
+  // Input queue mutexes.
   std::mutex depth_queue_mutex_;
   std::mutex color_queue_mutex_;
+  std::mutex depth_mask_queue_mutex_;
+  std::mutex color_mask_queue_mutex_;
   std::mutex pointcloud_queue_mutex_;
+  std::mutex esdf_service_queue_mutex_;
+  std::mutex file_path_service_queue_mutex_;
 
-  // Counts the number of messages dropped from image queues.
-  // Maps the sensor data queue to the number of messages that have been dropped.
-  std::unordered_map<std::string, int> number_of_dropped_messages_;
+  // Counts the number of messages dropped from the input queues.
+  // Maps the input queue to the number of messages that have been dropped.
+  std::unordered_map<std::string, int> number_of_dropped_queued_items_;
 
   // Device caches
   Pointcloud pointcloud_C_device_;
-  Pointcloud pointcloud_L_device_;
+  Pointcloud human_pointcloud_C_device_;
+  Pointcloud human_pointcloud_L_device_;
+
+  Transform T_L_C_depth_;
 
   // The idle timer measures time spent *outside* the main tick function and can thus be used to
   // monitor how much headroom there is until the system gets saturated. A lower number <=1ms/tick
@@ -396,7 +536,7 @@ protected:
   timing::Timer idle_timer_{"ros/idle", kStartStopped};
 
   // Cuda stream for GPU work
-  nvblox::CudaStreamOwning cuda_stream_;
+  std::shared_ptr<CudaStream> cuda_stream_ = nullptr;
 
   // Cached intrinsic calibration for cameras. Separate caches for depth and color in order to
   // support different intrinsics between the two.

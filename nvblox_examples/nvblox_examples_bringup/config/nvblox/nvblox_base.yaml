@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
+    # cuda stream setting
+    cuda_stream_type: 1  # 0: cuda default stream, 1: blocking async stream, 2: non blocking async stream, 3: per-thread default stream.
     # miscellaneous
     voxel_size: 0.05
     num_cameras: 1
     use_tf_transforms: true
-    # multi mapper
     mapping_type: "static_tsdf"  # ["static_tsdf", "static_occupancy"]
-    connected_mask_component_size_threshold: 2000
 
     # Parameters governing frequency of different processing steps in the reconstruction pipeline.
     # Processing happens every n:th tick_period. <=0 means that no processing take place
@@ -16,19 +16,21 @@
     integrate_lidar_rate_hz: 40.0
     update_mesh_rate_hz: 5.0
     update_esdf_rate_hz: 10.0
-    publish_layer_pointcloud_rate_hz: 5.0
+    publish_layer_rate_hz: 5.0
+    publish_debug_vis_rate_hz: 2.0
     decay_tsdf_rate_hz: 5.0
     decay_dynamic_occupancy_rate_hz: 10.0
     clear_map_outside_radius_rate_hz: 1.0
 
     # printing statistics on console
-    print_rates_to_console: true
-    print_timings_to_console: true
-    print_delays_to_console: true
+    print_rates_to_console: false
+    print_timings_to_console: false
+    print_delays_to_console: false
+    print_queue_drops_to_console: false
     print_statistics_on_console_period_ms: 10000
 
     # esdf settings
-    esdf_mode: 1 # 0: 3d, 1: 2d
+    esdf_mode: "2d" # ["2d", "3d"]
     publish_esdf_distance_slice: true
     # color settings
     use_color: true
@@ -42,27 +44,31 @@
     lidar_max_valid_range_m: 50.0
     use_non_equal_vertical_fov_lidar_params: false
     # Input queues
-    maximum_sensor_message_queue_length: 10
+    maximum_input_queue_length: 10
     # Map clearing settings
     map_clearing_radius_m: 7.0 # no map clearing if < 0.0
     map_clearing_frame_id: "base_link"
     # QoS settings
     input_qos: "SYSTEM_DEFAULT"
-    # Rviz visualization
-    slice_visualization_attachment_frame_id: "base_link"
-    slice_visualization_side_length: 10.0
-
+    # Visualization
+    esdf_slice_bounds_visualization_attachment_frame_id: "base_link"
+    esdf_slice_bounds_visualization_side_length: 10.0
+    workspace_height_bounds_visualization_attachment_frame_id: "base_link"
+    workspace_height_bounds_visualization_side_length: 10.0
     layer_visualization_min_tsdf_weight: 0.1
-    layer_visualization_max_tsdf_distance: 0.1
     layer_visualization_exclusion_height_m: 2.0
     layer_visualization_exclusion_radius_m: 7.0
     layer_visualization_undo_gamma_correction: false
     max_back_projection_distance: 7.0
     back_projection_subsampling: 1 # no subsampling if == 1
+    layer_streamer_bandwidth_limit_mbps: -1.0 # unlimited
+
+    multi_mapper:
+      connected_mask_component_size_threshold: 2000
+      remove_small_connected_components: true
 
     static_mapper:
       # mapper
-      maintain_mesh_block_stream_queue: true
       do_depth_preprocessing: false
       depth_preprocessing_num_dilations: 3
       # projective integrator (tsdf/color/occupancy)
@@ -70,22 +76,35 @@
       projective_integrator_truncation_distance_vox: 4.0
       projective_integrator_weighting_mode: "inverse_square_tsdf_distance_penalty"
       projective_integrator_max_weight: 5.0
+      projective_tsdf_integrator_invalid_depth_decay_factor: -1.0
       # occupancy integrator
       free_region_occupancy_probability: 0.45
       occupied_region_occupancy_probability: 0.55
       unobserved_region_occupancy_probability: 0.5
       occupied_region_half_width_m: 0.1
+      # view calculator
+      raycast_subsampling_factor: 4
+      workspace_bounds_type: "unbounded" # ["unbounded", "height_bounds", "bounding_box"]
+      workspace_bounds_min_corner_x_m: 0.0
+      workspace_bounds_min_corner_y_m: 0.0
+      workspace_bounds_min_height_m: -0.5
+      workspace_bounds_max_corner_x_m: 0.0
+      workspace_bounds_max_corner_y_m: 0.0
+      workspace_bounds_max_height_m: 2.0
       # esdf integrator
       esdf_integrator_min_weight: 0.1
-      esdf_integrator_max_site_distance_vox: 5.0
+      esdf_integrator_max_site_distance_vox: 2.0
       esdf_integrator_max_distance_m: 2.0
       # mesh integrator
       mesh_integrator_min_weight: 0.1
       mesh_integrator_weld_vertices: true
       # tsdf decay integrator
       tsdf_decay_factor: 0.95
+      tsdf_decayed_weight_threshold: 0.001
       exclude_last_view_from_decay: true
+      tsdf_set_free_distance_on_decayed: false
+      tsdf_decayed_free_distance_vox: 4.0
+      decay_integrator_deallocate_decayed_blocks: true
       # mesh streamer
-      mesh_streamer_exclusion_height_m: 2.0
-      mesh_streamer_exclusion_radius_m: 7.0
-      mesh_bandwidth_limit_mbps: 999999925.0 # in mega bits per second
+      layer_streamer_exclusion_height_m: 2.0
+      layer_streamer_exclusion_radius_m: 7.0

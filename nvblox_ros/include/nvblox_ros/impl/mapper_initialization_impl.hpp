@@ -26,14 +26,14 @@ namespace nvblox
 {
 
 template<typename T>
-void set_mapper_parameter(
-  const std::string & mapper_name,
+void set_parameter(
+  const std::string & prefix_name,
   const std::string & parameter_name,
   std::function<void(T)> parameter_setter,
   rclcpp::Node * node)
 {
   T parameter_value;
-  const std::string full_name = mapper_name + "." + parameter_name;
+  const std::string full_name = prefix_name + "." + parameter_name;
   if (node->get_parameter<T>(full_name, parameter_value)) {
     // Print non default values
     RCLCPP_INFO_STREAM(

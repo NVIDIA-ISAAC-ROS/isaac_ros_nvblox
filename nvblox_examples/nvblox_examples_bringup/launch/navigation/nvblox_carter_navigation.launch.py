@@ -17,19 +17,19 @@
 
 from typing import List
 
-from isaac_ros_launch_utils.all_types import *
+import isaac_ros_launch_utils.all_types as lut
 import isaac_ros_launch_utils as lu
 
 from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxMode
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME
 
 
-def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[Action]:
+def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[lut.Action]:
     # Nav2 base parameter file
     actions = []
-    nav_params_path = lu.get_path('nova_carter_navigation', 'params/nova_carter_navigation.yaml')
-    actions.append(SetParametersFromFile(str(nav_params_path)))
-
+    nav_params_path = lu.get_path('nvblox_examples_bringup', 'config/navigation/carter_nav2.yaml')
+    actions.append(lut.SetParametersFromFile(str(nav_params_path)))
+    actions.append(lut.SetParameter('use_sim_time', True))
     # Enabling nav2
     actions.append(
         lu.set_parameter(
@@ -48,10 +48,8 @@ def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[Action]:
     mode = NvbloxMode[args.mode]
     if mode is NvbloxMode.static:
         costmap_topic_name = '/nvblox_node/static_map_slice'
-    elif mode is NvbloxMode.dynamic:
+    elif mode in [NvbloxMode.dynamic, NvbloxMode.people_segmentation]:
         costmap_topic_name = '/nvblox_node/combined_map_slice'
-    elif mode is NvbloxMode.people:
-        costmap_topic_name = '/nvblox_human_node/combined_map_slice'
     else:
         raise Exception(f'Navigation in mode {mode} not implemented.')
 
@@ -60,31 +58,6 @@ def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[Action]:
             namespace='/global_costmap/global_costmap',
             parameter='nvblox_layer.nvblox_map_slice_topic',
             value=costmap_topic_name,
-        ))
-    # Increase global map to span full Isaac Sim scene (nvblox_sample_scene.usd).
-    actions.append(
-        lu.set_parameter(
-            namespace='/global_costmap/global_costmap',
-            parameter='width',
-            value=60,
-        ))
-    actions.append(
-        lu.set_parameter(
-            namespace='/global_costmap/global_costmap',
-            parameter='height',
-            value=60,
-        ))
-    actions.append(
-        lu.set_parameter(
-            namespace='/global_costmap/global_costmap',
-            parameter='origin_x',
-            value=-30.0,
-        ))
-    actions.append(
-        lu.set_parameter(
-            namespace='/global_costmap/global_costmap',
-            parameter='origin_y',
-            value=-30.0,
         ))
     actions.append(
         lu.set_parameter(
@@ -96,12 +69,13 @@ def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[Action]:
     # Running carter navigation
     actions.append(
         lu.include(
-            'nova_carter_navigation',
-            'launch/navigation.launch.py',
+            'nav2_bringup',
+            'launch/navigation_launch.py',
             launch_arguments={
-                'navigation_container_name': args.container_name,
-                'navigation_parameters_path': str(nav_params_path),
-                'enable_mission_client': False
+                'params_file': str(nav_params_path),
+                'container_name': args.container_name,
+                'use_composition': 'True',
+                'use_sim_time': 'True',
             },
         ))
     actions.append(lu.static_transform('map', 'odom'))
@@ -109,10 +83,10 @@ def add_nvblox_carter_navigation(args: lu.ArgumentContainer) -> List[Action]:
     return actions
 
 
-def generate_launch_description() -> LaunchDescription:
+def generate_launch_description() -> lut.LaunchDescription:
     args = lu.ArgumentContainer()
     args.add_arg('mode')
     args.add_arg('container_name', NVBLOX_CONTAINER_NAME)
 
     args.add_opaque_function(add_nvblox_carter_navigation)
-    return LaunchDescription(args.get_launch_actions())
+    return lut.LaunchDescription(args.get_launch_actions())

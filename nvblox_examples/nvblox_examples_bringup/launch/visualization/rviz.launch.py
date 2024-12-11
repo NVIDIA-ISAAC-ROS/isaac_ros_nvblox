@@ -17,7 +17,8 @@
 
 import pathlib
 
-from isaac_ros_launch_utils.all_types import *
+from launch import Action, LaunchDescription
+from launch_ros.actions import Node
 import isaac_ros_launch_utils as lu
 
 from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxMode, NvbloxCamera
@@ -34,8 +35,15 @@ def add_rviz(args: lu.ArgumentContainer) -> list[Action]:
         else:
             camera_str = str(camera)
 
-        if mode is NvbloxMode.people:
-            rviz_config_name = camera_str + "_people_example.rviz"
+        # Multi-rs static shows depth & color from the first RS, same as single RS
+        # Multi-rs dynamics & people displays overlay depth & color, taking from all RSs
+        if camera is NvbloxCamera.multi_realsense and mode is NvbloxMode.static:
+            camera_str = 'realsense'
+
+        if mode is NvbloxMode.people_detection:
+            rviz_config_name = camera_str + "_people_detection_example.rviz"
+        elif mode is NvbloxMode.people_segmentation:
+            rviz_config_name = camera_str + "_people_segmentation_example.rviz"
         elif mode is NvbloxMode.dynamic:
             rviz_config_name = camera_str + "_dynamics_example.rviz"
         else:

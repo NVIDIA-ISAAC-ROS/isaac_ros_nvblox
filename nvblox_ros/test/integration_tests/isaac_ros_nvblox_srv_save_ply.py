@@ -77,7 +77,7 @@ def generate_test_description():
 class IsaacROSNvBloxTest(IsaacROSBaseTest):
     filepath = pathlib.Path(os.path.dirname(__file__))
 
-    @ IsaacROSBaseTest.for_each_test_case('rosbags')
+    @IsaacROSBaseTest.for_each_test_case('rosbags')
     def test_nvblox_node(self, test_folder):
         TIMEOUT = 15
         FPATH_PLY = '/tmp/super_cool_map.ply'

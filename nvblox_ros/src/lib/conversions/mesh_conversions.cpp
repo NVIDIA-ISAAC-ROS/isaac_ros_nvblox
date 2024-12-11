@@ -60,7 +60,7 @@ nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(const Index3D & index)
 }
 
 void meshMessageFromSerializedMesh(
-  const std::shared_ptr<const SerializedMesh> serialized_mesh,
+  const std::shared_ptr<const SerializedMeshLayer> serialized_mesh,
   const rclcpp::Time & timestamp, const std::string & frame_name,
   const float mesh_layer_block_size, const bool resend_full_mesh,
   nvblox_msgs::msg::Mesh * mesh_msg)
@@ -71,7 +71,7 @@ void meshMessageFromSerializedMesh(
   mesh_msg->clear = resend_full_mesh;
   mesh_msg->header.stamp = timestamp;
   mesh_msg->header.frame_id = frame_name;
-  mesh_msg->block_size = mesh_layer_block_size;
+  mesh_msg->block_size_m = mesh_layer_block_size;
   mesh_msg->block_indices.resize(num_blocks);
   mesh_msg->blocks.resize(num_blocks);
 
@@ -113,7 +113,7 @@ void meshMessageFromBlocksToDelete(
 
   mesh_msg->header.stamp = timestamp;
   mesh_msg->header.frame_id = frame_name;
-  mesh_msg->block_size = mesh_layer_block_size;
+  mesh_msg->block_size_m = mesh_layer_block_size;
   mesh_msg->block_indices.resize(num_blocks);
   mesh_msg->blocks.resize(num_blocks);
 
@@ -127,7 +127,7 @@ void meshMessageFromBlocksToDelete(
 
 // Convert a mesh to a marker array.
 void markerMessageFromSerializedMesh(
-  const std::shared_ptr<const nvblox::SerializedMesh> & serialized_mesh,
+  const std::shared_ptr<const nvblox::SerializedMeshLayer> & serialized_mesh,
   const std::string & frame_id, visualization_msgs::msg::MarkerArray * marker_msg)
 {
   const size_t num_blocks = serialized_mesh->block_indices.size();
@@ -165,9 +165,9 @@ void markerMessageFromSerializedMesh(
 
     // Create an unique identifier for the marker
     std::stringstream ns_stream;
-    ns_stream << serialized_mesh->block_indices[i_block].x() << "_"
-              << serialized_mesh->block_indices[i_block].y() << "_"
-              << serialized_mesh->block_indices[i_block].z();
+    ns_stream << serialized_mesh->block_indices[i_block].x() << "_" <<
+      serialized_mesh->block_indices[i_block].y() << "_" <<
+      serialized_mesh->block_indices[i_block].z();
     marker.ns = ns_stream.str();
   }
 }
