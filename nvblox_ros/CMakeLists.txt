@@ -32,6 +32,7 @@ message( STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" )
 # Setup dependencies. Note that will also setup cuda architecture flags in CMAKE_CUDA_ARCHITECTURES
 find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
+include(nvblox_core/cmake/cuda/setup_compute_capability.cmake)
 
 # Default behavior is to build for all supported CUDA architectures. In order to improve build
 # speed we can select to build only for the native architecture by using
@@ -47,9 +48,18 @@ else()
   message(STATUS "nvblox_ros is built for the following CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
 
-# The core nvblox lib is built together with nvblox_ros
-add_subdirectory(nvblox_core/nvblox)
 
+# Don't build the pytorch wrapper
+set(BUILD_PYTORCH_WRAPPER false)
+
+# Use system version of these dependencies to avoid conflicts
+set(USE_SYSTEM_GLOG true)
+set(USE_SYSTEM_GFLAGS true)
+set(USE_SYSTEM_GTEST true)
+set(USE_SYSTEM_BENCHMARK true)
+
+# The core nvblox lib is built together with nvblox_ros
+add_subdirectory(nvblox_core)
 
 ################
 # DEPENDENCIES #
@@ -58,13 +68,16 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_auto REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(rosbag2_cpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(tf2_ros REQUIRED)
+find_package(tf2_eigen REQUIRED)
 find_package(nvblox_msgs REQUIRED)
+find_package(nav_msgs REQUIRED)
 find_package(libstatistics_collector REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(Threads REQUIRED)
@@ -75,12 +88,8 @@ find_package(isaac_ros_common REQUIRED)
 find_package(CUDAToolkit REQUIRED)
 find_package(isaac_ros_managed_nitros REQUIRED)
 find_package(isaac_ros_nitros_image_type REQUIRED)
+find_package(isaac_ros_nitros_camera_info_type REQUIRED)
 find_package(isaac_ros_gxf REQUIRED)
-
-##################
-# COMPILER SETUP #
-##################
-include(nvblox_core/nvblox/cmake/setup_compilers.cmake)
 
 #############
 # LIBRARIES #
@@ -88,36 +97,47 @@ include(nvblox_core/nvblox/cmake/setup_compilers.cmake)
 add_library(${PROJECT_NAME}_lib SHARED
   src/lib/conversions/image_conversions.cpp
   src/lib/conversions/image_conversions_thrust.cu
-  src/lib/conversions/layer_conversions.cpp
+  src/lib/conversions/occupancy_conversions.cpp
   src/lib/conversions/mesh_conversions.cpp
   src/lib/conversions/pointcloud_conversions.cu
   src/lib/conversions/esdf_slice_conversions.cu
   src/lib/conversions/esdf_and_gradients_conversions.cu
+  src/lib/conversions/transform_conversions.cpp
+  src/lib/layer_publishing.cpp
   src/lib/camera_cache.cpp
   src/lib/visualization.cpp
   src/lib/transformer.cpp
+  src/lib/utils.cpp
   src/lib/mapper_initialization.cpp
   src/lib/nvblox_node.cpp
-  src/lib/nvblox_human_node.cpp
-  src/lib/nvblox_node_params.cpp
+  src/lib/fuser_node.cpp
+  src/lib/node_params.cpp
+  src/lib/terminal_reading.cpp
+  src/lib/rosbag_data_loader.cpp
+  src/lib/rosbag_reading.cpp
 )
-target_link_libraries(${PROJECT_NAME}_lib nvblox_lib nvblox_eigen pthread)
+set_nvblox_compiler_options(${PROJECT_NAME}_lib)
+target_link_libraries(${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets pthread glog)
 ament_target_dependencies(${PROJECT_NAME}_lib
   rclcpp
   rclcpp_components
+  rosbag2_cpp
   sensor_msgs
   geometry_msgs
   nvblox_msgs
   std_msgs
+  nav_msgs
   visualization_msgs
   std_srvs
   tf2_ros
+  tf2_eigen
   message_filters
   visualization_msgs
   cv_bridge
   nvblox_ros_common
   isaac_ros_managed_nitros
   isaac_ros_nitros_image_type
+  isaac_ros_nitros_camera_info_type
   isaac_ros_gxf
   isaac_ros_common
 )
@@ -155,11 +175,11 @@ set_target_properties(nvblox_node PROPERTIES
   BUILD_RPATH_USE_ORIGIN TRUE
   INSTALL_RPATH_USE_LINK_PATH TRUE)
 
-add_executable(nvblox_human_node
-  src/nvblox_human_node_main.cpp
+add_executable(fuser_node
+  src/fuser_node_main.cpp
 )
-target_link_libraries(nvblox_human_node ${PROJECT_NAME}_lib)
-set_target_properties(nvblox_human_node PROPERTIES
+target_link_libraries(fuser_node ${PROJECT_NAME}_lib)
+set_target_properties(fuser_node PROPERTIES
   BUILD_WITH_INSTALL_RPATH TRUE
   BUILD_RPATH_USE_ORIGIN TRUE
   INSTALL_RPATH_USE_LINK_PATH TRUE)
@@ -175,7 +195,7 @@ install(
 
 # Install the library target.
 install(
-  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_gpu_hash stdgpu
+  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets nvblox_gpu_hash stdgpu
   EXPORT ${PROJECT_NAME}Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -185,7 +205,7 @@ install(
 
 # Install nodes which live in lib for some reason.
 install(
-  TARGETS nvblox_node nvblox_human_node
+  TARGETS nvblox_node fuser_node
   DESTINATION lib/${PROJECT_NAME}
 )
 
@@ -229,7 +249,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_xmllint REQUIRED)
   ament_xmllint()
 
-  # The FindPythonInterp and FindPythonLibs modules are removed
+  # The FindPythonInterp and FindPythonLibs modules are removed.
   if(POLICY CMP0148)
     cmake_policy(SET CMP0148 OLD)
   endif()
@@ -256,12 +276,19 @@ ament_export_targets(
 
 ament_export_dependencies(
   nvblox
+  nav_msgs
   tf2_ros
   message_filters
   libstatistics_collector
   visualization_msgs
   cv_bridge
+  isaac_ros_gxf
+  isaac_ros_managed_nitros
   nvblox_ros_common
+  nvblox_msgs
+  std_srvs
+  tf2_eigen
+  CUDAToolkit
 )
 
 ament_package()

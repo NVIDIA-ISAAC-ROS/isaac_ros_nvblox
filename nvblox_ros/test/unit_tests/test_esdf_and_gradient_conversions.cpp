@@ -63,7 +63,7 @@ TEST(EsdfAndGradientsConversionsTest, FloatGrid) {
   array_msg.layout.dim[2].label = "z";
   array_msg.layout.dim[2].size = kGridSize;
   array_msg.layout.dim[2].stride = kGridSize;
-  array_msg.data = grid.data().toVector();
+  array_msg.data = grid.data().toVectorAsync(CudaStreamOwning());
 
   // Compare the message and original grid values;
   auto toMsgLinearIdx = [&array_msg](const Index3D & idx) -> int {
@@ -87,6 +87,7 @@ void setLayerToTestValues(EsdfLayer * layer_ptr)
   callFunctionOnAllVoxels<EsdfVoxel>(
     layer_ptr, [](const Index3D &, const Index3D & voxel_index, EsdfVoxel * voxel) {
       voxel->squared_distance_vox = getTestValue(voxel_index);
+      voxel->observed = true;
     });
 }
 

@@ -27,8 +27,11 @@ function(add_nvblox_ros_unit_test test_name)
     # Build the test
     ament_add_gtest(${test_name} ${test_name}.${test_file_extension})
     target_link_libraries(${test_name} ${PROJECT_NAME}_lib)
+    set_nvblox_compiler_options(${test_name})
 endfunction()
 
 # nvblox ROS unit tests
 add_nvblox_ros_unit_test(test_esdf_and_gradient_conversions)
-add_nvblox_ros_unit_test(test_nvblox_node_params)
+add_nvblox_ros_unit_test(test_node_params)
+add_nvblox_ros_unit_test(test_rosbag_data_loader)
+add_nvblox_ros_unit_test(test_service_request_queue)

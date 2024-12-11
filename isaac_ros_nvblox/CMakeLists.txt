@@ -18,6 +18,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(isaac_ros_nvblox)
 
+find_package(ament_cmake_auto REQUIRED)
+ament_auto_find_build_dependencies()
+
 # Default to C++17
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -33,11 +36,15 @@ if(NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 message( STATUS "CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}" )
 
-find_package(ament_cmake REQUIRED)
 
 if(BUILD_TESTING)
-  find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_package()
+
+# Embed versioning information into installed files
+ament_index_get_resource(ISAAC_ROS_COMMON_CMAKE_PATH isaac_ros_common_cmake_path isaac_ros_common)
+include("${ISAAC_ROS_COMMON_CMAKE_PATH}/isaac_ros_common-version-info.cmake")
+generate_version_info(${PROJECT_NAME})
+
+ament_auto_package()

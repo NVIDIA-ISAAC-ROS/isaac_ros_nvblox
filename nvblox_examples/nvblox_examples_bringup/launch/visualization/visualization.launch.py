@@ -28,6 +28,11 @@ def generate_launch_description() -> LaunchDescription:
         False,
         description='Whether to run the foxglove bridge for visualization in foxglove.',
         cli=True)
+    args.add_arg(
+        'use_foxglove_whitelist',
+        True,
+        description='Disable visualization of bandwidth-heavy topics',
+        cli=True)
     args.add_arg('run_rviz', True, description='Whether to run rviz2.', cli=True)
     args.add_arg('mode', NvbloxMode.static)
     args.add_arg('camera', NvbloxCamera.realsense)
@@ -37,6 +42,7 @@ def generate_launch_description() -> LaunchDescription:
         lu.include(
             'nvblox_examples_bringup',
             'launch/visualization/foxglove_bridge.launch.py',
+            launch_arguments={'use_foxglove_whitelist': args.use_foxglove_whitelist},
             condition=IfCondition(args.run_foxglove)))
 
     actions.append(

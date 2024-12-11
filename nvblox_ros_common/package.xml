@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros_common</name>
-  <version>3.1.0</version>
+  <version>3.2.0</version>
   <description>Utilities used across the isaac_ros_nvblox repo</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -36,6 +36,7 @@
 
   <buildtool_depend>ament_cmake</buildtool_depend>
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
 
   <depend>rclcpp</depend>
 

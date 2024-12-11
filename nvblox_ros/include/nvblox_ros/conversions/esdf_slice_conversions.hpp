@@ -23,6 +23,7 @@
 #include <memory>
 
 #include <nvblox_msgs/msg/distance_map_slice.hpp>
+#include <nav_msgs/msg/occupancy_grid.hpp>
 
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
 
@@ -41,7 +42,7 @@ public:
 
   // Slicing an esdf layer (using EsdfSlicer)
   void sliceLayerToDistanceImage(
-    const EsdfLayer & layer, float slice_height,
+    const EsdfLayer & layer, float slice_height, float unobserved_value,
     Image<float> * output_image,
     AxisAlignedBoundingBox * aabb);
 
@@ -51,6 +52,7 @@ public:
     const EsdfLayer & layer_2,
     float layer_1_slice_height,
     float layer_2_slice_height,
+    float unknown_value,
     Image<float> * output_image,
     AxisAlignedBoundingBox * aabb);
 
@@ -59,14 +61,19 @@ public:
   // Convert slice image to distance map message
   void distanceMapSliceMsgFromSliceImage(
     const Image<float> & slice_image, const AxisAlignedBoundingBox & aabb,
-    float slice_height, float voxel_size,
+    float slice_height, float voxel_size, float unknown_value,
     nvblox_msgs::msg::DistanceMapSlice * map_slice);
 
   // Convert slice image to pointcloud
   void pointcloudMsgFromSliceImage(
     const Image<float> & slice_image, const AxisAlignedBoundingBox & aabb,
-    float slice_height, float voxel_size,
+    float slice_height, float voxel_size, float unknown_value,
     sensor_msgs::msg::PointCloud2 * pointcloud_msg);
+
+  // Convert slice image to occupancy grid
+  void occupancyGridFromSliceImage(
+    const Image<float> & slice_image, signed char * occupancy_grid_data,
+    float unknown_value);
 
 private:
   // Slicer that does the work
@@ -78,6 +85,7 @@ private:
   unified_ptr<int> max_index_device_;
   unified_ptr<int> max_index_host_;
   device_vector<PclPointXYZI> pcl_pointcloud_device_;
+  device_vector<int8_t> occupancy_grid_device_;
 };
 
 }  // namespace conversions

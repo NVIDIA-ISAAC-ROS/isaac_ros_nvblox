@@ -9,4 +9,16 @@
     </description>
     <message_type>nvblox_msgs/msg/Mesh</message_type>
   </class>
+
+  <class
+    name="nvblox_rviz_plugin/NvbloxVoxelBlockLayer"
+    type="nvblox_rviz_plugin::NvbloxVoxelBlockLayerDisplay"
+    base_class_type="rviz_common::Display"
+  >
+    <description>
+      Displays incremental nvblox voxel block layer messages.
+    </description>
+    <message_type>nvblox_msgs/msg/VoxelBlockLayer</message_type>
+  </class>
+
 </library>

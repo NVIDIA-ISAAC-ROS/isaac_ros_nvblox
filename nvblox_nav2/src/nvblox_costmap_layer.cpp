@@ -256,17 +256,26 @@ void NvbloxCostmapLayer::sliceCallback(
           << ". Error: " << e.what());
     }
 
-    // Convert rotation to roll/pitch/yaw.
-    Eigen::Vector3f rpy = Eigen::Quaternionf(
-      T_G_S_msg.rotation.w, T_G_S_msg.rotation.x,
-      T_G_S_msg.rotation.y, T_G_S_msg.rotation.z)
-      .toRotationMatrix()
-      .eulerAngles(0, 1, 2);
+    // Convert rotation Eigen.
+    const Eigen::Quaternionf quaternion(T_G_S_msg.rotation.w, T_G_S_msg.rotation.x,
+      T_G_S_msg.rotation.y, T_G_S_msg.rotation.z);
 
-    // Check that the transform is 2d (roll/pitch/z-axis are zero).
-    bool is_2d_transform = std::abs(rpy(0)) <= 1e-3;               // roll
-    is_2d_transform &= std::abs(rpy(1)) <= 1e-3;                   // pitch
-    is_2d_transform &= std::abs(T_G_S_msg.translation.z) <= 1e-3;  // z-axis
+    // Rotate the x-axis and convert the resulting direction vector to polar coordinates.
+    const Eigen::Vector3f rotated_x_axis = quaternion * Eigen::Vector3f::UnitX();
+    const float polar_angle_rad =
+      std::acos(rotated_x_axis.z() / rotated_x_axis.norm());
+    const float azimuth_angle_rad =
+      atan2(rotated_x_axis.y(), rotated_x_axis.x());
+
+    // Check that the transform is 2d:
+    // - polar angle = PI / 2 (direction vector lies on x/y-plane)
+    // - z-translation = 0
+    constexpr float kDegreesToRadians = M_PI / 180.0;
+    constexpr float kMaxAllowedLatitudeRad = 1.f * kDegreesToRadians;
+    constexpr float kMaxAllowedHeightDifferenceM = 1e-2;
+    bool is_2d_transform =
+      std::abs(polar_angle_rad - M_PI_2) <= kMaxAllowedLatitudeRad;
+    is_2d_transform &= std::abs(T_G_S_msg.translation.z) <= kMaxAllowedHeightDifferenceM;
     if (!is_2d_transform) {
       RCLCPP_WARN_STREAM_THROTTLE(
         node->get_logger(), clk, kWarnMessagePeriodMs,
@@ -279,7 +288,7 @@ void NvbloxCostmapLayer::sliceCallback(
     T_G_S_ =
       Eigen::Isometry2f(
       Eigen::Translation2f(T_G_S_msg.translation.x, T_G_S_msg.translation.y) *
-      Eigen::Rotation2Df(rpy(2)));
+      Eigen::Rotation2Df(azimuth_angle_rad));
   }
 
   RCLCPP_DEBUG(node->get_logger(), "Slice callback.");

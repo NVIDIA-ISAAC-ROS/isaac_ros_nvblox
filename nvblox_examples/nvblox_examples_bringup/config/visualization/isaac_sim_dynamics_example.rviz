@@ -137,7 +137,7 @@ Visualization Manager:
         - Ceiling Height: 1
           Class: nvblox_rviz_plugin/NvbloxMesh
           Cut Ceiling: true
-          Enabled: true
+          Enabled: false
           Mesh Color: Color
           Name: NvbloxMesh
           Topic:
@@ -147,12 +147,12 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /nvblox_node/mesh
-          Value: true
-        - Class: rviz_default_plugins/Marker
-          Enabled: false
+          Value: false
+        - Ceiling Height: 1.5
+          Class: nvblox_rviz_plugin/NvbloxVoxelBlockLayer
+          Cut Ceiling: false
+          Enabled: true
           Name: Nvblox Voxels
-          Namespaces:
-            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -160,7 +160,7 @@ Visualization Manager:
             History Policy: Keep Last
             Reliability Policy: Reliable
             Value: /nvblox_node/color_layer
-          Value: false
+          Value: true
         - Class: rviz_default_plugins/Marker
           Enabled: false
           Name: Map Slice Bounds
@@ -172,7 +172,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_node/map_slice_bounds
+            Value: /nvblox_node/esdf_slice_bounds
           Value: false
         - Alpha: 1
           Autocompute Intensity Bounds: false
@@ -212,11 +212,9 @@ Visualization Manager:
       Name: Nvblox
     - Class: rviz_common/Group
       Displays:
-        - Class: rviz_default_plugins/Marker
+        - Class: nvblox_rviz_plugin/NvbloxVoxelBlockLayer
           Enabled: true
           Name: Dynamic Occupancy
-          Namespaces:
-            layer: true
           Topic:
             Depth: 5
             Durability Policy: Volatile
@@ -293,11 +291,9 @@ Visualization Manager:
           Use Fixed Frame: true
           Use rainbow: true
           Value: true
-        - Class: rviz_default_plugins/Marker
+        - Class: nvblox_rviz_plugin/NvbloxVoxelBlockLayer
           Enabled: false
           Name: Free Space Layer
-          Namespaces:
-            {}
           Topic:
             Depth: 5
             Durability Policy: Volatile

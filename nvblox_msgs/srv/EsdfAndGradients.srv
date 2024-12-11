@@ -1,5 +1,49 @@
-geometry_msgs/Point aabb_min_m
-geometry_msgs/Vector3 aabb_size_m
+# Service for requesting an esdf and gradient voxel grid bounded by an AABB.
+
+# Whether the esdf should be updated upon receiving this service call.
+bool update_esdf
+
+# Whether the esdf should be sent out on a visualization topic upon receiving this service call.
+bool visualize_esdf
+
+# Whether to use the AxisAlignedBoundingBox below for defining the grid boundaries.
+# If the AABB is disabled, the full esdf grid will be returned.
+bool use_aabb
+
+# The frame that the AABBs and spheres below are defined in.
+string frame_id
+
+# The AxisAlignedBoundingBox defining the voxel grid boundaries.
+# All voxels that are fully or partially contained in the bounding box 
+# should be added to the resulting voxel grid.
+geometry_msgs/Point aabb_min_m         # Minimal corner of the AABB in meters
+geometry_msgs/Vector3 aabb_size_m      # Size of the AABB in meters
+
+# List of bounding boxes that should get cleared.
+# The two vector must have the same size.
+geometry_msgs/Point[] aabbs_to_clear_min_m         # Minimal corner of the AABBs in meters
+geometry_msgs/Vector3[] aabbs_to_clear_size_m      # Size of the AABBs in meters
+
+# List of spheres that should get cleared.
+# The two vector must have the same size.
+geometry_msgs/Point[] spheres_to_clear_center_m       # The center of the spheres that should get cleared
+float32[] spheres_to_clear_radius_m                   # The radius of the spheres that should get cleared
+
 ---
-std_msgs/Float32 voxel_size
+
+# The location of the origin of the esdf grid.
+# This point coincides with the minimal corner of the minimal voxel in the grid
+# i.e. the center of the minimal voxel is defined by:
+#     minimal_voxel_center = origin_m + voxel_size / 2 * unit_vector 
+# The esdf grid is effectively an axis-aligned grid, attached to
+# this point in the frame_id defined in the service request.
+geometry_msgs/Point origin_m
+
+# The size of the voxels in meters.
+float32 voxel_size_m
+
+# The esdf and gradient data in multi array format.
 std_msgs/Float32MultiArray esdf_and_gradients
+
+# Whether the grid creation succeeded
+bool success

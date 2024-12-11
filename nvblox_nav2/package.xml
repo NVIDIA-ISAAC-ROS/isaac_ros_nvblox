@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_nav2</name>
-  <version>3.1.0</version>
+  <version>3.2.0</version>
   <description>NVBlox ROS 2 Nav2 interface</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -32,6 +32,7 @@
   <author>Alexander Millane</author>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+  <build_depend>isaac_ros_common</build_depend>
 
   <depend>nav_msgs</depend>
   <depend>nav2_costmap_2d</depend>

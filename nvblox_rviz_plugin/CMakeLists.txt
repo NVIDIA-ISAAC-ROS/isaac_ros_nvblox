@@ -54,10 +54,10 @@ include_directories(include)
 #############
 add_library(${PROJECT_NAME} SHARED
   include/nvblox_rviz_plugin/nvblox_hash_utils.h
-  include/nvblox_rviz_plugin/nvblox_mesh_display.h
-  include/nvblox_rviz_plugin/nvblox_mesh_visual.h
-  src/nvblox_mesh_display.cpp
-  src/nvblox_mesh_visual.cpp
+  include/nvblox_rviz_plugin/nvblox_plugin_display.h
+  include/nvblox_rviz_plugin/nvblox_plugin_visual.h
+  src/nvblox_plugin_display.cpp
+  src/nvblox_plugin_visual.cpp
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC
   rviz_ogre_vendor::OgreMain

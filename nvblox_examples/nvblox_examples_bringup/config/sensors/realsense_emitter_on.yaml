@@ -1,0 +1,55 @@
+%YAML 1.2
+# SPDX-FileCopyrightText: NVIDIA CORPORATION & AFFILIATES
+# Copyright (c) 2022 NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# SPDX-License-Identifier: Apache-2.0
+---
+device_type: ''
+serial_no: ''
+usb_port_id: ''
+
+rgb_camera:
+  profile: '640x480x15'
+color_info_qos: "SENSOR_DATA"
+color_qos: "SENSOR_DATA"
+
+depth_module:
+  profile: '640x480x30'
+  emitter_enabled: 1
+  emitter_on_off: false
+depth_qos: "SENSOR_DATA"
+depth_info_qos: "SENSOR_DATA"
+
+infra_qos: "SENSOR_DATA"
+
+enable_accel: false
+enable_color: true
+enable_depth: true
+enable_gyro: false
+enable_infra1: false
+enable_infra2: false
+
+pointcloud:
+  enable: false
+
+pointcloud_texture_index: 0
+pointcloud_texture_stream: RS2_STREAM_ANY
+
+enable_sync: false
+align_depth: false
+
+gyro_fps: 200
+accel_fps: 200
+unite_imu_method: 2

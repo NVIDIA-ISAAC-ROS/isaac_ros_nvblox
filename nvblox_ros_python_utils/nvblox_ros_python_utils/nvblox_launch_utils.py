@@ -51,8 +51,9 @@ class NvbloxMode(NvbloxEnum):
     """Enum defining the mode nvblox should be run in."""
 
     static = 1
-    people = 2
-    dynamic = 3
+    people_segmentation = 2
+    people_detection = 3
+    dynamic = 4
 
 
 class NvbloxCamera(NvbloxEnum):
@@ -62,6 +63,8 @@ class NvbloxCamera(NvbloxEnum):
     isaac_sim = 2
     zed2 = 3
     zedx = 4
+    fuser = 5
+    multi_realsense = 6
 
 
 class NvbloxPeopleSegmentation(NvbloxEnum):

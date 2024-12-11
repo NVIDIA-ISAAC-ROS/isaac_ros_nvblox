@@ -51,4 +51,8 @@ The following command will package the extension into a `.foxe` file in the loca
 
 You can publish the extension for the public marketplace or privately for your organization.
 
+Note that publishing typically requires the most up-to-date version of 'create-foxglove-extension'.
+Update package.json with the most recent version before building the plugin.
+
 See documentation here: https://foxglove.dev/docs/studio/extensions/publish#packaging-your-extension
+

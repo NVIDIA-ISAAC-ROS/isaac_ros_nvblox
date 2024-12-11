@@ -21,3 +21,9 @@ add_launch_test(isaac_ros_nvblox_pol.py)
 add_launch_test(isaac_ros_nvblox_srv_save_and_load_map.py)
 add_launch_test(isaac_ros_nvblox_srv_save_timings_and_rates.py)
 add_launch_test(isaac_ros_nvblox_srv_save_ply.py)
+
+# Install tests
+install(DIRECTORY
+  test_cases
+  DESTINATION share/${PROJECT_NAME}
+)

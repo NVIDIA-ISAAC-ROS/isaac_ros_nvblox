@@ -54,66 +54,91 @@ The following tables provides timings for various functions of
             <th class="head">Dataset</th>
             <th class="head">Voxel Size (m)</th>
             <th class="head">Component</th>
-            <th class="head">x86_64 w/ 4090 (Desktop)</th>
-            <th class="head">x86_64 w/ RTX3500 Ada (Laptop)</th>
+            <th class="head">x86_64 w/ 3090 (Desktop)</th>
+            <th class="head">x86_64 w/ RTX A3000 (Laptop)</th>
             <th class="head">AGX Orin</th>
+            <th class="head">Orin Nano</th>
         </tr>
     </thead>
     <tbody>
         <tr class="row-even">
-            <td rowspan="4">Replica</td>
-            <td rowspan="4">0.05</td>
+            <td rowspan="5">Replica</td>
+            <td rowspan="5">0.05</td>
             <td>TSDF</td>
-            <td>0.2 ms</td>
-            <td>0.2 ms</td>
+            <td>0.5 ms</td>
+            <td>0.3 ms</td>
             <td>0.8 ms</td>
+            <td>2.1 ms</td>
         </tr>
         <tr class="row-odd">
             <td>Color</td>
-            <td>0.4 ms</td>
+            <td>0.7 ms</td>
+            <td>0.7 ms</td>
+            <td>1.1 ms</td>
+            <td>3.6 ms</td>
+        </tr>
+        <tr class="row-even">
+            <td>Meshing</td>
+            <td>0.7 ms</td>
+            <td>1.3 ms</td>
+            <td>2.3 ms</td>
+            <td>13 ms</td>
+        </tr>
+        <tr class="row-odd">
+            <td>ESDF</td>
+            <td>0.8 ms</td>
+            <td>1.2 ms</td>
+            <td>1.7 ms</td>
+            <td>6.2 ms</td>
+        </tr>
+        <tr class="row-even">
+            <td>Dynamics</td>
+            <td>1.7 ms</td>
+            <td>1.4 ms</td>
+            <td>2.0 ms</td>
+            <td>N/A(\*)</td>
+        </tr>
+        <tr class="row-even">
+            <td rowspan="5">Redwood</td>
+            <td rowspan="5">0.05</td>
+            <td>TSDF</td>
+            <td>0.2 ms</td>
+            <td>0.2 ms</td>
             <td>0.5 ms</td>
             <td>1.2 ms</td>
         </tr>
-        <tr class="row-even">
-            <td>Meshing</td>
-            <td>0.8 ms</td>
-            <td>1.1 ms</td>
-            <td>2.5 ms</td>
-        </tr>
-        <tr class="row-odd">
-            <td>ESDF</td>
-            <td>0.7 ms</td>
-            <td>0.8 ms</td>
-            <td>1.7 ms</td>
-        </tr>
-        <tr class="row-even">
-            <td rowspan="4">Redwood</td>
-            <td rowspan="4">0.05</td>
-            <td>TSDF</td>
-            <td>0.2 ms</td>
-            <td>0.2 ms</td>
-            <td>0.6 ms</td>
-        </tr>
         <tr class="row-odd">
             <td>Color</td>
-            <td>0.4 ms</td>
             <td>0.5 ms</td>
-            <td>1.1 ms</td>
+            <td>0.5 ms</td>
+            <td>0.8 ms</td>
+            <td>2.6 ms</td>
         </tr>
         <tr class="row-even">
             <td>Meshing</td>
-            <td>0.4 ms</td>
+            <td>0.3 ms</td>
             <td>0.5 ms</td>
-            <td>1.1 ms</td>
+            <td>0.9 ms</td>
+            <td>4.2 ms</td>
         </tr>
         <tr class="row-odd">
             <td>ESDF</td>
             <td>0.8 ms</td>
-            <td>1.1 ms</td>
-            <td>1.7 ms</td>
+            <td>1.0 ms</td>
+            <td>1.5 ms</td>
+            <td>5.1 ms</td>
         </tr>
-    </tbody>
+        <tr class="row-even">
+            <td>Dynamics</td>
+            <td>1.0 ms</td>
+            <td>0.7 ms</td>
+            <td>1.2 ms</td>
+            <td>N/A(\*)</td>
+        </tr>
+     </tbody>
 </table>
+
+(\*): Dynamics not supported on Jetson Nano.
 
 ---
 
@@ -153,4 +178,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2024-09-26: Update for ZED compatibility
+Update 2024-12-10: Optimized performance for always-on dynamic obstacle detection and 1 cm voxels

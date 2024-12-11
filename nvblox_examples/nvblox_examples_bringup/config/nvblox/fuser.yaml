@@ -1,0 +1,43 @@
+/**:
+  ros__parameters:
+    # miscellaneous
+    global_frame: odom
+    voxel_size: 0.05
+    # multi mapper
+    mapping_type: static_tsdf
+    # esdf settings
+    esdf_mode: "2d" # ["2d", "3d"]
+    # Visualization
+    layer_visualization_min_tsdf_weight: 0.1
+    layer_visualization_exclusion_height_m: 2.0
+    layer_visualization_exclusion_radius_m: 7.0
+    max_back_projection_distance: 8.0
+    layer_streamer_bandwidth_limit_mbps: -1.0 # unlimited
+
+    # ROSbag Dataloader params
+    depth_topic: '/front_stereo_camera/depth'
+    depth_camera_info_topic: '/front_stereo_camera/camera_info'
+    color_topic: '/front_stereo_camera/left/image_rect'
+    color_camera_info_topic: '/front_stereo_camera/left_camera_info_rect'
+    world_frame_id: 'odom'
+
+    static_mapper:
+      # mapper
+      do_depth_preprocessing: false
+      # projective integrator (tsdf/color/occupancy)
+      projective_integrator_max_integration_distance_m: 8.0
+      projective_integrator_truncation_distance_vox: 4.0
+      projective_integrator_weighting_mode: "constant"
+      projective_integrator_max_weight: 5.0
+      # esdf integrator
+      esdf_integrator_min_weight: 0.1
+      esdf_integrator_max_site_distance_vox: 2.0
+      esdf_integrator_max_distance_m: 2.0
+      # mesh integrator
+      mesh_integrator_min_weight: 0.1
+      mesh_integrator_weld_vertices: true
+
+      # Slice params
+      esdf_slice_height: 0.09
+      esdf_slice_min_height: 0.09
+      esdf_slice_max_height: 0.65

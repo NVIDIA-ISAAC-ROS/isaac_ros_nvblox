@@ -161,6 +161,19 @@ bool depthFromIntHostAsync(const int16_t* ptr_host, const int height,
                                  cuda_stream);
 }
 
+bool monoFromIntDeviceAsync(const uint8_t* ptr_device, const int height,
+                             const int width, MonoImage* image_out,
+                             const CudaStream& cuda_stream) {
+  CHECK_NOTNULL(ptr_device);
+  CHECK_NOTNULL(image_out);
+  CHECK(height > 0);
+  CHECK(width > 0);
+  maybeReallocateImage(image_out, height, width, MemoryType::kDevice);
+
+  image_out->copyFromAsync(height, width, ptr_device, cuda_stream);
+  return true;
+}
+
 }  // namespace conversions
 
 }  // namespace nvblox

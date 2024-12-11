@@ -52,14 +52,14 @@ Camera cameraFromMessage(const sensor_msgs::msg::CameraInfo & camera_info);
 /// @param cuda_stream        Cuda stream used for copying data
 /// @return True on success, False on failure.
 bool depthImageFromRosMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+  const sensor_msgs::msg::Image & image_msg,
   DepthImage * depth_image, Image<int16_t> * image_tmp, rclcpp::Logger logger,
   const CudaStream & cuda_stream);
 
 /// Convert ROS image message to color image object
 /// See @depthImageFromImageMessageAsync for params
 bool colorImageFromImageMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+  const sensor_msgs::msg::Image & image_msg,
   ColorImage * color_image, Image<Rgb> * rgb_image_tmp,
   Image<Bgra> * bgra_image_tmp, rclcpp::Logger logger,
   const CudaStream & cuda_stream);
@@ -67,7 +67,7 @@ bool colorImageFromImageMessageAsync(
 /// Convert ROS image message to mono image object
 /// See @depthImageFromImageMessageAsync for params
 bool monoImageFromImageMessageAsync(
-  const sensor_msgs::msg::Image::ConstSharedPtr & image_msg,
+  const sensor_msgs::msg::Image & image_msg,
   MonoImage * mono_image, const CudaStream & cuda_stream);
 
 /// Convert depth frame to image message
@@ -115,6 +115,10 @@ bool depthImageFromNitrosViewAsync(
 bool colorImageFromNitrosViewAsync(
   const NitrosView & view,
   ColorImage * color_image,
+  rclcpp::Logger logger, const CudaStream & cuda_stream);
+
+bool monoImageFromNitrosViewAsync(
+  const NitrosView & view, MonoImage * mono_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream);
 
 }  // namespace conversions
