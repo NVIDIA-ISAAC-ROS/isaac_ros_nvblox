@@ -5,17 +5,17 @@
     # QoS settings
     input_qos: "SENSOR_DATA"
     # Map clearing settings
-    map_clearing_frame_id: "camera0_link"
+    map_clearing_frame_id: "base_footprint"
     # Rviz visualization
     esdf_slice_bounds_visualization_attachment_frame_id: "camera0_link"
 
     static_mapper:
-      esdf_slice_height: 0.0
+      esdf_slice_height: 0.30
       # Expected to be tuned by users. Slice height depends on realsense mounting.
-      esdf_slice_min_height: -0.1
-      esdf_slice_max_height: 0.3
+      esdf_slice_min_height: 0.30
+      esdf_slice_max_height: 0.50
 
     dynamic_mapper:
-      esdf_slice_height: 0.0
-      esdf_slice_min_height: -0.1
-      esdf_slice_max_height: 0.3
+      esdf_slice_height: 0.30
+      esdf_slice_min_height: 0.30
+      esdf_slice_max_height: 0.50
