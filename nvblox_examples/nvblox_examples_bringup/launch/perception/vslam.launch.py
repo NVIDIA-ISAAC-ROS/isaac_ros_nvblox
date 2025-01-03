@@ -43,9 +43,9 @@ def add_vslam(args: lu.ArgumentContainer) -> List[Action]:
     # - camera0_link for single realsense,
     # - base_link for everything else (multi realsense)
     if camera is NvbloxCamera.realsense:
-        base_frame = 'camera0_link'
+        base_frame = 'base_footprint'
     else:
-        base_frame = 'base_link'
+        base_frame = 'base_footprint'
 
     actions.append(lu.log_info(f'Starting cuVSLAM with base_frame: {base_frame}'))
 
@@ -70,6 +70,8 @@ def add_vslam(args: lu.ArgumentContainer) -> List[Action]:
         'map_frame': 'map',
         'odom_frame': 'odom',
         'base_frame': base_frame,
+        'publish_map_to_odom_tf' : False,
+        'publish_odom_to_base_tf' : False,
     }
     realsense_parameters = {
         'enable_rectified_pose': True,
