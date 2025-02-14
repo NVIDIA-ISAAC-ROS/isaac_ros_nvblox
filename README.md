@@ -6,7 +6,7 @@ Nvblox ROS 2 integration for local 3D scene reconstruction and mapping.
 
 ## Overview
 
-[Isaac ROS Nvblox](https://github.com/NVIDIA-ISAAC-ROS/isaac_ros_nvblox) contains ROS 2 packages for 3D reconstruction and cost
+Isaac ROS Nvblox contains ROS 2 packages for 3D reconstruction and cost
 maps for navigation. `isaac_ros_nvblox` processes depth and pose to
 reconstruct a 3D scene in real-time and outputs a 2D costmap for
 [Nav2](https://github.com/ros-planning/navigation2). The costmap is
