@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros_python_utils</name>
-  <version>3.2.0</version>
+  <version>3.2.4</version>
   <description>Python utilities used across nvblox_ros</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">alex</maintainer>
   <license>Apache-2.0</license>
