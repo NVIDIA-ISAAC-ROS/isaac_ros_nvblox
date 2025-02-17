@@ -133,6 +133,29 @@ void NvbloxCostmapLayer::updateBounds(
     *min_y, *max_x, *max_y);
 }
 
+
+float NvbloxCostmapLayer::getGridSquareHeight(int x, int y)
+{
+  double world_x, world_y;
+  mapToWorld(x, y, world_x, world_y);
+
+  // Transform the pose from nav2 costmap global frame to the slice frame.
+  Eigen::Vector2f pos_G(world_x, world_y);
+  Eigen::Vector2f pos_S = T_G_S_.inverse() * pos_G;
+
+  // Look up the corresponding cell in our latest slice.
+  float distance = 0.0f;
+  bool valid = lookupInSlice(Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
+
+  // Convert the distance value to a costmap value if valid.
+  // uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
+  if (valid) {
+    return distance;
+  } else {
+    return 1000.0;
+  }
+}
+
 // The method is called when costmap recalculation is required.
 // It updates the costmap within its window bounds.
 // Inside this method the costmap gradient is generated and is writing directly
@@ -167,49 +190,102 @@ void NvbloxCostmapLayer::updateCosts(
   for (int j = min_j; j < max_j; j++) {
     for (int i = min_i; i < max_i; i++) {
       int index = getIndex(i, j);
+      // costmap_array[index] = (i + j) % 252;
+      // continue;
+      /* KERNEL:
+      [0, 1, 0]
+      [-1, 0, 1]
+      [0, -1, 0]
+      */
+      // TODO: write function that scales this for larger kernel sizes. 3x3 is tiny
+      // Also this is really shitty kernel to be using.
 
-      // Figure out the world coordinates of this gridcell.
-      double world_x, world_y;
-      mapToWorld(i, j, world_x, world_y);
+      // Doing this but with error checking
+      // float grad_x = abs(getGridSquareHeight(i + 1, j) - getGridSquareHeight(i - 1, j));
+      // float grad_y = abs(getGridSquareHeight(i, j + 1) - getGridSquareHeight(i, j - 1));
 
-      // Transform the pose from nav2 costmap global frame to the slice frame.
-      Eigen::Vector2f pos_G(world_x, world_y);
-      Eigen::Vector2f pos_S = T_G_S_.inverse() * pos_G;
+      float x1 = getGridSquareHeight(i + 1, j);
+      float x2 = getGridSquareHeight(i - 1, j);
+      if (x1 == 1000.0 && x2 == 1000.0) {
+        costmap_array[index] = nav2_costmap_2d::NO_INFORMATION;
+        continue;
+      } else if (x1 == 1000.0) {
+        // Use smaller gradient if edge value
+        // Think smaller kernel at edge of matrix
+        x1 = getGridSquareHeight(i, j);
+      } else if (x2 == 1000.0) {
+        x2 = getGridSquareHeight(i, j);
+      }
 
-      // Look up the corresponding cell in our latest slice.
-      float distance = 0.0f;
-      bool valid = lookupInSlice(Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
+      float y1 = getGridSquareHeight(i, j + 1);
+      float y2 = getGridSquareHeight(i, j - 1);
+      if (y1 == 1000.0 && y2 == 1000.0) {
+        costmap_array[index] = nav2_costmap_2d::NO_INFORMATION;
+        continue;
+      } else if (y1 == 1000.0) {
+        y1 = getGridSquareHeight(i, j);
+      } else if (y2 == 1000.0) {
+        y2 = getGridSquareHeight(i, j);
+      }
+
+      // Get approximate total slope of the terrain
+      float grad = abs(x1 - x2) + abs(y1 - y2);
+      
 
       // Convert the distance value to a costmap value if valid.
-      uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
-      if (valid) {
-        if (distance <= 0.0f) {
-          // Inside obstacle. Never go here.
-          cost = nav2_costmap_2d::LETHAL_OBSTACLE;
-        } else {
-          if (convert_to_binary_costmap_) {
-            // If convert_to_binary_costmap is enabled,
-            // we only distinguish between lethal obstacle and free space.
-            cost = nav2_costmap_2d::FREE_SPACE;
-          } else {
-            // If convert_to_binary_costmap is disabled,
-            // we distinguish between lethal obstacle, inflation layer, interpolation layer and
-            // free space.
-            if (distance < inflation_distance_) {
-              cost = nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
-            } else if (distance > max_obstacle_distance_) {
-              cost = nav2_costmap_2d::FREE_SPACE;
-            } else {
-              // Interpolate between inflation layer and free space.
-              cost = static_cast<uint8_t>(
-                max_cost_value_ *
-                (1.0f - std::min<float>(
-                  (distance - inflation_distance_) / max_obstacle_distance_,
-                  1.0f)));
-            }
-          }
-        }
-      }
+      // uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
+      // uint8_t cost = 2;
+      uint8_t cost = std::min(max_cost_value_, static_cast<uint8_t>(max_cost_value_ * 50 *grad));
+      
+      
+      // cost = static_cast<uint8_t>(50* grad);
+      // cost = 10;
+      // cost = static_cast<uint8_t>(
+      //   max_cost_value_ *
+      //   (1.0f - std::min<float>(grad, 1.0f)));
+
+      //       double world_x, world_y;
+      // mapToWorld(i, j, world_x, world_y);
+
+
+      // Eigen::Vector2f pos_G(world_x, world_y);
+      // Eigen::Vector2f pos_S = T_G_S_.inverse() * pos_G;
+
+      // // Look up the corresponding cell in our latest slice.
+      // float distance = 0.0f;
+      // bool valid = lookupInSlice(Eigen::Vector2f(pos_S.x(), pos_S.y()), &distance);
+
+
+      // uint8_t cost = nav2_costmap_2d::NO_INFORMATION;
+
+      // if (valid) {
+      //   if (distance <= 0.0f) {
+      //     // Inside obstacle. Never go here.
+      //     cost = nav2_costmap_2d::LETHAL_OBSTACLE;
+      //   } else {
+      //     if (convert_to_binary_costmap_) {
+      //       // If convert_to_binary_costmap is enabled,
+      //       // we only distinguish between lethal obstacle and free space.
+      //       cost = nav2_costmap_2d::FREE_SPACE;
+      //     } else {
+      //       // If convert_to_binary_costmap is disabled,
+      //       // we distinguish between lethal obstacle, inflation layer, interpolation layer and
+      //       // free space.
+      //       if (distance < inflation_distance_) {
+      //         cost = nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+      //       } else if (distance > max_obstacle_distance_) {
+      //         cost = nav2_costmap_2d::FREE_SPACE;
+      //       } else {
+      //         // Interpolate between inflation layer and free space.
+      //         cost = static_cast<uint8_t>(
+      //           max_cost_value_ *
+      //           (1.0f - std::min<float>(
+      //             (distance - inflation_distance_) / max_obstacle_distance_,
+      //             1.0f)));
+      //       }
+      //     }
+      //   }
+      // }
       costmap_array[index] = cost;
     }
   }
