@@ -784,11 +784,13 @@ void NvbloxNode::updateMapper(
   {
   // Update the mapper with the latest transform
 
+  double init_min = init_static_min_height_;
+  double init_max = init_static_max_height_;
   double z = base_link_z_position_;
 
   mapper->esdf_integrator().esdf_slice_height(z);
-  mapper->esdf_integrator().esdf_slice_min_height(z-10.0f);
-  mapper->esdf_integrator().esdf_slice_max_height(z+10.0f);
+  mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
+  mapper->esdf_integrator().esdf_slice_max_height(z + init_max);
   }
 
 void NvbloxNode::processEsdf()
