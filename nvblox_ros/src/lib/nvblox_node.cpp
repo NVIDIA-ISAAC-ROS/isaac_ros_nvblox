@@ -784,7 +784,7 @@ void NvbloxNode::updateMapper(
   {
   // Update the mapper with the latest transform
 
-  z = base_link_z_position_;
+  double z = base_link_z_position_;
 
   mapper->esdf_integrator().esdf_slice_height(z);
   mapper->esdf_integrator().esdf_slice_min_height(z-10.0f);
