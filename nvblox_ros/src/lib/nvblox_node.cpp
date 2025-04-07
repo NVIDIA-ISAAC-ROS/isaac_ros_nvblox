@@ -356,6 +356,18 @@ void NvbloxNode::subscribeToTopics()
     std::bind(&Transformer::transformCallback, &transformer_, std::placeholders::_1));
   pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "pose", 10, std::bind(&Transformer::poseCallback, &transformer_, std::placeholders::_1));
+
+  // Subscribe to "tf" for multiple transforms
+  tf_sub_ = create_subscription<tf2_msgs::msg::TFMessage>(
+    "tf", kQueueSize,
+    [this](const tf2_msgs::msg::TFMessage::SharedPtr msg) {
+      for (const auto& transform : msg->transforms) {
+        if (transform.child_frame_id == "base_link") {
+          base_link_z_position_ = transform.transform.translation.z;
+          RCLCPP_INFO(this->get_logger(), "Updated base_link Z position: %f", base_link_z_position_);
+        }
+      }
+    });
 }
 
 void NvbloxNode::advertiseTopics()
@@ -772,7 +784,7 @@ void NvbloxNode::updateMapper(
   {
   // Update the mapper with the latest transform
 
-  double z = 5.0f;
+  z = base_link_z_position_;
 
   mapper->esdf_integrator().esdf_slice_height(z);
   mapper->esdf_integrator().esdf_slice_min_height(z-10.0f);

@@ -225,9 +225,9 @@ protected:
   void updateMapper(
     const std::shared_ptr<Mapper> & mapper);
   
+  double base_link_z_position_;
   double init_static_min_height_;
   double init_static_max_height_;
-  
 
   // Publish an occupancy grid message from a slice image.
   void publishOccupancyGridMsg(
