@@ -364,7 +364,6 @@ void NvbloxNode::subscribeToTopics()
       for (const auto& transform : msg->transforms) {
         if (transform.child_frame_id == "base_link") {
           base_link_z_position_ = transform.transform.translation.z;
-          RCLCPP_INFO(this->get_logger(), "Updated base_link Z position: %f", base_link_z_position_);
         }
       }
     });
