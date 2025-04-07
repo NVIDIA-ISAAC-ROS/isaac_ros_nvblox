@@ -221,6 +221,14 @@ protected:
     const rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr & occupancy_grid_publisher,
     const float unknown_value, const Mapper * mapper_2 = nullptr);
 
+  // Custom
+  void updateMapper(
+    const std::shared_ptr<Mapper> & mapper);
+  
+  double init_static_min_height_;
+  double init_static_max_height_;
+  
+
   // Publish an occupancy grid message from a slice image.
   void publishOccupancyGridMsg(
     const float voxel_size, const int width,

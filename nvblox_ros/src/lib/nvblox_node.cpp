@@ -208,6 +208,9 @@ void NvbloxNode::initializeMultiMapper()
   //              and these handles wouldn't be needed.
   static_mapper_ = multi_mapper_.get()->background_mapper();
   dynamic_mapper_ = multi_mapper_.get()->foreground_mapper();
+
+  init_static_min_height_ = static_mapper_->esdf_integrator().esdf_slice_min_height();
+  init_static_max_height_ = static_mapper_->esdf_integrator().esdf_slice_max_height();
 }
 
 void NvbloxNode::subscribeToTopics()
@@ -764,6 +767,18 @@ void NvbloxNode::processServiceRequestTaskQueue()
   }
 }
 
+void NvbloxNode::updateMapper(
+  const std::shared_ptr<Mapper> & mapper)
+  {
+  // Update the mapper with the latest transform
+
+  double z = 5.0f;
+
+  mapper->esdf_integrator().esdf_slice_height(z);
+  mapper->esdf_integrator().esdf_slice_min_height(z-10.0f);
+  mapper->esdf_integrator().esdf_slice_max_height(z+10.0f);
+  }
+
 void NvbloxNode::processEsdf()
 {
   const rclcpp::Time timestamp = get_clock()->now();
@@ -782,6 +797,8 @@ void NvbloxNode::processEsdf()
 
   if (params_.esdf_mode == EsdfMode::k2D) {
     timing::Timer esdf_output_timer("ros/esdf/slice_output");
+
+    updateMapper(static_mapper_);
 
     sliceAndPublishEsdf(
       "static", static_mapper_, static_esdf_pointcloud_publisher_,
