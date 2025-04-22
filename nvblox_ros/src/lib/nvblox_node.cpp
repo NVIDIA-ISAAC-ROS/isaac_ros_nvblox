@@ -786,16 +786,10 @@ void NvbloxNode::updateMapper(
     double init_min = init_static_min_height_;
     double init_max = init_static_max_height_;
     double z = base_link_z_position_;
-    double voxel_size = mapper->voxel_size_m();
 
     mapper->esdf_integrator().esdf_slice_height(z);
     mapper->esdf_integrator().esdf_slice_max_height(z + init_max);
-
-    if (z + init_min < 2*voxel_size) {
-      mapper->esdf_integrator().esdf_slice_min_height(2*voxel_size);
-    } else {
-      mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
-    }
+    mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
   }
 
 void NvbloxNode::processEsdf()
