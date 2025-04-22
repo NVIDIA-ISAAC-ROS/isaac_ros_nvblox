@@ -781,15 +781,20 @@ void NvbloxNode::processServiceRequestTaskQueue()
 void NvbloxNode::updateMapper(
   const std::shared_ptr<Mapper> & mapper)
   {
-  // Update the mapper with the latest transform
+    // Update the mapper with the latest transform
 
-  double init_min = init_static_min_height_;
-  double init_max = init_static_max_height_;
-  double z = base_link_z_position_;
+    double init_min = init_static_min_height_;
+    double init_max = init_static_max_height_;
+    double z = base_link_z_position_;
 
-  mapper->esdf_integrator().esdf_slice_height(z);
-  mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
-  mapper->esdf_integrator().esdf_slice_max_height(z + init_max);
+    mapper->esdf_integrator().esdf_slice_height(z);
+    mapper->esdf_integrator().esdf_slice_max_height(z + init_max);
+
+    if (z + init_min < 1.0) {
+      mapper->esdf_integrator().esdf_slice_min_height(1.0);
+    } else {
+      mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
+    }
   }
 
 void NvbloxNode::processEsdf()
