@@ -131,6 +131,7 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('run_standalone', 'False')
     args.add_arg('camera_serial_numbers', '')
     args.add_arg('num_cameras', 1)
+    args.add_arg('robot_name', 'robot1')
 
     # Adding the cameras
     args.add_opaque_function(add_cameras)
