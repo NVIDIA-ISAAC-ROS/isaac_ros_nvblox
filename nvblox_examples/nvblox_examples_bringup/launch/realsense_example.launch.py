@@ -124,7 +124,8 @@ def generate_launch_description() -> LaunchDescription:
             delay=1.0,
         ))
     # People detection for multi-RS
-    camera_namespaces = ['camera0', 'camera1', 'camera2', 'camera3']
+    #camera_namespaces = ['camera0', 'camera1', 'camera2', 'camera3']
+    camera_namespaces = [i+'/'+j for i in str(args.robot_names).split(',') for j in ['camera0', 'camera1', 'camera2', 'camera3']]
     camera_input_topics = []
     input_camera_info_topics= []
     output_resized_image_topics = []
@@ -179,6 +180,7 @@ def generate_launch_description() -> LaunchDescription:
                 'mode': args.mode,
                 'camera': camera_mode,
                 'num_cameras': args.num_cameras,
+                'robot_names' : args.robot_names,
             }))
 
     # TF transforms for multi-realsense
