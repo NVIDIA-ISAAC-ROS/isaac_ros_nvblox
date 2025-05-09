@@ -35,6 +35,9 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('camera_serial_numbers', '',
                  description='List of the serial no of the extra cameras. (comma separated)',
                  cli=True)
+    args.add_arg('robot_names', '',
+                 description='List of the name of robot. (comma separated)',
+                 cli=True)
     args.add_arg(
         'multicam_urdf_path',
         lu.get_path('nvblox_examples_bringup',
