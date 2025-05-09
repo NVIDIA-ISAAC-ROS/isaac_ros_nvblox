@@ -44,41 +44,67 @@ def get_isaac_sim_remappings(mode: NvbloxMode, num_cameras: int,
     return remappings
 
 
-def get_realsense_remappings(mode: NvbloxMode, num_cameras: int = 1) -> List[Tuple[str, str]]:
+def get_realsense_remappings(mode: NvbloxMode, num_cameras: int = 1, robot_names: str) -> List[Tuple[str, str]]:
     # NOTE(xinjieyao, 04.09.2024): Current in this function we only support:
     # - On/off emitter flashing + realsense_splitter on camera_0 (front camera).
     # - (Optional) people segmentation on all cameras.
     # - (Optional) people detection on all cameras.
 
     remappings = []
-    for i in range(0, num_cameras):
-        if i == 0:
-            # Only cam0 (i == 0) runs splitter.
+    robotnames = str(robot_names).split(',')
+    if len(robotnames) > 1:
+        for i in robotnames:
             remappings.append(
-                (f'camera_{i}/depth/image', f'/camera{i}/realsense_splitter_node/output/depth'))
-            remappings.append((f'camera_{i}/depth/camera_info', f'/camera{i}/depth/camera_info'))
-        else:
-            remappings.append((f'camera_{i}/depth/image', f'/camera{i}/depth/image_rect_raw'))
-            remappings.append((f'camera_{i}/depth/camera_info', f'/camera{i}/depth/camera_info'))
+                (f'{robotnames}/camera_0/depth/image', f'/{robotnames}/camera0/realsense_splitter_node/output/depth'))
+            remappings.append((f'{robotnames}camera_0/depth/camera_info', f'/{robotnames}/camera0/depth/camera_info'))
 
-        if mode is NvbloxMode.people_segmentation:
-            # nvblox takes resized images from semseg inputs
-            remappings.append(
-                (f'camera_{i}/color/image', f'/camera{i}/segmentation/image_resized'))
-            remappings.append(
-                (f'camera_{i}/color/camera_info', f'/camera{i}/segmentation/camera_info_resized'))
-            remappings.append((f'camera_{i}/mask/image', f'/camera{i}/segmentation/people_mask'))
-            remappings.append(
-                (f'camera_{i}/mask/camera_info', f'/camera{i}/segmentation/camera_info_resized'))
-
-        else:
-            remappings.append((f'camera_{i}/color/image', f'/camera{i}/color/image_raw'))
-            remappings.append((f'camera_{i}/color/camera_info', f'/camera{i}/color/camera_info'))
-
-            if mode is NvbloxMode.people_detection:
-                remappings.append((f'camera_{i}/mask/image', f'/camera{i}/detection/people_mask'))
+            if mode is NvbloxMode.people_segmentation:
+                # nvblox takes resized images from semseg inputs
                 remappings.append(
-                    (f'camera_{i}/mask/camera_info', f'/camera{i}/color/camera_info'))
+                    (f'{robotnames}/camera_0/color/image', f'/{robotnames}/camera_0/segmentation/image_resized'))
+                remappings.append(
+                    (f'{robotnames}/camera_0/color/camera_info', f'/{robotnames}/camera_0/segmentation/camera_info_resized'))
+                remappings.append((f'{robotnames}/camera_0/mask/image', f'/{robotnames}/camera_0/segmentation/people_mask'))
+                remappings.append(
+                    (f'{robotnames}/camera_0/mask/camera_info', f'/{robotnames}/camera_0/segmentation/camera_info_resized'))
+    
+            else:
+                remappings.append((f'{robotnames}/camera_0/color/image', f'/{robotnames}/camera_0/color/image_raw'))
+                remappings.append((f'{robotnames}/camera_0/color/camera_info', f'/{robotnames}/camera_0/color/camera_info'))
+    
+                if mode is NvbloxMode.people_detection:
+                    remappings.append((f'{robotnames}/camera_0/mask/image', f'/{robotnames}/camera_0/detection/people_mask'))
+                    remappings.append(
+                        (f'{robotnames}/camera_0/mask/camera_info', f'/{robotnames}/camera_0/color/camera_info'))
+    else: 
+      for i in range(0, num_cameras):
+          if i == 0:
+              # Only cam0 (i == 0) runs splitter.
+              remappings.append(
+                  (f'camera_{i}/depth/image', f'/camera{i}/realsense_splitter_node/output/depth'))
+              remappings.append((f'camera_{i}/depth/camera_info', f'/camera{i}/depth/camera_info'))
+          else:
+              remappings.append((f'camera_{i}/depth/image', f'/camera{i}/depth/image_rect_raw'))
+              remappings.append((f'camera_{i}/depth/camera_info', f'/camera{i}/depth/camera_info'))
+  
+          if mode is NvbloxMode.people_segmentation:
+              # nvblox takes resized images from semseg inputs
+              remappings.append(
+                  (f'camera_{i}/color/image', f'/camera{i}/segmentation/image_resized'))
+              remappings.append(
+                  (f'camera_{i}/color/camera_info', f'/camera{i}/segmentation/camera_info_resized'))
+              remappings.append((f'camera_{i}/mask/image', f'/camera{i}/segmentation/people_mask'))
+              remappings.append(
+                  (f'camera_{i}/mask/camera_info', f'/camera{i}/segmentation/camera_info_resized'))
+  
+          else:
+              remappings.append((f'camera_{i}/color/image', f'/camera{i}/color/image_raw'))
+              remappings.append((f'camera_{i}/color/camera_info', f'/camera{i}/color/camera_info'))
+  
+              if mode is NvbloxMode.people_detection:
+                  remappings.append((f'camera_{i}/mask/image', f'/camera{i}/detection/people_mask'))
+                  remappings.append(
+                      (f'camera_{i}/mask/camera_info', f'/camera{i}/color/camera_info'))
 
     return remappings
 
@@ -140,11 +166,11 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
         assert num_cameras <= 1 or mode is not NvbloxMode.people_segmentation, \
             'Can not run multiple cameras with people segmentation in Isaac Sim.'
     elif camera is NvbloxCamera.realsense:
-        remappings = get_realsense_remappings(mode, num_cameras)
+        remappings = get_realsense_remappings(mode, num_cameras, robot_names)
         camera_config = realsense_config
         assert not use_lidar, 'Can not run lidar for realsense example.'
     elif camera is NvbloxCamera.multi_realsense:
-        remappings = get_realsense_remappings(mode, num_cameras)
+        remappings = get_realsense_remappings(mode, num_cameras, robot_names)
         camera_config = multi_realsense_config
         assert not use_lidar, 'Can not run lidar for multi realsense example.'
     elif camera in [NvbloxCamera.zed2, NvbloxCamera.zedx]:
@@ -191,6 +217,7 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('lidar', 'False')
     args.add_arg('container_name', NVBLOX_CONTAINER_NAME)
     args.add_arg('run_standalone', 'False')
+    args.add_arg('robot_names', 'robot1') 
 
     args.add_opaque_function(add_nvblox)
     return LaunchDescription(args.get_launch_actions())
