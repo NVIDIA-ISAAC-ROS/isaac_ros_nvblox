@@ -208,6 +208,9 @@ void NvbloxNode::initializeMultiMapper()
   //              and these handles wouldn't be needed.
   static_mapper_ = multi_mapper_.get()->background_mapper();
   dynamic_mapper_ = multi_mapper_.get()->foreground_mapper();
+
+  init_static_min_height_ = static_mapper_->esdf_integrator().esdf_slice_min_height();
+  init_static_max_height_ = static_mapper_->esdf_integrator().esdf_slice_max_height();
 }
 
 void NvbloxNode::subscribeToTopics()
@@ -353,6 +356,17 @@ void NvbloxNode::subscribeToTopics()
     std::bind(&Transformer::transformCallback, &transformer_, std::placeholders::_1));
   pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "pose", 10, std::bind(&Transformer::poseCallback, &transformer_, std::placeholders::_1));
+
+  // Subscribe to "tf" for multiple transforms
+  tf_sub_ = create_subscription<tf2_msgs::msg::TFMessage>(
+    "tf", kQueueSize,
+    [this](const tf2_msgs::msg::TFMessage::SharedPtr msg) {
+      for (const auto& transform : msg->transforms) {
+        if (transform.child_frame_id == "base_link") {
+          base_link_z_position_ = transform.transform.translation.z;
+        }
+      }
+    });
 }
 
 void NvbloxNode::advertiseTopics()
@@ -764,6 +778,20 @@ void NvbloxNode::processServiceRequestTaskQueue()
   }
 }
 
+void NvbloxNode::updateMapper(
+  const std::shared_ptr<Mapper> & mapper)
+  {
+    // Update the mapper with the latest transform
+
+    double init_min = init_static_min_height_;
+    double init_max = init_static_max_height_;
+    double z = base_link_z_position_;
+
+    mapper->esdf_integrator().esdf_slice_height(z);
+    mapper->esdf_integrator().esdf_slice_max_height(z + init_max);
+    mapper->esdf_integrator().esdf_slice_min_height(z + init_min);
+  }
+
 void NvbloxNode::processEsdf()
 {
   const rclcpp::Time timestamp = get_clock()->now();
@@ -782,6 +810,8 @@ void NvbloxNode::processEsdf()
 
   if (params_.esdf_mode == EsdfMode::k2D) {
     timing::Timer esdf_output_timer("ros/esdf/slice_output");
+
+    updateMapper(static_mapper_);
 
     sliceAndPublishEsdf(
       "static", static_mapper_, static_esdf_pointcloud_publisher_,
