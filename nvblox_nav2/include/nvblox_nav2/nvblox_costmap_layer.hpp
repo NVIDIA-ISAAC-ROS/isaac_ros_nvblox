@@ -74,7 +74,8 @@ private:
 
   // Global frame of the nav2 costmap.
   // This should match with the global_frame of the corresponding global_costmap/local_costmap.
-  std::string nav2_costmap_global_frame_ = "odom";
+  // ! changed default value from "odom" to "map" to resolve "Can't transform: odom to map. Error: Lookup would require extrapolation into the future." 
+  std::string nav2_costmap_global_frame_ = "map";
 
   // Listener for slice to global frame transform.
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
