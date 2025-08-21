@@ -811,11 +811,11 @@ void NvbloxNode::updateMapper(const std::shared_ptr<Mapper> & mapper)
   if (speed > kEpsilon) {
     min_offset = init_min / 2.0;
     max_offset = init_max;
-    RCLCPP_INFO(this->get_logger(), "Flying upwards (%.2f m/s)", speed);
+    // RCLCPP_INFO(this->get_logger(), "Flying upwards (%.2f m/s)", speed);
   } else if (speed < -kEpsilon) {
     min_offset = init_min;
     max_offset = init_max / 2.0;
-    RCLCPP_INFO(this->get_logger(), "Flying downwards (%.2f m/s)", speed);
+    // RCLCPP_INFO(this->get_logger(), "Flying downwards (%.2f m/s)", speed);
   }
 
   mapper->esdf_integrator().esdf_slice_height(z);
