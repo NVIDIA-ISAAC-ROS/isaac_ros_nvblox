@@ -364,6 +364,7 @@ void NvbloxNode::subscribeToTopics()
       for (const auto& transform : msg->transforms) {
         if (transform.child_frame_id == "base_link") {
           base_link_z_position_ = transform.transform.translation.z;
+          base_link_z_stamp_ = rclcpp::Time(transform.header.stamp);
         }
       }
     });
@@ -778,47 +779,49 @@ void NvbloxNode::processServiceRequestTaskQueue()
   }
 }
 
-void NvbloxNode::updateMapper(
-  const std::shared_ptr<Mapper> & mapper)
-  {
-    // Update the mapper with the latest transform
+void NvbloxNode::updateMapper(const std::shared_ptr<Mapper> & mapper)
+{
+  double init_min = init_static_min_height_;
+  double init_max = init_static_max_height_;
+  double z = base_link_z_position_;
+  rclcpp::Time z_stamp = base_link_z_stamp_; // Make sure this is set in your tf callback
 
-    double init_min = init_static_min_height_;
-    double init_max = init_static_max_height_;
-    double z = base_link_z_position_;
-    static double last_z = 0.0;
-    static bool first = true;
-    double dz = 0.0;
-    if (!first) {
-      dz = z - last_z;
+  static double last_z = 0.0;
+  static rclcpp::Time last_stamp;
+  static bool first = true;
+  double dz = 0.0;
+  double dt = 0.0;
+  double speed = 0.0;
+
+  if (!first) {
+    dz = z - last_z;
+    dt = (z_stamp - last_stamp).seconds();
+    if (dt > 0.0) {
+      speed = dz / dt;
     }
-    first = false;
-    last_z = z;
-
-    // Default: flat
-    double min_offset = init_min;
-    double max_offset = init_max;
-    // kEpsilon = speed_threshold * tick_period. For 0.5 m/s and 0.1s tick: 0.5 * 0.1 = 0.05
-    double tick_period_s = params_.tick_period_ms / 1000.0;
-    double kEpsilon = 0.5 * tick_period_s;
-
-    if (dz > kEpsilon) {
-      // Flying upwards
-      min_offset = init_min / 2.0;
-      max_offset = init_max;
-      //Print something in terminal
-      RCLCPP_INFO(this->get_logger(), "Flying upwards");
-    } else if (dz < -kEpsilon) {
-      // Flying downwards
-      min_offset = init_min;
-      max_offset = init_max / 2.0;
-      RCLCPP_INFO(this->get_logger(), "Flying downwards");
-    }
-
-    mapper->esdf_integrator().esdf_slice_height(z);
-    mapper->esdf_integrator().esdf_slice_max_height(z + max_offset);
-    mapper->esdf_integrator().esdf_slice_min_height(z + min_offset);
   }
+  first = false;
+  last_z = z;
+  last_stamp = z_stamp;
+
+  double min_offset = init_min;
+  double max_offset = init_max;
+  double kEpsilon = 0.5; // m/s threshold
+
+  if (speed > kEpsilon) {
+    min_offset = init_min / 2.0;
+    max_offset = init_max;
+    RCLCPP_INFO(this->get_logger(), "Flying upwards (%.2f m/s)", speed);
+  } else if (speed < -kEpsilon) {
+    min_offset = init_min;
+    max_offset = init_max / 2.0;
+    RCLCPP_INFO(this->get_logger(), "Flying downwards (%.2f m/s)", speed);
+  }
+
+  mapper->esdf_integrator().esdf_slice_height(z);
+  mapper->esdf_integrator().esdf_slice_max_height(z + max_offset);
+  mapper->esdf_integrator().esdf_slice_min_height(z + min_offset);
+}
 
 void NvbloxNode::processEsdf()
 {
