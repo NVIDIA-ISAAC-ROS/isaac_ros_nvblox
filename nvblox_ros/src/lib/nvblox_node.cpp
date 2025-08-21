@@ -798,9 +798,9 @@ void NvbloxNode::updateMapper(
     // Default: flat
     double min_offset = init_min;
     double max_offset = init_max;
-  // kEpsilon = speed_threshold * tick_period. For 0.5 m/s and 0.1s tick: 0.5 * 0.1 = 0.05
-  double tick_period_s = params_.tick_period_ms / 1000.0;
-  double kEpsilon = 0.5 * tick_period_s;
+    // kEpsilon = speed_threshold * tick_period. For 0.5 m/s and 0.1s tick: 0.5 * 0.1 = 0.05
+    double tick_period_s = params_.tick_period_ms / 1000.0;
+    double kEpsilon = 0.5 * tick_period_s;
 
     if (dz > kEpsilon) {
       // Flying upwards
