@@ -228,6 +228,7 @@ protected:
   rclcpp::Subscription<tf2_msgs::msg::TFMessage>::SharedPtr tf_sub_;
   
   double base_link_z_position_;
+  rclcpp::Time base_link_z_stamp_;
   double init_static_min_height_;
   double init_static_max_height_;
 
