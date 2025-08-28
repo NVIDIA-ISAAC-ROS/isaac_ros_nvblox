@@ -208,6 +208,9 @@ void NvbloxNode::initializeMultiMapper()
   //              and these handles wouldn't be needed.
   static_mapper_ = multi_mapper_.get()->background_mapper();
   dynamic_mapper_ = multi_mapper_.get()->foreground_mapper();
+
+  init_static_min_height_ = static_mapper_->esdf_integrator().esdf_slice_min_height();
+  init_static_max_height_ = static_mapper_->esdf_integrator().esdf_slice_max_height();
 }
 
 void NvbloxNode::subscribeToTopics()
@@ -353,6 +356,18 @@ void NvbloxNode::subscribeToTopics()
     std::bind(&Transformer::transformCallback, &transformer_, std::placeholders::_1));
   pose_sub_ = create_subscription<geometry_msgs::msg::PoseStamped>(
     "pose", 10, std::bind(&Transformer::poseCallback, &transformer_, std::placeholders::_1));
+
+  // Subscribe to "tf" for multiple transforms
+  tf_sub_ = create_subscription<tf2_msgs::msg::TFMessage>(
+    "tf", kQueueSize,
+    [this](const tf2_msgs::msg::TFMessage::SharedPtr msg) {
+      for (const auto& transform : msg->transforms) {
+        if (transform.child_frame_id == "base_link") {
+          base_link_z_position_ = transform.transform.translation.z;
+          base_link_z_stamp_ = rclcpp::Time(transform.header.stamp);
+        }
+      }
+    });
 }
 
 void NvbloxNode::advertiseTopics()
@@ -764,6 +779,50 @@ void NvbloxNode::processServiceRequestTaskQueue()
   }
 }
 
+void NvbloxNode::updateMapper(const std::shared_ptr<Mapper> & mapper)
+{
+  double init_min = init_static_min_height_;
+  double init_max = init_static_max_height_;
+  double z = base_link_z_position_;
+  rclcpp::Time z_stamp = base_link_z_stamp_; // Make sure this is set in your tf callback
+
+  static double last_z = 0.0;
+  static rclcpp::Time last_stamp;
+  static bool first = true;
+  double dz = 0.0;
+  double dt = 0.0;
+  double speed = 0.0;
+
+  if (!first) {
+    dz = z - last_z;
+    dt = (z_stamp - last_stamp).seconds();
+    if (dt > 0.0) {
+      speed = dz / dt;
+    }
+  }
+  first = false;
+  last_z = z;
+  last_stamp = z_stamp;
+
+  double min_offset = init_min;
+  double max_offset = init_max;
+  double kEpsilon = 0.5; // m/s threshold
+
+  if (speed > kEpsilon) {
+    min_offset = init_min / 2.0;
+    max_offset = init_max;
+    // RCLCPP_INFO(this->get_logger(), "Flying upwards (%.2f m/s)", speed);
+  } else if (speed < -kEpsilon) {
+    min_offset = init_min;
+    max_offset = init_max / 2.0;
+    // RCLCPP_INFO(this->get_logger(), "Flying downwards (%.2f m/s)", speed);
+  }
+
+  mapper->esdf_integrator().esdf_slice_height(z);
+  mapper->esdf_integrator().esdf_slice_max_height(z + max_offset);
+  mapper->esdf_integrator().esdf_slice_min_height(z + min_offset);
+}
+
 void NvbloxNode::processEsdf()
 {
   const rclcpp::Time timestamp = get_clock()->now();
@@ -782,6 +841,8 @@ void NvbloxNode::processEsdf()
 
   if (params_.esdf_mode == EsdfMode::k2D) {
     timing::Timer esdf_output_timer("ros/esdf/slice_output");
+
+    updateMapper(static_mapper_);
 
     sliceAndPublishEsdf(
       "static", static_mapper_, static_esdf_pointcloud_publisher_,
