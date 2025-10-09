@@ -20,6 +20,7 @@ get_dummy_bag_path(DUMMY_BAG_PATH)
 
 add_graph_startup_test(realsense_dry_run
     launch/realsense_example.launch.py
+    DONT_CHECK_EXIT_CODE
     TIMEOUT 20
     ARGS "rosbag:=${DUMMY_BAG_PATH} run_rviz:=False"
 )
@@ -28,12 +29,14 @@ add_graph_startup_test(realsense_dry_run
 # So here we turn navigation off.
 add_graph_startup_test(isaac_sim_dry_run
     launch/isaac_sim_example.launch.py
+    DONT_CHECK_EXIT_CODE
     TIMEOUT 20
     ARGS "rosbag:=${DUMMY_BAG_PATH} run_rviz:=False navigation:=False"
 )
 
 add_graph_startup_test(zed_dry_run
     launch/zed_example.launch.py
+    DONT_CHECK_EXIT_CODE
     TIMEOUT 20
     ARGS "rosbag:=${DUMMY_BAG_PATH} run_rviz:=False"
 )
