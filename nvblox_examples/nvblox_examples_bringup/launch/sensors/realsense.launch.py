@@ -17,33 +17,42 @@
 
 from typing import List, Optional
 
-from isaac_ros_launch_utils.all_types import *
+from isaac_ros_launch_utils.all_types import (
+    Action, ComposableNode, LaunchDescription, TimerAction, IfCondition)
 import isaac_ros_launch_utils as lu
-
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME
 
-
-EMITTER_FLASHING_CONFIG_FILE_PATH = lu.get_path('nvblox_examples_bringup', 'config/sensors/realsense_emitter_flashing.yaml')
-EMITTER_ON_CONFIG_FILE_PATH = lu.get_path('nvblox_examples_bringup', 'config/sensors/realsense_emitter_on.yaml')
+EMITTER_FLASHING_CONFIG_FILE_PATH = lu.get_path(
+    'nvblox_examples_bringup',
+    'config/sensors/realsense_emitter_flashing.yaml')
+EMITTER_ON_CONFIG_FILE_PATH = lu.get_path(
+    'nvblox_examples_bringup',
+    'config/sensors/realsense_emitter_on.yaml')
 
 # By default our behaviour is:
 # - Run the splitter on camera0,
 # - Don't run the splitter on the remaining cameras.
 # NOTE(alexmillane, 16.08.2024): At the moment this is the *only* behaviour we support.
+
+
 def get_default_run_splitter_list(num_cameras: int) -> List[bool]:
     run_splitter_list = [False] * num_cameras
     run_splitter_list[0] = True
     return run_splitter_list
 
 
-def get_camera_node(camera_name: str, config_file_path: str, serial_number: Optional[int] = None) -> ComposableNode:
+def get_camera_node(
+        camera_name: str,
+        config_file_path: str,
+        serial_number: Optional[int] = None) -> ComposableNode:
     parameters = []
     parameters.append(config_file_path)
     parameters.append({'camera_name': camera_name})
     if serial_number:
         parameters.append({'serial_no': str(serial_number)})
     realsense_node = ComposableNode(
-        namespace=camera_name,
+        name=camera_name,
+        namespace='',
         package='realsense2_camera',
         plugin='realsense2_camera::RealSenseNodeFactory',
         parameters=parameters)
@@ -101,19 +110,20 @@ def add_cameras(args: lu.ArgumentContainer) -> List[Action]:
         else:
             config_file_path = EMITTER_ON_CONFIG_FILE_PATH
         # Realsense
-        log_message = lu.log_info(f'Starting realsense with name: {camera_name}, running splitter: {run_splitter}')
+        log_message = lu.log_info(
+            f'Starting realsense with name: {camera_name}, running splitter: {run_splitter}')
         nodes.append(
             get_camera_node(
                 camera_name=camera_name,
                 config_file_path=config_file_path,
                 serial_number=camera_serial_number,
-        ))
+            ))
         # Splitter
         if run_splitter:
             nodes.append(
                 get_splitter_node(
                     camera_name=camera_name,
-            ))
+                ))
         # Note(xinjieyao: 2024/08/24): Multi-rs launch use RealSenseNodeFactory could be unstable
         # Camera node may fail to launch without any ERROR or app crashes
         # Adding delay for cameras after the first camera bringup (including splitter) as temp fix

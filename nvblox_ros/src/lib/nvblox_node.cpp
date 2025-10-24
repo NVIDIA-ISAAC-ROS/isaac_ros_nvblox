@@ -378,6 +378,10 @@ void NvbloxNode::advertiseTopics()
     create_publisher<visualization_msgs::msg::Marker>("~/workspace_bounds", 1);
   shapes_to_clear_publisher_ =
     create_publisher<visualization_msgs::msg::MarkerArray>("~/shapes_to_clear", 1);
+  tsdf_zero_crossings_pointcloud_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/groundplane_estimator_ground_pointcloud", 1);
+  tsdf_zero_crossings_ground_plane_publisher_ =
+    create_publisher<visualization_msgs::msg::Marker>("~/groundplane_estimator_estimated_plane", 1);
 
   if (params_.output_pessimistic_distance_map) {
     pessimistic_static_esdf_pointcloud_publisher_ =
@@ -684,7 +688,7 @@ bool NvbloxNode::isPoseAvailable(const ImageTypeVariant & variant_msg)
         const NitrosView & img_msg = *std::get<kMsgTupleImageIdx>(msg);
         const NitrosView & mask_msg = *std::get<kMsgTupleMaskIdx>(msg);
         return this->canTransform(img_msg.GetFrameId(), getTimestamp(img_msg)) &&
-        this->canTransform(mask_msg.GetFrameId(), getTimestamp(mask_msg));
+               this->canTransform(mask_msg.GetFrameId(), getTimestamp(mask_msg));
       }
     }, variant_msg);
 }
@@ -1260,18 +1264,19 @@ bool NvbloxNode::processColorImage(const ImageTypeVariant & color_msg)
     nvblox::Time(now().nanoseconds()));
   integrate_color_last_times_[color_frame] = color_image_timestamp;
   color_integrate_timer.Stop();
-  if (isHumanMapping(params_.mapping_type)) {
-    if (color_frame_overlay_publisher_->get_subscription_count() > 0) {
-      timing::Timer color_overlay_timer("ros/color/output/human_overlay");
-      sensor_msgs::msg::Image img_msg;
-      const ColorImage & color_overlay = multi_mapper_->getLastColorFrameMaskOverlay();
-      conversions::imageMessageFromColorImage(
-        color_overlay, color_frame, &img_msg,
-        *cuda_stream_);
-      color_frame_overlay_publisher_->publish(img_msg);
-      color_overlay_timer.Stop();
-    }
-  }
+  // TODO(dtingdahl): Renable the code below.
+  // if (isHumanMapping(params_.mapping_type)) {
+  //   if (color_frame_overlay_publisher_->get_subscription_count() > 0) {
+  //     timing::Timer color_overlay_timer("ros/color/output/human_overlay");
+  //     sensor_msgs::msg::Image img_msg;
+  //     const ColorImage & color_overlay = multi_mapper_->getLastColorFrameMaskOverlay();
+  //     conversions::imageMessageFromColorImage(
+  //       color_overlay, color_frame, &img_msg,
+  //       *cuda_stream_);
+  //     color_frame_overlay_publisher_->publish(img_msg);
+  //     color_overlay_timer.Stop();
+  //   }
+  // }
   return true;
 }
 
@@ -1382,6 +1387,50 @@ void NvbloxNode::publishDebugVisualizations()
 {
   const rclcpp::Time timestamp = get_clock()->now();
 
+  // Ground Plane Estimation: Publish the tsdf zero crossings
+  if (tsdf_zero_crossings_pointcloud_publisher_->get_subscription_count() > 0) {
+    std::optional<std::vector<Vector3f>> maybe_tsdf_zero_crossings =
+      multi_mapper_->ground_plane_estimator().tsdf_zero_crossings_ground_candidates();
+    if (maybe_tsdf_zero_crossings) {
+      // Convert to Pointcloud -> PointCloud2 -> Publish
+      tsdf_zero_crossings_device_.copyFromAsync(
+        maybe_tsdf_zero_crossings.value(), CudaStreamOwning());
+      sensor_msgs::msg::PointCloud2 tsdf_zero_crossings_pointcloud2_msg;
+      pointcloud_converter_.pointcloudMsgFromPointcloud(
+        tsdf_zero_crossings_device_, &tsdf_zero_crossings_pointcloud2_msg);
+
+      tsdf_zero_crossings_pointcloud2_msg.header.frame_id = params_.global_frame.get();
+      tsdf_zero_crossings_pointcloud2_msg.header.stamp = update_esdf_last_time_;
+      tsdf_zero_crossings_pointcloud_publisher_->publish(
+        tsdf_zero_crossings_pointcloud2_msg);
+    }
+  }
+
+  // Ground Plane Estimation: Publish the ground plane
+  if (tsdf_zero_crossings_ground_plane_publisher_->get_subscription_count() > 0) {
+    std::optional<Plane> maybe_plane = multi_mapper_->ground_plane_estimator().ground_plane();
+    if (maybe_plane) {
+      Transform T_S_PB;
+      if (transformer_.lookupTransformToGlobalFrame(
+          params_.ground_plane_visualization_attachment_frame_id,
+          rclcpp::Time(0), &T_S_PB))
+      {
+        const visualization_msgs::msg::Marker marker_plane =
+          planeToMarker(
+          T_S_PB, maybe_plane.value(),
+          params_.ground_plane_visualization_side_length,
+          update_esdf_last_time_, params_.global_frame.get());
+        tsdf_zero_crossings_ground_plane_publisher_->publish(marker_plane);
+      } else {
+        RCLCPP_INFO_STREAM_THROTTLE(
+          get_logger(), *get_clock(), kTimeBetweenDebugMessagesMs,
+          "Tried to publish ground plane but couldn't look up frame: "
+            << params_.ground_plane_visualization_attachment_frame_id
+            .get());
+      }
+    }
+  }
+
   // Also publish the esdf slice bounds (showing esdf max/min 2d height)
   if (esdf_slice_bounds_publisher_->get_subscription_count() > 0) {
     // The frame to which the slice limits visualization is attached.
@@ -1490,15 +1539,15 @@ void NvbloxNode::savePly(
   // Define the task function
   TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
     [](auto node,
-      auto service_request,
-      auto service_response) {
+    auto service_request,
+    auto service_response) {
       // If we get a full path, then write to that path.
       bool success = true;
       if (ends_with(service_request->file_path, ".ply")) {
         // Make sure the mesh is computed
-        node->static_mapper_->updateMesh(UpdateFullLayer::kYes);
-        success = io::outputMeshLayerToPly(
-          node->static_mapper_->mesh_layer(), service_request->file_path);
+        node->static_mapper_->updateColorMesh(UpdateFullLayer::kYes);
+        success = io::outputColorMeshLayerToPly(
+          node->static_mapper_->color_mesh_layer(), service_request->file_path);
       } else {
         // If we get a partial path then output a bunch of stuff to a folder.
         success &= io::outputVoxelLayerToPly(
@@ -1507,8 +1556,8 @@ void NvbloxNode::savePly(
         success &= io::outputVoxelLayerToPly(
           node->static_mapper_->esdf_layer(),
           service_request->file_path + "/ros2_esdf.ply");
-        success &= io::outputMeshLayerToPly(
-          node->static_mapper_->mesh_layer(),
+        success &= io::outputColorMeshLayerToPly(
+          node->static_mapper_->color_mesh_layer(),
           service_request->file_path + "/ros2_mesh.ply");
         if (isDynamicMapping(node->params_.mapping_type)) {
           success &= io::outputVoxelLayerToPly(
@@ -1546,8 +1595,8 @@ void NvbloxNode::saveMap(
   // Define the task function
   TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
     [](auto node,
-      auto service_request,
-      auto service_response) {
+    auto service_request,
+    auto service_response) {
       std::string filename = service_request->file_path;
       if (!ends_with(service_request->file_path, ".nvblx")) {
         filename += ".nvblx";
@@ -1581,8 +1630,8 @@ void NvbloxNode::loadMap(
   // Define the task function
   TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
     [](auto node,
-      auto service_request,
-      auto service_response) {
+    auto service_request,
+    auto service_response) {
       std::string filename = service_request->file_path;
       if (!ends_with(service_request->file_path, ".nvblx")) {
         filename += ".nvblx";
@@ -1688,8 +1737,8 @@ void NvbloxNode::getEsdfAndGradientService(
   // Define the task function
   TaskFunctionType<NvbloxNode, nvblox_msgs::srv::EsdfAndGradients> request_task =
     [](auto node,
-      auto service_request,
-      auto service_response) {
+    auto service_request,
+    auto service_response) {
       // NOTE: We could consider to enable requests in other
       // frame ids by re-sampling/interpolating the grid in the future.
       timing::Timer create_esdf_grid_timer("ros/esdf_service/task_function");
@@ -1738,6 +1787,8 @@ void NvbloxNode::getEsdfAndGradientService(
         node->static_mapper_->esdf_layer(),
         node->params_.esdf_and_gradients_unobserved_value,
         service_request, service_response, *node->cuda_stream_);
+      service_response->header.stamp = node->newest_integrated_depth_time_;
+      service_response->header.frame_id = node->params_.global_frame.get();
       if (service_response->success) {
         RCLCPP_INFO_STREAM(
           node->get_logger(),

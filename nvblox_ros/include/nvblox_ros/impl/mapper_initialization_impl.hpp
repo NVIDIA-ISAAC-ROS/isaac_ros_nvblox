@@ -41,6 +41,10 @@ void set_parameter(
       full_name << ": " << parameter_value);
     // Set the mapper parameter
     parameter_setter(parameter_value);
+  } else {
+    RCLCPP_WARN_STREAM(
+      node->get_logger(),
+      "Could not set parameter: " << full_name << ": " << parameter_value);
   }
 }
 

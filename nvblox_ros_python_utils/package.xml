@@ -2,11 +2,16 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros_python_utils</name>
-  <version>3.2.5</version>
+  <version>4.0.0</version>
   <description>Python utilities used across nvblox_ros</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">alex</maintainer>
   <license>Apache-2.0</license>
   <build_depend>isaac_ros_common</build_depend>
+
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>ament_flake8</test_depend>
+  <test_depend>ament_pep257</test_depend>
+  <test_depend>python3-pytest</test_depend>
 
   <export>
     <build_type>ament_python</build_type>

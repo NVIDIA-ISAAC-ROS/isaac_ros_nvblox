@@ -50,8 +50,10 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/SemanticLabelsStamped.msg"
   "msg/MeshBlock.msg"
   "msg/Mesh.msg"
+  "msg/MeshSerialized.msg"
   "msg/VoxelBlock.msg"
   "msg/VoxelBlockLayer.msg"
+  "msg/VoxelSerialized.msg"
   "msg/Index3D.msg"
   "msg/DistanceMapSlice.msg"
   DEPENDENCIES std_msgs geometry_msgs

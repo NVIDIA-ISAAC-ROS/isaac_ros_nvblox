@@ -97,7 +97,8 @@ void imageMessageFromColorImage(
   sensor_msgs::msg::Image * image_msg, const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(image_msg);
-  constexpr int num_channels = 4;
+  constexpr int num_channels = 3;
+  static_assert(ColorImage::ElementType::size() == num_channels, "Need RGB image");
   size_t image_size = color_image.width() * color_image.height() * sizeof(uint8_t) * num_channels;
   image_msg->data.resize(image_size);
 
@@ -106,7 +107,7 @@ void imageMessageFromColorImage(
   image_msg->height = color_image.height();
   image_msg->step = color_image.width() * sizeof(uint8_t) * num_channels;
 
-  image_msg->encoding = "rgba8";
+  image_msg->encoding = "rgb8";
 
   cudaMemcpyAsync(
     &image_msg->data[0], color_image.dataConstPtr(), image_size, cudaMemcpyDefault,

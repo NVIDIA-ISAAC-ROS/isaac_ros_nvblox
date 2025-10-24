@@ -242,10 +242,9 @@ void PointcloudConverter::pointsToCubesMarkerMsg(
     point.z = p_L.z();
     marker_ptr->points.push_back(point);
   }
-  marker_ptr->color.r = static_cast<float>(color.r) / 255.0f;
-  marker_ptr->color.g = static_cast<float>(color.g) / 255.0f;
-  marker_ptr->color.b = static_cast<float>(color.b) / 255.0f;
-  marker_ptr->color.a = static_cast<float>(color.a) / 255.0f;
+  marker_ptr->color.r = static_cast<float>(color.r()) / 255.0f;
+  marker_ptr->color.g = static_cast<float>(color.g()) / 255.0f;
+  marker_ptr->color.b = static_cast<float>(color.b()) / 255.0f;
   marker_ptr->scale.x = cube_size;
   marker_ptr->scale.y = cube_size;
   marker_ptr->scale.z = cube_size;

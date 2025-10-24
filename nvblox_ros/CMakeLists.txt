@@ -41,9 +41,6 @@ include(nvblox_core/cmake/cuda/setup_compute_capability.cmake)
 if(DEFINED USE_NATIVE_CUDA_ARCHITECTURE)
   unset(CMAKE_CUDA_ARCHITECTURES)
   message(STATUS "nvblox_ros is built with native CUDA architectures.")
-elseif(${CMAKE_SYSTEM_PROCESSOR} STREQUAL "aarch64")
-  set(CMAKE_CUDA_ARCHITECTURES "87")
-  message(STATUS "nvblox_ros is built for Jetson/Orin CUDA architecture: ${CMAKE_CUDA_ARCHITECTURES}")
 else()
   message(STATUS "nvblox_ros is built for the following CUDA architectures: ${CMAKE_CUDA_ARCHITECTURES}")
 endif()
@@ -117,8 +114,10 @@ add_library(${PROJECT_NAME}_lib SHARED
   src/lib/rosbag_reading.cpp
 )
 set_nvblox_compiler_options(${PROJECT_NAME}_lib)
-target_link_libraries(${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets pthread glog)
+target_link_libraries(${PROJECT_NAME}_lib PUBLIC nvblox_lib nvblox_eigen nvblox_datasets pthread glog)
+target_link_libraries(${PROJECT_NAME}_lib PRIVATE nvblox_gpu_hash nvblox_stdgpu)
 ament_target_dependencies(${PROJECT_NAME}_lib
+  PUBLIC
   rclcpp
   rclcpp_components
   rosbag2_cpp
@@ -195,7 +194,7 @@ install(
 
 # Install the library target.
 install(
-  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets nvblox_gpu_hash stdgpu
+  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets
   EXPORT ${PROJECT_NAME}Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib

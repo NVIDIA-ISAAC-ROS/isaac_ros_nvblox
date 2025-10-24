@@ -39,6 +39,64 @@ inline std::string toString(HeightLimitMarkerType marker_type)
   }
 }
 
+visualization_msgs::msg::Marker planeToMarker(
+  const Transform & T_G_PB, const Plane & plane_G,
+  float visualization_side_length, const rclcpp::Time & timestamp,
+  const std::string & global_frame_id)
+{
+  // Get four points in the respective body frame (B). The Body to Global transformation
+  // (T_G_PB) is expected to rotate around z (yaw) only.
+  // Then transform the body point into the global frame (G) in which we extract the z height
+  // from the plane.
+  const float square_half_side_length_m = visualization_side_length / 2.0f;
+
+  const Vector3f p0_B{square_half_side_length_m, square_half_side_length_m, 0.0};
+  Vector3f p0_G = T_G_PB * p0_B;
+  p0_G.z() = plane_G.getHeightAtXY({p0_G.x(), p0_G.y()});
+
+  const Vector3f p1_B{-square_half_side_length_m, square_half_side_length_m, 0.0};
+  Vector3f p1_G = T_G_PB * p1_B;
+  p1_G.z() = plane_G.getHeightAtXY({p1_G.x(), p1_G.y()});
+
+  const Vector3f p2_B{square_half_side_length_m, -square_half_side_length_m, 0.0};
+  Vector3f p2_G = T_G_PB * p2_B;
+  p2_G.z() = plane_G.getHeightAtXY({p2_G.x(), p2_G.y()});
+
+  const Vector3f p3_B{-square_half_side_length_m, -square_half_side_length_m, 0.0};
+  Vector3f p3_G = T_G_PB * p3_B;
+  p3_G.z() = plane_G.getHeightAtXY({p3_G.x(), p3_G.y()});
+
+  // Create marker message
+  visualization_msgs::msg::Marker marker;
+  marker.header.frame_id = global_frame_id;
+  marker.header.stamp = timestamp;
+  marker.ns = "ground_plane";
+  marker.id = 0;
+  marker.type = visualization_msgs::msg::Marker::TRIANGLE_LIST;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.scale.x = 1.0;
+  marker.scale.y = 1.0;
+  marker.scale.z = 1.0;
+
+  // 6 triangle corners ([0,1,2], [1,2,3])
+  const std::array<Vector3f, 6> vertices_G_vec{p0_G, p1_G, p2_G, p1_G, p2_G, p3_G};
+  for (const Vector3f & vertex_G : vertices_G_vec) {
+    geometry_msgs::msg::Point msg;
+    msg.x = vertex_G.x();
+    msg.y = vertex_G.y();
+    msg.z = vertex_G.z();
+    marker.points.push_back(msg);
+
+    // Add color to point
+    std_msgs::msg::ColorRGBA color_msg;
+    color_msg.g = 1.0;
+    color_msg.a = 1.0;
+    marker.colors.push_back(color_msg);
+  }
+  return marker;
+}
+
+
 visualization_msgs::msg::Marker
 heightLimitToMarker(
   const Transform & T_G_PB, const float visualization_side_length,

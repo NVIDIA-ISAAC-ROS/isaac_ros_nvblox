@@ -112,6 +112,11 @@ void declareMultiMapperParameters(rclcpp::Node * node)
 {
   declareParameter<int>("multi_mapper", kConnectedMaskComponentSizeThresholdParamDesc, node);
   declareParameter<bool>("multi_mapper", kRemoveSmallConnectedComponentsParamDesc, node);
+  declareParameter<bool>("multi_mapper", kExperimentalUseGroundPlaneEstimationDesc, node);
+  declareParameter<float>("multi_mapper", kGroundPointsCandidatesMinZMDesc, node);
+  declareParameter<float>("multi_mapper", kGroundPointsCandidatesMaxZMDesc, node);
+  declareParameter<float>("multi_mapper", kRansacDistanceThresholdMDesc, node);
+  declareParameter<int>("multi_mapper", kNumRansacIterationsDesc, node);
 }
 
 MultiMapperParams getMultiMapperParamsFromROS(rclcpp::Node * node)
@@ -127,6 +132,25 @@ MultiMapperParams getMultiMapperParamsFromROS(rclcpp::Node * node)
     "multi_mapper", kRemoveSmallConnectedComponentsParamDesc.name,
     [&](auto value) {params.remove_small_connected_components = value;}, node);
 
+  set_parameter<bool>(
+    "multi_mapper", kExperimentalUseGroundPlaneEstimationDesc.name,
+    [&](auto value) {params.experimental_use_ground_plane_estimation = value;}, node);
+  set_parameter<float>(
+    "multi_mapper", kGroundPointsCandidatesMinZMDesc.name,
+    [&](auto value) {
+      params.ground_plane_estimator_params.ground_points_candidates_min_z_m = value;
+    }, node);
+  set_parameter<float>(
+    "multi_mapper", kGroundPointsCandidatesMaxZMDesc.name,
+    [&](auto value) {
+      params.ground_plane_estimator_params.ground_points_candidates_max_z_m = value;
+    }, node);
+  set_parameter<float>(
+    "multi_mapper", kRansacDistanceThresholdMDesc.name,
+    [&](auto value) {params.ransac_plane_fitter_params.ransac_distance_threshold_m = value;}, node);
+  set_parameter<int>(
+    "multi_mapper", kNumRansacIterationsDesc.name,
+    [&](auto value) {params.ransac_plane_fitter_params.num_ransac_iterations = value;}, node);
   return params;
 }
 
@@ -141,6 +165,9 @@ void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * nod
   declareParameter<float>(mapper_name, kEsdfSliceMinHeightParamDesc, node);
   declareParameter<float>(mapper_name, kEsdfSliceMaxHeightParamDesc, node);
   declareParameter<float>(mapper_name, kEsdfSliceHeightParamDesc, node);
+  declareParameter<float>(mapper_name, kSliceHeightAbovePlaneMParamDesc, node);
+  declareParameter<float>(mapper_name, kSliceHeightThicknessMParamDesc, node);
+
   // Decay
   declareParameter<bool>(mapper_name, kExcludeLastViewFromDecayParamDesc, node);
 
@@ -227,6 +254,12 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_parameter<float>(
     mapper_name, kEsdfSliceHeightParamDesc.name,
     [&](auto value) {params.esdf_integrator_params.esdf_slice_height = value;}, node);
+  set_parameter<float>(
+    mapper_name, kSliceHeightAbovePlaneMParamDesc.name,
+    [&](auto value) {params.esdf_integrator_params.slice_height_above_plane_m = value;}, node);
+  set_parameter<float>(
+    mapper_name, kSliceHeightThicknessMParamDesc.name,
+    [&](auto value) {params.esdf_integrator_params.slice_height_thickness_m = value;}, node);
   // Decay
   set_parameter<bool>(
     mapper_name, kExcludeLastViewFromDecayParamDesc.name,

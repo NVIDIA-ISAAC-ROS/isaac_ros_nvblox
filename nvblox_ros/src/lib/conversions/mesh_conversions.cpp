@@ -43,9 +43,9 @@ geometry_msgs::msg::Point pointMessageFromVector(const Eigen::Vector3f & vector)
 std_msgs::msg::ColorRGBA colorMessageFromColor(const Color & color)
 {
   std_msgs::msg::ColorRGBA color_msg;
-  color_msg.r = static_cast<float>(color.r) / 255.0f;
-  color_msg.g = static_cast<float>(color.g) / 255.0f;
-  color_msg.b = static_cast<float>(color.b) / 255.0f;
+  color_msg.r = static_cast<float>(color.r()) / 255.0f;
+  color_msg.g = static_cast<float>(color.g()) / 255.0f;
+  color_msg.b = static_cast<float>(color.b()) / 255.0f;
   color_msg.a = 1.0f;
   return color_msg;
 }
@@ -60,7 +60,7 @@ nvblox_msgs::msg::Index3D index3DMessageFromIndex3D(const Index3D & index)
 }
 
 void meshMessageFromSerializedMesh(
-  const std::shared_ptr<const SerializedMeshLayer> serialized_mesh,
+  const std::shared_ptr<SerializedColorMeshLayer> serialized_mesh,
   const rclcpp::Time & timestamp, const std::string & frame_name,
   const float mesh_layer_block_size, const bool resend_full_mesh,
   nvblox_msgs::msg::Mesh * mesh_msg)
@@ -87,13 +87,13 @@ void meshMessageFromSerializedMesh(
     mesh_msg->blocks[i_block].colors.resize(num_vertices);
     mesh_msg->blocks[i_block].triangles.resize(num_triangle_indices);
 
-    CHECK(serialized_mesh->colors.size() == serialized_mesh->vertices.size());
+    CHECK(serialized_mesh->vertex_appearances.size() == serialized_mesh->vertices.size());
 
     for (size_t i_vert = 0; i_vert < static_cast<size_t>(num_vertices); ++i_vert) {
       mesh_msg->blocks[i_block].vertices[i_vert] =
         point32MessageFromVector(serialized_mesh->getVertex(i_block, i_vert));
       mesh_msg->blocks[i_block].colors[i_vert] =
-        colorMessageFromColor(serialized_mesh->getColor(i_block, i_vert));
+        colorMessageFromColor(serialized_mesh->getAppearance(i_block, i_vert));
     }
 
     for (size_t i_tri = 0; i_tri < static_cast<size_t>(num_triangle_indices); ++i_tri) {
@@ -127,7 +127,7 @@ void meshMessageFromBlocksToDelete(
 
 // Convert a mesh to a marker array.
 void markerMessageFromSerializedMesh(
-  const std::shared_ptr<const nvblox::SerializedMeshLayer> & serialized_mesh,
+  const std::shared_ptr<SerializedColorMeshLayer> & serialized_mesh,
   const std::string & frame_id, visualization_msgs::msg::MarkerArray * marker_msg)
 {
   const size_t num_blocks = serialized_mesh->block_indices.size();
@@ -150,7 +150,8 @@ void markerMessageFromSerializedMesh(
       itr != serialized_mesh->triangleBlockItr(i_block + 1); ++itr)
     {
       marker.points.emplace_back(pointMessageFromVector(serialized_mesh->getVertex(i_block, *itr)));
-      marker.colors.emplace_back(colorMessageFromColor(serialized_mesh->getColor(i_block, *itr)));
+      marker.colors.emplace_back(colorMessageFromColor(serialized_mesh->getAppearance(i_block,
+            *itr)));
     }
 
     marker.header.frame_id = frame_id;

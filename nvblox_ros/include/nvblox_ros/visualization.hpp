@@ -32,6 +32,18 @@ namespace nvblox
 
 enum class HeightLimitMarkerType { kTopHeightLimit, kBottomHeightLimit };
 
+/// @brief Generate a marker for visualizing a plane in 3D space.
+/// @param T_G_PB Transformation from the plane's center to the global frame.
+/// @param plane_G The plane to be visualized in the global frame.
+/// @param visualization_side_length The side length of the square plane to visualize.
+/// @param timestamp Timestamp for the marker message.
+/// @param global_frame_id Frame in which the plane should be visualized.
+/// @return A visualization marker representing the plane.
+visualization_msgs::msg::Marker planeToMarker(
+  const Transform & T_G_PB, const Plane & plane_G,
+  float visualization_side_length, const rclcpp::Time & timestamp,
+  const std::string & global_frame_id);
+
 /// @brief Generate a marker for visualizing a height limit as a plane.
 /// @param T_G_PB Where to center the plane in x/y-direction.
 /// @param visualization_side_length Side length of the plane.

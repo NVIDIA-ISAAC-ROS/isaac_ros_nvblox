@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>semantic_label_conversion</name>
-  <version>3.2.5</version>
+  <version>4.0.0</version>
   <description>Package to convert semantic labels coming from Isaac Sim to consistent label images</description>
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
   <license>NVIDIA Isaac ROS Software License</license>

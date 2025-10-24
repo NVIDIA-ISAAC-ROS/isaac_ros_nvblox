@@ -47,7 +47,11 @@ setup(
     version='3.0.0',
     packages=[package_name],
     install_requires=['setuptools'],
-    tests_require=['pytest'],
+    extras_require={
+        'test': [
+            'pytest'
+        ]
+    },
     zip_safe=True,
     maintainer='Isaac ROS Maintainers',
     maintainer_email='isaac-ros-maintainers@nvidia.com',

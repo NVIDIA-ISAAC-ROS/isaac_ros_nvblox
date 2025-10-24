@@ -21,5 +21,6 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 install_isaac_ros_asset(2024_04_04_isaac_sim_rotate_along_shelf)
+install_isaac_ros_asset(2024_09_23_nvblox_quickstart_galileo_static_3_2)
 
 ament_package()

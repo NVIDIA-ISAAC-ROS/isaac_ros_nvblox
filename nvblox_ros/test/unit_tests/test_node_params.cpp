@@ -27,7 +27,7 @@ namespace nvblox
 
 template<typename T> void testParam(rclcpp::Node * node, Param<T> & param)
 {
-  T from_ros;
+  T from_ros{};
   const bool is_set = node->get_parameter<T>(param.description().name, from_ros);
   EXPECT_TRUE(is_set);
   EXPECT_EQ(from_ros, param.get());
@@ -75,7 +75,7 @@ TEST(BaseNodeParams, initialize) {
 }
 
 TEST(NvbloxNodeParams, initialize) {
-  constexpr size_t kExpectedParamSize = 2008;
+  constexpr size_t kExpectedParamSize = 2096;
   testParamSize(kExpectedParamSize, sizeof(NvbloxNodeParams));
 
   auto node = std::make_shared<rclcpp::Node>("node", rclcpp::NodeOptions());
@@ -90,7 +90,8 @@ TEST(NvbloxNodeParams, initialize) {
   testStringParam(node.get(), params.after_shutdown_map_save_path);
   testStringParam(node.get(), params.esdf_slice_bounds_visualization_attachment_frame_id);
   testStringParam(node.get(), params.workspace_height_bounds_visualization_attachment_frame_id);
-
+  testStringParam(node.get(), params.ground_plane_visualization_attachment_frame_id);
+  testParam(node.get(), params.ground_plane_visualization_side_length);
   testParam<bool>(node.get(), params.print_timings_to_console);
   testParam<bool>(node.get(), params.print_rates_to_console);
   testParam<bool>(node.get(), params.print_delays_to_console);

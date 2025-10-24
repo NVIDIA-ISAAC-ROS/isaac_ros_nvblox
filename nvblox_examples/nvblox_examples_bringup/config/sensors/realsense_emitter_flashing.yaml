@@ -21,12 +21,15 @@ serial_no: ''
 usb_port_id: ''
 
 rgb_camera:
-  profile: '640x480x15'
+  color_profile: '640x480x15'
+  profile: '640x480x15' # For backwards compatibility
 color_info_qos: "SENSOR_DATA"
 color_qos: "SENSOR_DATA"
 
 depth_module:
-  profile: '640x480x60'
+  depth_profile: '640x480x60'
+  infra_profile: '640x480x60'
+  profile: '640x480x60' # For backwards compatibility
   emitter_enabled: 1
   emitter_on_off: true
 depth_qos: "SENSOR_DATA"
@@ -48,7 +51,8 @@ pointcloud_texture_index: 0
 pointcloud_texture_stream: RS2_STREAM_ANY
 
 enable_sync: false
-align_depth: false
+align_depth:
+  enable: false
 
 gyro_fps: 200
 accel_fps: 200

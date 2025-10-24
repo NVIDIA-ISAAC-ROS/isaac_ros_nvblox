@@ -44,7 +44,7 @@ TEST(ServiceRequestTask, AsyncTest) {
   // Define the task function
   TaskFunctionType<DummyNode, nvblox_msgs::srv::FilePath> request_task =
     [](DummyNode * node, RequestPtr<ServiceType> request,
-      ResponsePtr<ServiceType> response) {
+    ResponsePtr<ServiceType> response) {
       (void)node;
       (void)request;
       // Wait for a bit to simulate this task being queued.

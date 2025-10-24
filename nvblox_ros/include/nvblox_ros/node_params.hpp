@@ -156,6 +156,14 @@ constexpr Param<float>::Description kEsdfSliceBoundsVisualizationSideLengthParam
   "esdf_slice_bounds_visualization_side_length", 10.F,
   "Side length of the esdf slice bounds visualization plane."};
 
+constexpr StringParam::Description kGroundPlaneVisualizationAttachmentFrameIdParamDesc{
+  "ground_plane_visualization_attachment_frame_id", "base_link",
+  "Frame to which the ground plane visualization is centered on."};
+
+constexpr Param<float>::Description kGroundPlaneVisualizationSideLengthParamDesc{
+  "ground_plane_visualization_side_length", 10.F,
+  "Side length of the ground plane visualization plane."};
+
 constexpr StringParam::Description kWorkspaceHeightBoundsVisualizationAttachmentFrameIdParamDesc{
   "workspace_height_bounds_visualization_attachment_frame_id", "base_link",
   "Frame to which the workspace height bounds visualization is centered on the ``xy``-plane."};
@@ -325,6 +333,8 @@ public:
   StringParam workspace_height_bounds_visualization_attachment_frame_id{
     kWorkspaceHeightBoundsVisualizationAttachmentFrameIdParamDesc};
 
+  StringParam ground_plane_visualization_attachment_frame_id{
+    kGroundPlaneVisualizationAttachmentFrameIdParamDesc};
   Param<bool> print_timings_to_console{kPrintTimingsToConsoleParamDesc};
   Param<bool> print_rates_to_console{kPrintRatesToConsoleParamDesc};
   Param<bool> print_delays_to_console{kPrintDelaysToConsoleParamDesc};
@@ -356,6 +366,8 @@ public:
     kEsdfSliceBoundsVisualizationSideLengthParamDesc};
   Param<float> workspace_height_bounds_visualization_side_length{
     kWorkspaceHeightBoundsVisualizationSideLengthParamDesc};
+  Param<float> ground_plane_visualization_side_length{
+    kGroundPlaneVisualizationSideLengthParamDesc};
   Param<float> integrate_depth_rate_hz{kIntegrateDepthRateHzParamDesc};
   Param<float> integrate_color_rate_hz{kIntegrateColorRateHzParamDesc};
   Param<float> integrate_lidar_rate_hz{kIntegrateLidarRateHzParamDesc};

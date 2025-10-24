@@ -18,11 +18,12 @@
 #ifndef NVBLOX_ROS__CONVERSIONS__IMAGE_CONVERSIONS_HPP_
 #define NVBLOX_ROS__CONVERSIONS__IMAGE_CONVERSIONS_HPP_
 
+
 #include <nvblox/nvblox.h>
 
-#include <cv_bridge/cv_bridge.h>
-
 #include <string>
+
+#include <cv_bridge/cv_bridge.hpp>
 
 #include <sensor_msgs/msg/camera_info.hpp>
 #include <sensor_msgs/msg/image.hpp>

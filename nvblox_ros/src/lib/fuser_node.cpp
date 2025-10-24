@@ -277,12 +277,13 @@ bool FuserNode::fuseNextFrame()
 
   // Publish the mesh.
   if (mesh_publisher_->get_subscription_count() > 0) {
-    std::shared_ptr<const SerializedMeshLayer> serialized_mesh = fuser_->getSerializedMesh();
+    std::shared_ptr<SerializedColorMeshLayer> serialized_mesh =
+      fuser_->getSerializedColorMesh();
     nvblox_msgs::msg::Mesh mesh_msg;
     bool constexpr kResendFullMesh = false;
     conversions::meshMessageFromSerializedMesh(
       serialized_mesh, timestamp, params_.global_frame,
-      mapper_->mesh_layer().block_size(), kResendFullMesh,
+      mapper_->color_mesh_layer().block_size(), kResendFullMesh,
       &mesh_msg);
     mesh_publisher_->publish(mesh_msg);
   }
