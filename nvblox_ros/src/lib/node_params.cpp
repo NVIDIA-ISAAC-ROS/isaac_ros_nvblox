@@ -118,6 +118,9 @@ void initializeNvbloxNodeParams(
   initStringParam(
     node, &params->workspace_height_bounds_visualization_attachment_frame_id,
     parameter_tree);
+  initStringParam(
+    node, &params->ground_plane_visualization_attachment_frame_id,
+    parameter_tree);
 
   initParam<bool>(node, &params->publish_esdf_distance_slice, parameter_tree);
   initParam<bool>(node, &params->use_color, parameter_tree);
@@ -148,6 +151,9 @@ void initializeNvbloxNodeParams(
   initParam<float>(node, &params->esdf_slice_bounds_visualization_side_length, parameter_tree);
   initParam<float>(
     node, &params->workspace_height_bounds_visualization_side_length,
+    parameter_tree);
+  initParam<float>(
+    node, &params->ground_plane_visualization_side_length,
     parameter_tree);
   initParam<float>(node, &params->integrate_depth_rate_hz, parameter_tree);
   initParam<float>(node, &params->integrate_color_rate_hz, parameter_tree);

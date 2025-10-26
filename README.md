@@ -2,14 +2,14 @@
 
 Nvblox ROS 2 integration for local 3D scene reconstruction and mapping.
 
-<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/" width="600px"/></a></div>
+<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.0/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.0/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/" width="600px"/></a></div>
 
 ## Overview
 
 Isaac ROS Nvblox contains ROS 2 packages for 3D reconstruction and cost
 maps for navigation. `isaac_ros_nvblox` processes depth and pose to
 reconstruct a 3D scene in real-time and outputs a 2D costmap for
-[Nav2](https://github.com/ros-planning/navigation2). The costmap is
+[Nav2](https://github.com/ros-navigation/navigation2). The costmap is
 used in planning during navigation as a vision-based solution to avoid
 obstacles.
 
@@ -18,7 +18,7 @@ The package uses GPU acceleration to compute a 3D reconstruction and 2D costmaps
 [nvblox](https://github.com/nvidia-isaac/nvblox), the underlying
 framework-independent C++ library.
 
-<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/main/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/" width="750px"/></a></div>
+<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.0/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.0/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/" width="750px"/></a></div>
 
 Above is a typical graph that uses `isaac_ros_nvblox`.
 Nvblox takes a depth image, a color image, and a pose as input, with
@@ -26,7 +26,7 @@ which it computes a 3D scene reconstruction on the GPU. In this graph
 the pose is computed using `visual_slam`, or some other pose estimation
 node. The reconstruction
 is sliced into an output cost map which is provided through a cost map plugin
-into [Nav2](https://github.com/ros-planning/navigation2).
+into [Nav2](https://github.com/ros-navigation/navigation2).
 An optional colorized 3D reconstruction is delivered into `rviz`
 using the mesh visualization plugin. Nvblox streams mesh updates
 to RViz to update the reconstruction in real-time as it is built.
@@ -54,8 +54,10 @@ The following tables provides timings for various functions of
             <th class="head">Dataset</th>
             <th class="head">Voxel Size (m)</th>
             <th class="head">Component</th>
-            <th class="head">x86_64 w/ 3090 (Desktop)</th>
-            <th class="head">x86_64 w/ RTX A3000 (Laptop)</th>
+            <th class="head">x86_64 + 5090 (Desktop)</th>
+            <th class="head">x86_64 + 3090 (Desktop)</th>
+            <th class="head">x86_64 + A3000 (Laptop)</th>
+            <th class="head">AGX Thor</th>
             <th class="head">AGX Orin</th>
             <th class="head">Orin Nano</th>
         </tr>
@@ -64,36 +66,46 @@ The following tables provides timings for various functions of
         <tr class="row-even">
             <td rowspan="5">Replica</td>
             <td rowspan="5">0.05</td>
-            <td>TSDF</td>
+            <td>TSDF</td> <!-- tsdf/integrate -->
+            <td>0.1 ms</td>
             <td>0.5 ms</td>
             <td>0.3 ms</td>
+            <td>0.4 ms</td>
             <td>0.8 ms</td>
             <td>2.1 ms</td>
         </tr>
         <tr class="row-odd">
-            <td>Color</td>
+            <td>Color</td> <!-- color/integrate -->
+            <td>0.3 ms</td>
             <td>0.7 ms</td>
             <td>0.7 ms</td>
+            <td>0.8 ms</td>
             <td>1.1 ms</td>
             <td>3.6 ms</td>
         </tr>
         <tr class="row-even">
-            <td>Meshing</td>
+            <td>Meshing</td> <!-- mesh/integrate -->
+            <td>0.3 ms</td>
             <td>0.7 ms</td>
             <td>1.3 ms</td>
+            <td>1.4 ms</td>
             <td>2.3 ms</td>
             <td>13 ms</td>
         </tr>
         <tr class="row-odd">
-            <td>ESDF</td>
+            <td>ESDF</td> <!-- esdf/integrate -->
+            <td>0.3 ms</td>
             <td>0.8 ms</td>
             <td>1.2 ms</td>
+            <td>1.0 ms</td>
             <td>1.7 ms</td>
             <td>6.2 ms</td>
         </tr>
         <tr class="row-even">
-            <td>Dynamics</td>
+            <td>Dynamics</td> <!-- sum(multi_mapper/integrate_depth/dynamic_block) -->
+            <td>0.7 ms</td>
             <td>1.7 ms</td>
+            <td>1.4 ms</td>
             <td>1.4 ms</td>
             <td>2.0 ms</td>
             <td>N/A(\*)</td>
@@ -102,6 +114,8 @@ The following tables provides timings for various functions of
             <td rowspan="5">Redwood</td>
             <td rowspan="5">0.05</td>
             <td>TSDF</td>
+            <td>0.09 ms</td>
+            <td>0.2 ms</td>
             <td>0.2 ms</td>
             <td>0.2 ms</td>
             <td>0.5 ms</td>
@@ -109,29 +123,37 @@ The following tables provides timings for various functions of
         </tr>
         <tr class="row-odd">
             <td>Color</td>
+            <td>0.3 ms</td>
             <td>0.5 ms</td>
             <td>0.5 ms</td>
+            <td>0.6 ms</td>
             <td>0.8 ms</td>
             <td>2.6 ms</td>
         </tr>
         <tr class="row-even">
             <td>Meshing</td>
+            <td>0.2 ms</td>
             <td>0.3 ms</td>
             <td>0.5 ms</td>
+            <td>0.8 ms</td>
             <td>0.9 ms</td>
             <td>4.2 ms</td>
         </tr>
         <tr class="row-odd">
             <td>ESDF</td>
+            <td>0.3 ms</td>
             <td>0.8 ms</td>
+            <td>1.0 ms</td>
             <td>1.0 ms</td>
             <td>1.5 ms</td>
             <td>5.1 ms</td>
         </tr>
         <tr class="row-even">
             <td>Dynamics</td>
+            <td>0.4 ms</td>
             <td>1.0 ms</td>
             <td>0.7 ms</td>
+            <td>0.8 ms</td>
             <td>1.2 ms</td>
             <td>N/A(\*)</td>
         </tr>
@@ -166,10 +188,8 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
     * [ROS Communication Issues](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox/troubleshooting/troubleshooting_nvblox_ros_communication.html)
 * [`nvblox_examples_bringup`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_examples_bringup/index.html)
 * [`nvblox_image_padding`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_image_padding/index.html)
-* [`nvblox_isaac_sim`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_isaac_sim/index.html)
 * [`nvblox_msgs`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_msgs/index.html)
 * [`nvblox_nav2`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_nav2/index.html)
-* [`nvblox_performance_measurement`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_performance_measurement/index.html)
 * [`nvblox_ros`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_ros/index.html)
 * [`nvblox_ros_common`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_ros_common/index.html)
 * [`nvblox_rviz_plugin`](https://nvidia-isaac-ros.github.io/repositories_and_packages/isaac_ros_nvblox/nvblox_rviz_plugin/index.html)
@@ -178,4 +198,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2024-12-10: Optimized performance for always-on dynamic obstacle detection and 1 cm voxels
+Update 2025-10-24: Support for ROS 2 Jazzy

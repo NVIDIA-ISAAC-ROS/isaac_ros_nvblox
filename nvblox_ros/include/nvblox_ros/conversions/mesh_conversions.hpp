@@ -38,7 +38,7 @@ namespace conversions
 
 // Convert a serialized mesh to a mesh message
 void meshMessageFromSerializedMesh(
-  const std::shared_ptr<const SerializedMeshLayer> serialized_mesh,
+  const std::shared_ptr<SerializedColorMeshLayer> serialized_mesh,
   const rclcpp::Time & timestamp,
   const std::string & frame_name,
   const float mesh_layer_block_size,
@@ -55,7 +55,7 @@ void meshMessageFromBlocksToDelete(
 
 // Convert a mesh to a marker array.
 void markerMessageFromSerializedMesh(
-  const std::shared_ptr<const nvblox::SerializedMeshLayer> & serialized_mesh,
+  const std::shared_ptr<SerializedColorMeshLayer> & serialized_mesh,
   const std::string & frame_id,
   visualization_msgs::msg::MarkerArray * marker_msg);
 

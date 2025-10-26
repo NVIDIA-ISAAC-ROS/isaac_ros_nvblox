@@ -31,12 +31,17 @@ float32[] spheres_to_clear_radius_m                   # The radius of the sphere
 
 ---
 
+# Header containing:
+# - The frame that the esdf grid is defined in.
+# - The timestamp of the latest depth image integrated into the esdf.
+std_msgs/Header header
+
 # The location of the origin of the esdf grid.
 # This point coincides with the minimal corner of the minimal voxel in the grid
 # i.e. the center of the minimal voxel is defined by:
 #     minimal_voxel_center = origin_m + voxel_size / 2 * unit_vector 
 # The esdf grid is effectively an axis-aligned grid, attached to
-# this point in the frame_id defined in the service request.
+# this point in the frame_id defined in the header.
 geometry_msgs/Point origin_m
 
 # The size of the voxels in meters.

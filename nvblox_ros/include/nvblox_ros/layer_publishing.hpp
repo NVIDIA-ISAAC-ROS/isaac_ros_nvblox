@@ -68,7 +68,7 @@ private:
 
   /// Update and publish the mesh
   void publishMesh(
-    std::shared_ptr<const SerializedMeshLayer> serialized_mesh,
+    std::shared_ptr<SerializedColorMeshLayer> serialized_mesh,
     const std::vector<Index3D> & blocks_to_remove,
     const float block_size, const std::string & frame_id,
     const rclcpp::Time & timestamp, const rclcpp::Logger & logger);

@@ -36,7 +36,7 @@ void maybeReallocateImage(ImageType* image, const int height, const int width,
 
 // Conversion from int16 to float depth image by dividing with 1000, according
 // to REP-118 (https://ros.org/reps/rep-0118.html)
-struct DivideBy1000 : public thrust::unary_function<uint16_t, float> {
+struct DivideBy1000 {
   static constexpr float kInv1000 = 1.0f / 1000.0f;
 
   __host__ __device__ float operator()(const uint16_t& in) {
@@ -45,22 +45,22 @@ struct DivideBy1000 : public thrust::unary_function<uint16_t, float> {
 };
 
 template <typename T>
-struct ToRgba : public thrust::unary_function<T, Rgba> {
+struct ToRgba {
   __host__ __device__ Rgba operator()(const T& in);
 };
 
 // Conversion from RGB to RGBA image where alpha is set to 255
 template <>
-struct ToRgba<Rgb> : public thrust::unary_function<Rgb, Rgba> {
+struct ToRgba<Rgb> {
   __host__ __device__ Rgba operator()(const Rgb& in) {
-    return Rgba(in[0], in[1], in[2], 255);
+    return Rgba(in[0], in[1], in[2]);
   }
 };
 // Conversion from BGRA to RGBA image
 template <>
-struct ToRgba<Bgra> : public thrust::unary_function<Bgra, Rgba> {
+struct ToRgba<Bgra> {
   __host__ __device__ Rgba operator()(const Bgra& in) {
-    return Rgba(in[2], in[1], in[0], in[4]);
+    return Rgba(in[2], in[1], in[0]);
   }
 };
 

@@ -412,6 +412,10 @@ protected:
     dynamic_occupancy_grid_publisher_;
   rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr
     combined_occupancy_grid_publisher_;
+  rclcpp::Publisher<visualization_msgs::msg::Marker>::SharedPtr
+    tsdf_zero_crossings_ground_plane_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    tsdf_zero_crossings_pointcloud_publisher_;
 
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
@@ -526,6 +530,7 @@ protected:
   Pointcloud pointcloud_C_device_;
   Pointcloud human_pointcloud_C_device_;
   Pointcloud human_pointcloud_L_device_;
+  Pointcloud tsdf_zero_crossings_device_;
 
   Transform T_L_C_depth_;
 

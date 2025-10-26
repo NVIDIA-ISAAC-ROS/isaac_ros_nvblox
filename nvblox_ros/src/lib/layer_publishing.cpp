@@ -64,13 +64,13 @@ public:
     std_msgs::msg::ColorRGBA color;
     color.a = 1.0;
     if (undo_gamma_correction_) {
-      color.r = undo_gamma_correction_lut_[voxel.color.r];
-      color.g = undo_gamma_correction_lut_[voxel.color.g];
-      color.b = undo_gamma_correction_lut_[voxel.color.b];
+      color.r = undo_gamma_correction_lut_[voxel.color.r()];
+      color.g = undo_gamma_correction_lut_[voxel.color.g()];
+      color.b = undo_gamma_correction_lut_[voxel.color.b()];
     } else {
-      color.r = static_cast<float>(voxel.color.r) / 255.F;
-      color.g = static_cast<float>(voxel.color.g) / 255.F;
-      color.b = static_cast<float>(voxel.color.b) / 255.F;
+      color.r = static_cast<float>(voxel.color.r()) / 255.F;
+      color.g = static_cast<float>(voxel.color.g()) / 255.F;
+      color.b = static_cast<float>(voxel.color.b()) / 255.F;
     }
     return color;
   }
@@ -543,7 +543,7 @@ void publishVoxelLayerUsingPlugin(
 }
 
 void LayerPublisher::publishMesh(
-  std::shared_ptr<const SerializedMeshLayer> serialized_mesh,
+  std::shared_ptr<SerializedColorMeshLayer> serialized_mesh,
   const std::vector<Index3D> & blocks_to_remove, const float block_size,
   const std::string & frame_id, const rclcpp::Time & timestamp,
   const rclcpp::Logger & logger)
@@ -652,7 +652,9 @@ LayerTypeBitMask LayerPublisher::getLayersToStreamBitMask()
   }
 
   if (mesh_publisher_ && mesh_publisher_->get_subscription_count() > 0) {
-    mask |= LayerType::kMesh;
+    mask |= LayerType::kColorMesh;
+  } else {
+    mesh_subscriber_count_ = 0;
   }
 
   if (hasSubscriber(dynamic_occupancy_layer_publisher_plugin_) ||
@@ -682,8 +684,8 @@ void LayerPublisher::serializeAndpublishSubscribedLayers(
   LayerTypeBitMask layers_to_stream = getLayersToStreamBitMask();
 
   /// Mesh is only computed when we're serializing
-  if (layers_to_stream & LayerType::kMesh) {
-    static_mapper->updateMesh();
+  if (layers_to_stream & LayerType::kColorMesh) {
+    static_mapper->updateColorMesh();
   }
 
   timing::Timer serialize_timer("ros/publish_layer/serialize");
@@ -765,11 +767,11 @@ void LayerPublisher::serializeAndpublishSubscribedLayers(
       color_layer_publisher_marker_);
   }
 
-  if (layers_to_stream & LayerType::kMesh) {
+  if (layers_to_stream & LayerType::kColorMesh) {
     timing::Timer publish_timer("ros/publish_mesh_layer");
     publishMesh(
-      static_mapper->serializedMeshLayer(), blocks_to_remove_static_mapper,
-      static_mapper->mesh_layer().block_size(), frame_id, timestamp,
+      static_mapper->serializedColorMeshLayer(), blocks_to_remove_static_mapper,
+      static_mapper->color_mesh_layer().block_size(), frame_id, timestamp,
       logger);
   }
 
