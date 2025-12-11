@@ -67,8 +67,6 @@ NvbloxNode::NvbloxNode(
 {
   // Passing the ROS clock to the rates singleton.
   // This ensures that the rates are relative to ROS and not to system time.
-  // NOTE(remos): For timing::Timer we rely on system time to not make our
-  // measurements dependent on e.g. simulation time speed.
   auto getROSTimestampFunctor = [this]() -> uint64_t {
       return this->get_clock()->now().nanoseconds();
     };
@@ -183,7 +181,6 @@ NvbloxNode::~NvbloxNode()
 void NvbloxNode::initializeMultiMapper()
 {
   // Create the multi mapper
-  // NOTE(remos): Mesh integration is not implemented for occupancy layers.
   multi_mapper_ =
     std::make_shared<MultiMapper>(
     params_.voxel_size, params_.mapping_type, params_.esdf_mode,
@@ -204,8 +201,6 @@ void NvbloxNode::initializeMultiMapper()
   multi_mapper_->setMultiMapperParams(multi_mapper_params);
 
   // Get direct handles to the underlying mappers
-  // NOTE(remos): Ideally, everything would be handled by the multi mapper
-  //              and these handles wouldn't be needed.
   static_mapper_ = multi_mapper_.get()->background_mapper();
   dynamic_mapper_ = multi_mapper_.get()->foreground_mapper();
 }
@@ -1068,8 +1063,6 @@ bool NvbloxNode::processDepthImage(const ImageTypeVariant & depth_msg)
   // Optional publishing - Freespace + Dynamics
   if (isDynamicMapping(params_.mapping_type)) {
     // Process the freespace layer
-    // TODO(dtingdahl) Move this into the publishLayers() function so we publish visualization
-    // messages at the same place (and separated from processing)
     timing::Timer dynamic_publishing_timer("ros/depth/output/dynamics");
     publishDynamics(depth_frame);
     dynamic_publishing_timer.Stop();
@@ -1264,19 +1257,6 @@ bool NvbloxNode::processColorImage(const ImageTypeVariant & color_msg)
     nvblox::Time(now().nanoseconds()));
   integrate_color_last_times_[color_frame] = color_image_timestamp;
   color_integrate_timer.Stop();
-  // TODO(dtingdahl): Renable the code below.
-  // if (isHumanMapping(params_.mapping_type)) {
-  //   if (color_frame_overlay_publisher_->get_subscription_count() > 0) {
-  //     timing::Timer color_overlay_timer("ros/color/output/human_overlay");
-  //     sensor_msgs::msg::Image img_msg;
-  //     const ColorImage & color_overlay = multi_mapper_->getLastColorFrameMaskOverlay();
-  //     conversions::imageMessageFromColorImage(
-  //       color_overlay, color_frame, &img_msg,
-  //       *cuda_stream_);
-  //     color_frame_overlay_publisher_->publish(img_msg);
-  //     color_overlay_timer.Stop();
-  //   }
-  // }
   return true;
 }
 
@@ -1326,12 +1306,6 @@ bool NvbloxNode::processLidarPointcloud(
     params_.lidar_max_valid_range_m, params_.lidar_vertical_fov_rad);
 
   // We check that the pointcloud is consistent with this LiDAR model
-  // NOTE(alexmillane): If the check fails we return true which indicates that
-  // this pointcloud can be removed from the queue even though it wasn't
-  // integrated (because the intrisics model is messed up).
-  // NOTE(alexmillane): Note that internally we cache checks, so each LiDAR
-  // intrisics model is only tested against a single pointcloud. This is because
-  // the check is expensive to perform.
   if (!pointcloud_converter_.checkLidarPointcloud(pointcloud_ptr, lidar)) {
     RCLCPP_ERROR_ONCE(
       get_logger(), "LiDAR intrinsics are inconsistent with the received "
