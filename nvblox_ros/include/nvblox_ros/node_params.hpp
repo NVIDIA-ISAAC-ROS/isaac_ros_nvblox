@@ -310,8 +310,6 @@ public:
   Param<float> layer_visualization_exclusion_radius_m{kLayerVisualizationExclusionRadiusMParamDesc};
   Param<float> layer_streamer_bandwidth_limit_mbps{kLayerStreamerBandwidthLimitMbpsParamDesc};
 
-  // TODO(dtingdahl) handle enum-from-string logic more elegant so we don't need a separate member
-  // for the enum mapping type
   StringParam esdf_mode_str{kEsdfModeParamDesc};
   EsdfMode esdf_mode;
   StringParam mapping_type_str{kMappingTypeParamDesc};
@@ -391,8 +389,6 @@ public:
   Param<int> number_of_frames_to_integrate{kNumberOfFramesToIntegrate};
   Param<bool> update_on_key{kUpdateOnKey};
 
-  // TODO(dtingdahl) handle enum-from-string logic more elegant so we don't need a separate member
-  // for the enum mapping type
   StringParam dataset_type_str{kDatasetTypeDesc};
   RosDatasetType dataset_type;
 
