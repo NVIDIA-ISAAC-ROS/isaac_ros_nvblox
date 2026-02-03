@@ -38,6 +38,7 @@
 #include "nvblox_ros/conversions/mesh_conversions.hpp"
 #include "nvblox_ros/conversions/pointcloud_conversions.hpp"
 #include "nvblox_ros/conversions/transform_conversions.hpp"
+#include "nvblox/integrators/esdf_slicer.h"
 #include "nvblox_ros/layer_publishing.hpp"
 #include "nvblox_ros/mapper_initialization.hpp"
 #include "nvblox_ros/node_params.hpp"
@@ -90,7 +91,7 @@ private:
   void printStatistics();
 
   // Fuser for integrating frames
-  std::unique_ptr<Fuser> fuser_;
+  std::unique_ptr<CameraFuser> fuser_;
 
   // Direct access to underlying mapper object
   std::shared_ptr<Mapper> mapper_;
@@ -119,6 +120,7 @@ private:
   DepthImageBackProjector image_back_projector_;
 
   // Conversion helpers
+  EsdfSlicer esdf_slicer_;
   conversions::EsdfSliceConverter esdf_slice_converter_;
   conversions::PointcloudConverter pointcloud_converter_;
 

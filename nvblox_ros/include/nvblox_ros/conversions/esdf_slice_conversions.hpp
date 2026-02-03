@@ -38,24 +38,6 @@ public:
   EsdfSliceConverter();
   explicit EsdfSliceConverter(std::shared_ptr<CudaStream> cuda_stream);
 
-  // ------------- WRAPPING ESDF SLICER FUNCTIONS -------------
-
-  // Slicing an esdf layer (using EsdfSlicer)
-  void sliceLayerToDistanceImage(
-    const EsdfLayer & layer, float slice_height, float unobserved_value,
-    Image<float> * output_image,
-    AxisAlignedBoundingBox * aabb);
-
-  // Slicing multiple esdf layer (using EsdfSlicer)
-  void sliceLayersToCombinedDistanceImage(
-    const EsdfLayer & layer_1,
-    const EsdfLayer & layer_2,
-    float layer_1_slice_height,
-    float layer_2_slice_height,
-    float unknown_value,
-    Image<float> * output_image,
-    AxisAlignedBoundingBox * aabb);
-
   // ------------- CONVERSIONS TO ROS MESSAGES -------------
 
   // Convert slice image to distance map message
@@ -70,22 +52,13 @@ public:
     float slice_height, float voxel_size, float unknown_value,
     sensor_msgs::msg::PointCloud2 * pointcloud_msg);
 
-  // Convert slice image to occupancy grid
-  void occupancyGridFromSliceImage(
-    const Image<float> & slice_image, signed char * occupancy_grid_data,
-    float unknown_value);
-
 private:
-  // Slicer that does the work
-  EsdfSlicer esdf_slicer_;
-
   std::shared_ptr<CudaStream> cuda_stream_;
 
   // Buffers
   unified_ptr<int> max_index_device_;
   unified_ptr<int> max_index_host_;
   device_vector<PclPointXYZI> pcl_pointcloud_device_;
-  device_vector<int8_t> occupancy_grid_device_;
 };
 
 }  // namespace conversions

@@ -21,7 +21,7 @@
 
 #include "glog/logging.h"
 
-#include "nvblox/datasets/data_loader.h"
+#include "nvblox/datasets/data_loader_interface.h"
 #include "nvblox/nvblox.h"
 
 #include "rclcpp/clock.hpp"
@@ -80,7 +80,7 @@ struct RosTimeLessThan
 
 }  // namespace
 
-std::unique_ptr<Fuser> createFuser(
+std::unique_ptr<CameraFuser> createFuser(
   const std::string & rosbag_path,                                              // NOLINT
   const std::string & depth_topic,                                              // NOLINT
   const std::string & depth_camera_info_topic,                                  // NOLINT
@@ -95,10 +95,10 @@ std::unique_ptr<Fuser> createFuser(
     color_topic, color_camera_info_topic, global_frame_id,
     tf_preload_time_s, cuda_stream);
   if (!data_loader) {
-    return std::unique_ptr<Fuser>();
+    return std::unique_ptr<CameraFuser>();
   }
   constexpr bool kDontInitializeFromGflagsFlag = false;
-  return std::make_unique<Fuser>(std::move(data_loader), kDontInitializeFromGflagsFlag);
+  return std::make_unique<CameraFuser>(std::move(data_loader), kDontInitializeFromGflagsFlag);
 }
 
 std::unique_ptr<RosDataLoader>
@@ -183,24 +183,35 @@ datasets::DataLoadResult RosDataLoader::loadNext(
   ColorImage * color_frame_ptr)
 {
   // Load two cams, and two transforms
-  Transform T_L_color_ptr;
-  Camera color_camera_ptr;
+  Transform T_L_color;
+  Camera color_camera;
   auto load_result = loadNext(
     depth_frame_ptr, T_L_C_ptr, camera_ptr, color_frame_ptr,
-    &T_L_color_ptr, &color_camera_ptr);
-  CHECK(areCamerasEqual(*camera_ptr, color_camera_ptr, *T_L_C_ptr, T_L_color_ptr))
-    << "You tried to call the loadNext() function which assumes depth and "
-    "color cameras are the same, but they're different.";
+    &T_L_color, &color_camera, nullptr, nullptr, nullptr);
+
+  if (load_result == datasets::DataLoadResult::kSuccess) {
+    constexpr float kTranslationToleranceM = 0.001f;
+    constexpr float kAngularToleranceDeg = 0.1f;
+    const bool same_extrinsics = arePosesClose(
+          *T_L_C_ptr, T_L_color, kTranslationToleranceM, kAngularToleranceDeg);
+    const bool same_sensors = (*camera_ptr == color_camera);
+    CHECK(same_extrinsics && same_sensors)
+      << "You tried to call the loadNext() function which assumes depth and "
+      "color cameras are the same, but they're different.";
+  }
   return load_result;
 }
 
 DataLoadResult RosDataLoader::loadNext(
-  DepthImage * depth_frame_ptr,                                      // NOLINT
-  Transform * T_L_D_ptr,                                             // NOLINT
-  Camera * depth_camera_ptr,                                         // NOLINT
-  ColorImage * color_frame_ptr,                                      // NOLINT
-  Transform * T_L_C_ptr,                                             // NOLINT
-  Camera * color_camera_ptr)
+  DepthImage * depth_frame_ptr,   // NOLINT
+  Transform * T_L_D_ptr,          // NOLINT
+  Camera * depth_camera_ptr,      // NOLINT
+  ColorImage * color_frame_ptr,   // NOLINT
+  Transform * T_L_C_ptr,          // NOLINT
+  Camera * color_camera_ptr,      // NOLINT
+  Time *,                          // NOLINT
+  Transform *,                     // NOLINT
+  Time *)                          // NOLINT
 {
   CHECK(setup_success_) << "The RosDataLoader did not construct in a valid state. Likely missing "
     "messages on (at least) one topic.";

@@ -30,6 +30,7 @@
 
 #include "nvblox_rviz_plugin/nvblox_plugin_visual.h"
 #include <nvblox_msgs/msg/voxel_block_layer.hpp>
+#include <ament_index_cpp/get_package_share_directory.hpp>
 
 #include "rviz_rendering/render_system.hpp"
 #include "rviz_rendering/resource_config.hpp"
@@ -91,13 +92,19 @@ void NvbloxBaseVisual<MessageType>::initializeBoxMaterial()
 {
   // For some reason reason, only rviz's glsl120 kernels are enabled per default, so we need to
   // enable the glsl150 ones explicilty as we need them to properly render the pointcloud box
+  // NOTE(alexmillane, 2025.12.17): These glsl150 shaders were removed from ROS:
+  // https://github.com/ros2/rviz/pull/1600/changes
+  // To fix this we have now included the deleted shaders in this package, installed them
+  // in the package share directory, where we now pull them from.
   constexpr const char * kBoxMaterialName = "nvblox/box";
   constexpr const char * kBoxMaterialGroup = "rviz_rendering_150";
+  std::string share_dir =
+    ament_index_cpp::get_package_share_directory("nvblox_rviz_plugin");
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-    rviz_rendering::get_resource_directory() + "/ogre_media/materials/glsl150", "FileSystem",
+    share_dir + "/materials/glsl150", "FileSystem",
     kBoxMaterialGroup);
   Ogre::ResourceGroupManager::getSingleton().addResourceLocation(
-    rviz_rendering::get_resource_directory() + "/ogre_media/materials/scripts150", "FileSystem",
+    share_dir + "/materials/scripts150", "FileSystem",
     kBoxMaterialGroup);
 
   Ogre::ResourceGroupManager::getSingleton().initialiseResourceGroup(kBoxMaterialGroup);
@@ -124,6 +131,7 @@ void NvbloxBaseVisual<MessageType>::initializeBoxMaterial()
   // sides of the rendered cubes. We therefore select another shader that doesn't use lighting.
   voxel_material_->getBestTechnique()->getPass(0)->setGeometryProgram("rviz/glsl150/box.geom");
 }
+
 template<typename MessageType>
 void NvbloxBaseVisual<MessageType>::initializeFallbackMaterial()
 {

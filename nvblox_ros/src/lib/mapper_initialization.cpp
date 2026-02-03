@@ -131,7 +131,6 @@ MultiMapperParams getMultiMapperParamsFromROS(rclcpp::Node * node)
   set_parameter<bool>(
     "multi_mapper", kRemoveSmallConnectedComponentsParamDesc.name,
     [&](auto value) {params.remove_small_connected_components = value;}, node);
-
   set_parameter<bool>(
     "multi_mapper", kExperimentalUseGroundPlaneEstimationDesc.name,
     [&](auto value) {params.experimental_use_ground_plane_estimation = value;}, node);
@@ -167,9 +166,6 @@ void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * nod
   declareParameter<float>(mapper_name, kEsdfSliceHeightParamDesc, node);
   declareParameter<float>(mapper_name, kSliceHeightAbovePlaneMParamDesc, node);
   declareParameter<float>(mapper_name, kSliceHeightThicknessMParamDesc, node);
-
-  // Decay
-  declareParameter<bool>(mapper_name, kExcludeLastViewFromDecayParamDesc, node);
 
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
   declareParameter<float>(mapper_name, kProjectiveIntegratorMaxIntegrationDistanceMParamDesc, node);
@@ -228,6 +224,8 @@ void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * nod
   declareParameter<nvblox::Time, int64_t>(
     mapper_name, kMinConsecutiveOccupancyDurationForResetMsParamDesc, node);
   declareParameter<bool>(mapper_name, kCheckNeighborhoodParamDesc, node);
+  declareParameter<bool>(
+    mapper_name, kInitializeToHighConfidenceFreespaceParamDesc, node);
 }
 
 MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Node * node)
@@ -260,10 +258,6 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_parameter<float>(
     mapper_name, kSliceHeightThicknessMParamDesc.name,
     [&](auto value) {params.esdf_integrator_params.slice_height_thickness_m = value;}, node);
-  // Decay
-  set_parameter<bool>(
-    mapper_name, kExcludeLastViewFromDecayParamDesc.name,
-    [&](auto value) {params.exclude_last_view_from_decay = value;}, node);
 
   // ======= PROJECTIVE INTEGRATOR (TSDF/COLOR/OCCUPANCY) =======
   // max integration distance
@@ -462,6 +456,11 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_parameter<bool>(
     mapper_name, kCheckNeighborhoodParamDesc.name,
     [&](auto value) {params.freespace_integrator_params.check_neighborhood = value;}, node);
+  set_parameter<bool>(
+    mapper_name, kInitializeToHighConfidenceFreespaceParamDesc.name,
+    [&](auto value) {
+      params.freespace_integrator_params.initialize_to_high_confidence_freespace = value;
+    }, node);
 
   return params;
 }

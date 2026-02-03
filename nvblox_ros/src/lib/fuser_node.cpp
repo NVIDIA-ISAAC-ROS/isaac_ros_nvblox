@@ -226,10 +226,10 @@ bool FuserNode::fuseNextFrame()
   // Gather data for publishing results of fuser step.
   constexpr char kCameraFrameID[] = "camera_link";
   const rclcpp::Time timestamp = get_clock()->now();
-  const std::shared_ptr<const DepthImage> depth_frame = fuser_->getDepthFrame();
+  const std::shared_ptr<const DepthImage> depth_frame = fuser_->getSensorData();
   const std::shared_ptr<const ColorImage> color_frame = fuser_->getColorFrame();
-  const std::shared_ptr<const Camera> depth_camera = fuser_->getDepthCamera();
-  const std::shared_ptr<const Transform> depth_T_L_C = fuser_->getDepthCameraPose();
+  const std::shared_ptr<const Camera> depth_camera = fuser_->getSensor();
+  const std::shared_ptr<const Transform> depth_T_L_C = fuser_->getSensorPose();
 
   // Publish the current pose of the camera to tf.
   geometry_msgs::msg::TransformStamped transform_stamped_msg;
@@ -261,9 +261,9 @@ bool FuserNode::fuseNextFrame()
     // Get the slice image from the esdf layer.
     AxisAlignedBoundingBox aabb;
     Image<float> map_slice_image(MemoryType::kDevice);
-    esdf_slice_converter_.sliceLayerToDistanceImage(
+    esdf_slicer_.sliceLayerToDistanceImage(
       mapper_->esdf_layer(), mapper_->esdf_integrator().esdf_slice_height(),
-      params_.distance_map_unknown_value_optimistic, &map_slice_image, &aabb);
+      params_.distance_map_unknown_value_optimistic, &aabb, &map_slice_image);
     // Create and send the message.
     sensor_msgs::msg::PointCloud2 pointcloud_msg;
     esdf_slice_converter_.pointcloudMsgFromSliceImage(

@@ -94,7 +94,6 @@ find_package(isaac_ros_gxf REQUIRED)
 add_library(${PROJECT_NAME}_lib SHARED
   src/lib/conversions/image_conversions.cpp
   src/lib/conversions/image_conversions_thrust.cu
-  src/lib/conversions/occupancy_conversions.cpp
   src/lib/conversions/mesh_conversions.cpp
   src/lib/conversions/pointcloud_conversions.cu
   src/lib/conversions/esdf_slice_conversions.cu
@@ -204,7 +203,7 @@ install(
 
 # Install nodes which live in lib for some reason.
 install(
-  TARGETS nvblox_node fuser_node
+  TARGETS nvblox_node fuser_node fuse_cusfm
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -1,3 +1,6 @@
+# NOTE(remos): This file was copied from stereolabs/zed-ros2-wrapper/zed_wrapper/config/zedx.yaml 
+#              and modified according to our needs.
+
 # config/zedx.yaml
 # Parameters for Stereolabs ZED X camera
 ---

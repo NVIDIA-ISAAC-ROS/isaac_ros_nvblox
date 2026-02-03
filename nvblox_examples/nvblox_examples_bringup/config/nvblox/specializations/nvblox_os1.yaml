@@ -1,0 +1,44 @@
+/**:
+  ros__parameters:
+    global_frame: "map"
+    voxel_size: 0.1
+    # Lidar settings
+    use_lidar: true
+    lidar_width: 2048
+    lidar_height: 64
+    lidar_min_valid_range_m: 0.01
+    use_non_equal_vertical_fov_lidar_params: true
+    min_angle_below_zero_elevation_rad: -0.285
+    max_angle_above_zero_elevation_rad: 0.298
+    use_lidar_motion_compensation: true
+    pointcloud2_timestamps_are_relative: true
+    # QoS settings
+    input_qos: "SENSOR_DATA"
+    # Map clearing settings
+    map_clearing_radius_m: 20.0 # no map clearing if < 0.0
+    map_clearing_frame_id: "os1_lidar"
+    # Rviz visualization
+    esdf_slice_bounds_visualization_attachment_frame_id: "os1_lidar"
+
+    # Increase visualization distance (due to lidar)
+    layer_visualization_exclusion_radius_m: 20.0
+
+    multi_mapper:
+      connected_mask_component_size_threshold: 50
+
+    static_mapper:
+      # lidar integration
+      lidar_projective_integrator_max_integration_distance_m: 15.0
+      projective_integrator_weighting_mode: "constant"
+      raycast_subsampling_factor: 2
+      # esdf integrator
+      esdf_slice_height: -0.9
+      esdf_slice_min_height: -0.9
+      esdf_slice_max_height: 0.9
+      # mesh streamer
+      layer_streamer_exclusion_radius_m: 20.0
+
+    dynamic_mapper:
+      esdf_slice_height: -0.9
+      esdf_slice_min_height: -0.9
+      esdf_slice_max_height: 0.9

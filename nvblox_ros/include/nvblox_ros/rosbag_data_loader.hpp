@@ -24,7 +24,7 @@
 
 #include "tf2_ros/buffer.h"
 
-#include "nvblox/datasets/data_loader.h"
+#include "nvblox/datasets/data_loader_interface.h"
 #include "nvblox/executables/fuser.h"
 #include "nvblox/nvblox.h"
 
@@ -56,9 +56,9 @@ namespace ros
 /// @param tf_preload_time_s The amount of seconds that we load /tf messages
 /// in the tf_buffer in advance of loading the image topics.
 /// @param cuda_stream The CUDA stream on which to perform operations.
-/// @return std::unique_ptr<Fuser> A fuser fusing ROSbag data. May be nullptr if
+/// @return std::unique_ptr<CameraFuser> A fuser fusing ROSbag data. May be nullptr if
 /// construction fails.
-std::unique_ptr<Fuser> createFuser(
+std::unique_ptr<CameraFuser> createFuser(
   const std::string & rosbag_path,               // NOLINT
   const std::string & depth_topic,               // NOLINT
   const std::string & depth_camera_info_topic,   // NOLINT
@@ -128,6 +128,9 @@ public:
     std::shared_ptr<CudaStream> cuda_stream =
     std::make_shared<CudaStreamOwning>());
 
+  /// The ROSbag data loader does not provide frame timestamps
+  bool provides_frame_timestamps() const override {return false;}
+
   /// Interface for a function that loads the next frames in a dataset
   /// This version of the function should be used when the color and depth
   /// camera are the same.
@@ -140,7 +143,7 @@ public:
     DepthImage * depth_frame_ptr,                       // NOLINT
     Transform * T_L_C_ptr,                              // NOLINT
     Camera * camera_ptr,                                // NOLINT
-    ColorImage * color_frame_ptr = nullptr) override;
+    ColorImage * color_frame_ptr = nullptr);
 
   /// Interface for a function that loads the next frames in a dataset.
   /// This is the version of the function for different depth and color cameras.
@@ -150,14 +153,20 @@ public:
   /// @param[out] color_frame_ptr The loaded color frame.
   /// @param[out] T_L_C_ptr Transform from color camera to the Layer frame.
   /// @param[out] color_camera_ptr The intrinsic color camera model.
+  /// @param[out] unused Needed to match data loader interface (pass nullptr).
+  /// @param[out] unused Needed to match data loader interface (pass nullptr).
+  /// @param[out] unused Needed to match data loader interface (pass nullptr).
   /// @return Whether loading succeeded.
   DataLoadResult loadNext(
-    DepthImage * depth_frame_ptr,                       // NOLINT
-    Transform * T_L_D_ptr,                              // NOLINT
-    Camera * depth_camera_ptr,                          // NOLINT
-    ColorImage * color_frame_ptr,                       // NOLINT
-    Transform * T_L_C_ptr,                              // NOLINT
-    Camera * color_camera_ptr) override;
+    DepthImage * depth_frame_ptr,  // NOLINT
+    Transform * T_L_D_ptr,         // NOLINT
+    Camera * depth_camera_ptr,     // NOLINT
+    ColorImage * color_frame_ptr,  // NOLINT
+    Transform * T_L_C_ptr,         // NOLINT
+    Camera * color_camera_ptr,     // NOLINT
+    Time *,                        // NOLINT
+    Transform *,                   // NOLINT
+    Time *) override;              // NOLINT
 
 private:
   // Steps all message streams forward until we have a match.

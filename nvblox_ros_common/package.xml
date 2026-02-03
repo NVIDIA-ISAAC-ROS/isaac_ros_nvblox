@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros_common</name>
-  <version>4.0.0</version>
+  <version>4.1.0</version>
   <description>Utilities used across the isaac_ros_nvblox repo</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
