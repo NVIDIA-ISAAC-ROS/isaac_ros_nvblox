@@ -204,8 +204,10 @@ protected:
   void publishHumanDebugOutput(const std::string & camera_frame_id, const Camera & camera);
 
   // Publish the back projected depth image for debug purposes
+  template<typename SensorType>
   void publishBackProjectedDepth(
-    const Camera & camera, const std::string & frame, const rclcpp::Time & timestamp);
+    const SensorType & sensor, const DepthImage & depth_image, const std::string & sensor_frame,
+    const rclcpp::Time & timestamp);
 
   // Helper function to update the esdf of a specific mapper
   void updateEsdf(
@@ -416,6 +418,8 @@ protected:
     tsdf_zero_crossings_ground_plane_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
     tsdf_zero_crossings_pointcloud_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
+    lidar_image_publisher_;
 
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
@@ -472,6 +476,7 @@ protected:
   std::shared_ptr<Mapper> dynamic_mapper_;
 
   // Various converters for ROS message generation.
+  EsdfSlicer esdf_slicer_;
   conversions::PointcloudConverter pointcloud_converter_;
   conversions::EsdfSliceConverter esdf_slice_converter_;
   conversions::EsdfAndGradientsConverter esdf_and_gradients_converter_;
@@ -480,7 +485,6 @@ protected:
   ColorImage color_image_{MemoryType::kDevice};
   DepthImage depth_image_{MemoryType::kDevice};
   MonoImage mask_image_{MemoryType::kDevice};
-  DepthImage pointcloud_image_{MemoryType::kDevice};
   Image<conversions::Rgb> rgb_image_tmp_{MemoryType::kDevice};
 
   // Object for back projecting image to a pointcloud.

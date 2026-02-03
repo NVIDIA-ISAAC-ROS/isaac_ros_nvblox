@@ -19,10 +19,10 @@
 
 #include <nvblox/core/parameter_tree.h>
 #include <nvblox/io/mesh_io.h>
-#include <nvblox/io/pointcloud_io.h>
 #include <nvblox/utils/delays.h>
 #include <nvblox/utils/rates.h>
 
+#include <fstream>
 #include <limits>
 #include <memory>
 #include <mutex>
@@ -33,9 +33,9 @@
 #include <isaac_ros_common/qos.hpp>
 
 #include "nvblox_ros/conversions/esdf_and_gradients_conversions.hpp"
-#include "nvblox_ros/conversions/occupancy_conversions.hpp"
 #include "nvblox_ros/utils.hpp"
 #include "nvblox_ros/visualization.hpp"
+#include "nvblox/integrators/occupancy_conversions.h"
 
 namespace nvblox
 {
@@ -67,6 +67,8 @@ NvbloxNode::NvbloxNode(
 {
   // Passing the ROS clock to the rates singleton.
   // This ensures that the rates are relative to ROS and not to system time.
+  // NOTE(remos): For timing::Timer we rely on system time to not make our
+  // measurements dependent on e.g. simulation time speed.
   auto getROSTimestampFunctor = [this]() -> uint64_t {
       return this->get_clock()->now().nanoseconds();
     };
@@ -130,9 +132,9 @@ NvbloxNode::~NvbloxNode()
     // Grab a slice
     AxisAlignedBoundingBox aabb;
     Image<float> map_slice_image(MemoryType::kDevice);
-    esdf_slice_converter_.sliceLayerToDistanceImage(
+    esdf_slicer_.sliceLayerToDistanceImage(
       static_mapper_->esdf_layer(), static_mapper_->esdf_integrator().esdf_slice_height(),
-      params_.distance_map_unknown_value_optimistic, &map_slice_image, &aabb);
+      params_.distance_map_unknown_value_optimistic, &aabb, &map_slice_image);
 
     const size_t width = map_slice_image.cols();
     const size_t height = map_slice_image.rows();
@@ -140,11 +142,11 @@ NvbloxNode::~NvbloxNode()
     if (width == 0 || height == 0) {
       RCLCPP_INFO_STREAM(get_logger(), "No map to save, skipping map save.");
     } else {
-      std::vector<signed char> occupancy_grid;
+      std::vector<int8_t> occupancy_grid;
       occupancy_grid.resize(width * height, kOccupancyGridUnknownValue);
 
       // Convert from ESDF to occupancy grid
-      esdf_slice_converter_.occupancyGridFromSliceImage(
+      esdf_slicer_.occupancyGridFromSliceImage(
         map_slice_image, occupancy_grid.data(), params_.distance_map_unknown_value_optimistic);
 
       constexpr float kFreeThreshold = 0.25;
@@ -181,6 +183,7 @@ NvbloxNode::~NvbloxNode()
 void NvbloxNode::initializeMultiMapper()
 {
   // Create the multi mapper
+  // NOTE(remos): Mesh integration is not implemented for occupancy layers.
   multi_mapper_ =
     std::make_shared<MultiMapper>(
     params_.voxel_size, params_.mapping_type, params_.esdf_mode,
@@ -201,6 +204,8 @@ void NvbloxNode::initializeMultiMapper()
   multi_mapper_->setMultiMapperParams(multi_mapper_params);
 
   // Get direct handles to the underlying mappers
+  // NOTE(remos): Ideally, everything would be handled by the multi mapper
+  //              and these handles wouldn't be needed.
   static_mapper_ = multi_mapper_.get()->background_mapper();
   dynamic_mapper_ = multi_mapper_.get()->foreground_mapper();
 }
@@ -377,7 +382,10 @@ void NvbloxNode::advertiseTopics()
     create_publisher<sensor_msgs::msg::PointCloud2>("~/groundplane_estimator_ground_pointcloud", 1);
   tsdf_zero_crossings_ground_plane_publisher_ =
     create_publisher<visualization_msgs::msg::Marker>("~/groundplane_estimator_estimated_plane", 1);
-
+  if (params_.use_lidar) {
+    lidar_image_publisher_ = create_publisher<sensor_msgs::msg::Image>(
+          "~/lidar_image", 1);
+  }
   if (params_.output_pessimistic_distance_map) {
     pessimistic_static_esdf_pointcloud_publisher_ =
       create_publisher<sensor_msgs::msg::PointCloud2>("~/pessimistic_static_esdf_pointcloud", 1);
@@ -825,15 +833,15 @@ void NvbloxNode::sliceAndPublishEsdf(
     AxisAlignedBoundingBox aabb;
     Image<float> map_slice_image(MemoryType::kDevice);
     if (mapper_2 != nullptr) {
-      esdf_slice_converter_.sliceLayersToCombinedDistanceImage(
+      esdf_slicer_.sliceLayersToCombinedDistanceImage(
         mapper->esdf_layer(), mapper_2->esdf_layer(),
         mapper->esdf_integrator().esdf_slice_height(),
-        mapper_2->esdf_integrator().esdf_slice_height(), unknown_value, &map_slice_image, &aabb);
+        mapper_2->esdf_integrator().esdf_slice_height(), unknown_value, &aabb, &map_slice_image);
     } else {
-      esdf_slice_converter_.sliceLayerToDistanceImage(
+      esdf_slicer_.sliceLayerToDistanceImage(
         mapper->esdf_layer(),
         mapper->esdf_integrator().esdf_slice_height(), unknown_value,
-        &map_slice_image, &aabb);
+        &aabb, &map_slice_image);
     }
     slicing_timer.Stop();
 
@@ -906,7 +914,7 @@ void NvbloxNode::publishOccupancyGridMsg(
   occupancy_grid_msg.data.resize(width * height, kOccupancyGridUnknownValue);
 
   // Convert the map slice to occupancy grid.
-  esdf_slice_converter_.occupancyGridFromSliceImage(
+  esdf_slicer_.occupancyGridFromSliceImage(
     map_slice_image, occupancy_grid_msg.data.data(),
     unknown_value);
 
@@ -917,13 +925,14 @@ void NvbloxNode::publishOccupancyGridMsg(
 void NvbloxNode::decayDynamicOccupancy()
 {
   timing::Timer timer("ros/decay_dynamic_occupancy");
-  dynamic_mapper_->decayOccupancy();
+  dynamic_mapper_->decayOccupancyAllVoxels();
 }
 
 void NvbloxNode::decayTsdf()
 {
   timing::Timer timer("ros/decay_tsdf");
-  static_mapper_->decayTsdf();
+  // NOTE: We do not exclude LiDAR views from decay due to the large FoV.
+  static_mapper_->decayTsdfExcludeLastView<Camera>();
 }
 
 bool NvbloxNode::canTransform(const std::string & frame_id, const rclcpp::Time & timestamp)
@@ -1063,6 +1072,8 @@ bool NvbloxNode::processDepthImage(const ImageTypeVariant & depth_msg)
   // Optional publishing - Freespace + Dynamics
   if (isDynamicMapping(params_.mapping_type)) {
     // Process the freespace layer
+    // TODO(dtingdahl) Move this into the publishLayers() function so we publish visualization
+    // messages at the same place (and separated from processing)
     timing::Timer dynamic_publishing_timer("ros/depth/output/dynamics");
     publishDynamics(depth_frame);
     dynamic_publishing_timer.Stop();
@@ -1074,18 +1085,7 @@ bool NvbloxNode::processDepthImage(const ImageTypeVariant & depth_msg)
   }
   // Publish back projected depth image for debugging
   timing::Timer back_projected_depth_timer("ros/depth/output/back_projected_depth");
-  if (back_projected_depth_publisher_.count(depth_frame) == 0) {
-    back_projected_depth_publisher_[depth_frame] =
-      create_publisher<sensor_msgs::msg::PointCloud2>(
-      "~/back_projected_depth/" + makeSafeTopicName(depth_frame), 1);
-    back_projection_idx_[depth_frame] = 0;
-  }
-  if (back_projected_depth_publisher_[depth_frame]->get_subscription_count() > 0) {
-    // Only back project and publish every n-th depth image
-    if (back_projection_idx_[depth_frame]++ % params_.back_projection_subsampling == 0) {
-      publishBackProjectedDepth(depth_camera_, depth_frame, depth_image_timestamp);
-    }
-  }
+  publishBackProjectedDepth(depth_camera_, depth_image_, depth_frame, depth_image_timestamp);
   back_projected_depth_timer.Stop();
   return true;
 }
@@ -1152,22 +1152,35 @@ void NvbloxNode::publishHumanDebugOutput(const std::string & camera_frame_id, co
   }
 }
 
+template<typename SensorType>
 void NvbloxNode::publishBackProjectedDepth(
-  const Camera & camera, const std::string & frame, const rclcpp::Time & timestamp)
+  const SensorType & sensor, const DepthImage & depth_image, const std::string & sensor_frame,
+  const rclcpp::Time & timestamp)
 {
-  // Get the pointcloud from the depth image
-  image_back_projector_.backProjectOnGPU(
-    depth_image_, camera, &pointcloud_C_device_,
-    params_.max_back_projection_distance);
+  if (back_projected_depth_publisher_.count(sensor_frame) == 0) {
+    back_projected_depth_publisher_[sensor_frame] =
+      create_publisher<sensor_msgs::msg::PointCloud2>(
+      "~/back_projected_depth/" + makeSafeTopicName(sensor_frame), 1);
+    back_projection_idx_[sensor_frame] = 0;
+  }
+  if (back_projected_depth_publisher_[sensor_frame]->get_subscription_count() > 0) {
+    // Only back project and publish every n-th depth image
+    if (back_projection_idx_[sensor_frame]++ % params_.back_projection_subsampling == 0) {
+      // Get the pointcloud from the depth image
+      image_back_projector_.backProjectOnGPU(
+        depth_image, sensor, &pointcloud_C_device_,
+        params_.max_back_projection_distance);
 
-  // Send the message
-  sensor_msgs::msg::PointCloud2 back_projected_depth_msg;
-  pointcloud_converter_.pointcloudMsgFromPointcloud(
-    pointcloud_C_device_,
-    &back_projected_depth_msg);
-  back_projected_depth_msg.header.frame_id = frame;
-  back_projected_depth_msg.header.stamp = timestamp;
-  back_projected_depth_publisher_[frame]->publish(back_projected_depth_msg);
+      // Send the message
+      sensor_msgs::msg::PointCloud2 back_projected_depth_msg;
+      pointcloud_converter_.pointcloudMsgFromPointcloud(
+        pointcloud_C_device_,
+        &back_projected_depth_msg);
+      back_projected_depth_msg.header.frame_id = sensor_frame;
+      back_projected_depth_msg.header.stamp = timestamp;
+      back_projected_depth_publisher_[sensor_frame]->publish(back_projected_depth_msg);
+    }
+  }
 }
 
 bool NvbloxNode::processColorImage(const ImageTypeVariant & color_msg)
@@ -1257,6 +1270,7 @@ bool NvbloxNode::processColorImage(const ImageTypeVariant & color_msg)
     nvblox::Time(now().nanoseconds()));
   integrate_color_last_times_[color_frame] = color_image_timestamp;
   color_integrate_timer.Stop();
+
   return true;
 }
 
@@ -1283,9 +1297,12 @@ bool NvbloxNode::processLidarPointcloud(
   // Get the TF for this image.
   const std::string target_frame = pointcloud_ptr->header.frame_id;
   Transform T_L_C;
+  // Get the timestamp
+  constexpr int64_t kNanoSecondsToMilliSeconds = 1e6;
+  nvblox::Time update_time_ms(pointcloud_timestamp.nanoseconds() / kNanoSecondsToMilliSeconds);
 
   if (!transformer_.lookupTransformToGlobalFrame(
-      target_frame, pointcloud_ptr->header.stamp,
+      target_frame, pointcloud_timestamp,
       &T_L_C))
   {
     return false;
@@ -1299,13 +1316,19 @@ bool NvbloxNode::processLidarPointcloud(
     (params_.use_non_equal_vertical_fov_lidar_params) ?
     Lidar(
     params_.lidar_width, params_.lidar_height, params_.lidar_min_valid_range_m,
-    params_.lidar_max_valid_range_m, params_.min_angle_below_zero_elevation_rad,
+    params_.min_angle_below_zero_elevation_rad,
     params_.max_angle_above_zero_elevation_rad) :
     Lidar(
     params_.lidar_width, params_.lidar_height, params_.lidar_min_valid_range_m,
-    params_.lidar_max_valid_range_m, params_.lidar_vertical_fov_rad);
+    params_.lidar_vertical_fov_rad);
 
   // We check that the pointcloud is consistent with this LiDAR model
+  // NOTE(alexmillane): If the check fails we return true which indicates that
+  // this pointcloud can be removed from the queue even though it wasn't
+  // integrated (because the intrisics model is messed up).
+  // NOTE(alexmillane): Note that internally we cache checks, so each LiDAR
+  // intrisics model is only tested against a single pointcloud. This is because
+  // the check is expensive to perform.
   if (!pointcloud_converter_.checkLidarPointcloud(pointcloud_ptr, lidar)) {
     RCLCPP_ERROR_ONCE(
       get_logger(), "LiDAR intrinsics are inconsistent with the received "
@@ -1313,12 +1336,52 @@ bool NvbloxNode::processLidarPointcloud(
     return true;
   }
 
+  // Check if LiDAR motion compensation is enabled.
+  // Per-point timestamps are only required for motion compensation.
+  const bool use_lidar_motion_compensation = params_.use_lidar_motion_compensation.get();
+  const bool load_per_point_timestamps = use_lidar_motion_compensation;
+
+  // Convert ROS PointCloud2 to nvblox Pointcloud
   timing::Timer lidar_conversion_timer("ros/lidar/conversion");
-  pointcloud_converter_.depthImageFromPointcloudGPU(pointcloud_ptr, lidar, &pointcloud_image_);
+  Pointcloud nvblox_pointcloud(MemoryType::kDevice);
+  pointcloud_converter_.pointcloudFromPointcloudMsg(pointcloud_ptr, &nvblox_pointcloud,
+      load_per_point_timestamps, params_.pointcloud2_timestamps_are_relative.get());
   lidar_conversion_timer.Stop();
 
+  // If LiDAR motion compensation is enabled,
+  // we need to get the scan end transform and duration.
+  std::optional<Transform> maybe_T_L_S_scanEnd;
+  std::optional<Time> maybe_scan_duration_ms;
+  if (use_lidar_motion_compensation) {
+    // Get the scan duration.
+    maybe_scan_duration_ms = conversions::getPointcloudScanDurationMs(nvblox_pointcloud,
+        *cuda_stream_);
+
+    // Calculate the scan end time (header timestamp + scan duration)
+    constexpr int64_t kMillisecondsToNanoseconds = 1e6;
+    const int64_t scan_end_ns = pointcloud_timestamp.nanoseconds() +
+      static_cast<int64_t>(maybe_scan_duration_ms.value()) * kMillisecondsToNanoseconds;
+    const rclcpp::Time scan_end_timestamp = rclcpp::Time(scan_end_ns);
+
+    // Look up the transform at scan end
+    // Default construct the transform (to prevent std::bad_optional_access)
+    maybe_T_L_S_scanEnd.emplace();
+    if (!transformer_.lookupTransformToGlobalFrame(
+          target_frame, scan_end_timestamp, &maybe_T_L_S_scanEnd.value()))
+    {
+      constexpr int kPublishPeriodMs = 1000;
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), kPublishPeriodMs,
+        "Could not look up transform at scan end time.");
+      return false;
+    }
+  }
+
+  // Integrate pointcloud
   timing::Timer lidar_integration_timer("ros/lidar/integration");
-  static_mapper_->integrateLidarDepth(pointcloud_image_, T_L_C, lidar);
+  multi_mapper_->integrateDepth(nvblox_pointcloud, T_L_C, lidar,
+                                use_lidar_motion_compensation, maybe_T_L_S_scanEnd,
+                                maybe_scan_duration_ms, update_time_ms);
   timing::Delays::tick(
     "ros/pointcloud_integration",
     nvblox::Time(pointcloud_timestamp.nanoseconds()),
@@ -1326,6 +1389,32 @@ bool NvbloxNode::processLidarPointcloud(
   newest_integrated_depth_time_ = std::max(pointcloud_timestamp, newest_integrated_depth_time_);
   integrate_lidar_last_time_ = pointcloud_timestamp;
   lidar_integration_timer.Stop();
+
+  // Publish the depth frame created from the lidar pointcloud.
+  if (lidar_image_publisher_->get_subscription_count() > 0) {
+    sensor_msgs::msg::Image depth_img_msg;
+    conversions::imageMessageFromDepthImage(
+      multi_mapper_->getLastDepthFrameFromPointcloud(), pointcloud_ptr->header.frame_id,
+        &depth_img_msg,
+      *cuda_stream_);
+    lidar_image_publisher_->publish(depth_img_msg);
+  }
+
+  // Publish back projected depth lidar image for debugging
+  timing::Timer back_projected_lidar_image_timer("ros/lidar/output/back_projected_lidar_image");
+  publishBackProjectedDepth(lidar, multi_mapper_->getLastDepthFrameFromPointcloud(),
+      pointcloud_ptr->header.frame_id,
+      pointcloud_timestamp);
+  back_projected_lidar_image_timer.Stop();
+
+  if (isDynamicMapping(params_.mapping_type)) {
+    // Process the freespace layer
+    // TODO(dtingdahl) Move this into the publishLayers() function so we publish visualization
+    // messages at the same place (and separated from processing)
+    timing::Timer dynamic_publishing_timer("ros/depth/output/dynamics");
+    publishDynamics(pointcloud_ptr->header.frame_id);
+    dynamic_publishing_timer.Stop();
+  }
 
   return true;
 }
@@ -1367,7 +1456,7 @@ void NvbloxNode::publishDebugVisualizations()
       multi_mapper_->ground_plane_estimator().tsdf_zero_crossings_ground_candidates();
     if (maybe_tsdf_zero_crossings) {
       // Convert to Pointcloud -> PointCloud2 -> Publish
-      tsdf_zero_crossings_device_.copyFromAsync(
+      tsdf_zero_crossings_device_.copyPointsFromAsync(
         maybe_tsdf_zero_crossings.value(), CudaStreamOwning());
       sensor_msgs::msg::PointCloud2 tsdf_zero_crossings_pointcloud2_msg;
       pointcloud_converter_.pointcloudMsgFromPointcloud(

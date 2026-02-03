@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros</name>
-  <version>4.0.1</version>
+  <version>4.1.0</version>
   <description>NVBlox ROS 2 interface</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -49,6 +49,9 @@
   <depend>message_filters</depend>
   <depend>nav_msgs</depend>
   <depend>cv_bridge</depend>
+  <depend>libgflags-dev</depend>
+  <depend>libgoogle-glog-dev</depend>
+  <depend>benchmark</depend>
   <depend>nvblox_ros_common</depend>
   <depend>nvblox_ros_python_utils</depend>
   <depend>nvblox_rviz_plugin</depend>

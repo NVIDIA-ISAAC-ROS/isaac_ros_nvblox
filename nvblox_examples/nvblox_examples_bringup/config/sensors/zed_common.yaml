@@ -1,3 +1,6 @@
+# NOTE(remos): This file was copied from stereolabs/zed-ros2-wrapper/zed_wrapper/config/common.yaml 
+#              and modified according to our needs.
+
 # config/common_yaml
 # Common parameters to Stereolabs ZED and ZED mini cameras
 #

@@ -27,9 +27,10 @@ from isaac_ros_test import IsaacROSBaseTest
 import isaac_ros_launch_utils as lu
 from nvblox_msgs.msg import DistanceMapSlice, Mesh
 
-BAG_NAME = "galileo_static_3_2"
+BAG_NAME = "galileo_people_3_2"
 TIMEOUT = 120
-BAG_PATH = os.path.join(lu.get_isaac_ros_ws_path(), 'isaac_ros_assets', 'rosbags', BAG_NAME)
+BAG_PATH = os.path.join(lu.get_isaac_ros_ws_path(), 'isaac_ros_assets',
+                        'isaac_ros_nvblox', BAG_NAME)
 
 
 @pytest.mark.rostest

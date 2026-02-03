@@ -2,8 +2,6 @@
   ros__parameters:
     # multi mapper
     mapping_type: "dynamic"
-    # lidar settings
-    use_lidar: false
     # visualization
     layer_streamer_bandwidth_limit_mbps: -1.0 # unlimited
 
@@ -17,9 +15,11 @@
       min_duration_since_occupied_for_freespace_ms: 250
       min_consecutive_occupancy_duration_for_reset_ms: 2000
       check_neighborhood: true
+      initialize_to_high_confidence_freespace: false
 
     dynamic_mapper:
       # occupancy integrator
+      lidar_projective_integrator_max_integration_distance_m: 15.0
       projective_integrator_max_integration_distance_m: 5.0
       projective_integrator_truncation_distance_vox: 4.0
       free_region_occupancy_probability: 0.2

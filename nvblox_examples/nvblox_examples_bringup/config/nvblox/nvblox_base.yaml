@@ -37,12 +37,13 @@
     # depth settings
     use_depth: true
     # lidar settings
-    use_lidar: true
+    use_lidar: false
     lidar_width: 1800
     lidar_height: 31
     lidar_min_valid_range_m: 0.1
-    lidar_max_valid_range_m: 50.0
     use_non_equal_vertical_fov_lidar_params: false
+    use_lidar_motion_compensation: false
+    pointcloud2_timestamps_are_relative: false
     # Input queues
     maximum_input_queue_length: 10
     # Map clearing settings
@@ -101,7 +102,6 @@
       # tsdf decay integrator
       tsdf_decay_factor: 0.95
       tsdf_decayed_weight_threshold: 0.001
-      exclude_last_view_from_decay: true
       tsdf_set_free_distance_on_decayed: false
       tsdf_decayed_free_distance_vox: 4.0
       decay_integrator_deallocate_decayed_blocks: true

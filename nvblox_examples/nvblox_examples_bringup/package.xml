@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_examples_bringup</name>
-  <version>4.0.1</version>
+  <version>4.1.0</version>
   <description>Launchfiles for nvblox examples</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -40,6 +40,11 @@
   <!-- Utils -->
   <exec_depend>isaac_ros_launch_utils</exec_depend>
   <exec_depend>nvblox_ros_python_utils</exec_depend>
+  <exec_depend>xacro</exec_depend>
+
+  <!-- Visualization -->
+  <exec_depend>rviz2</exec_depend>
+  <exec_depend>nvblox_rviz_plugin</exec_depend>
 
   <!-- Nvblox -->
   <exec_depend>nvblox_ros</exec_depend>

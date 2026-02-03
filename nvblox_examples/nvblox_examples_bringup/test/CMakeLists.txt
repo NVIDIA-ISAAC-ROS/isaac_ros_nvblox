@@ -33,6 +33,8 @@ add_graph_startup_test(realsense_dry_run
     ARGS "rosbag:=${DUMMY_BAG_PATH} run_rviz:=False"
 )
 
+#NOTE(alexmillane): For some reason nav2 doesn't exit cleanly, causing the test to fail.
+# So here we turn navigation off.
 add_graph_startup_test(isaac_sim_dry_run
     launch/isaac_sim_example.launch.py
     DONT_CHECK_EXIT_CODE

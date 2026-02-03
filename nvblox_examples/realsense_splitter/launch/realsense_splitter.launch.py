@@ -17,13 +17,17 @@
 
 from typing import List
 
-from isaac_ros_launch_utils.all_types import *
 import isaac_ros_launch_utils as lu
+from isaac_ros_launch_utils.all_types import (
+    Action,
+    ComposableNode,
+    IfCondition,
+    LaunchDescription,
+)
 
 
 def add_cameras(args: lu.ArgumentContainer) -> List[Action]:
-    """Adds a realsense splitter for each camera name provided."""
-
+    """Add a realsense splitter for each camera name provided."""
     nodes = []
     camera_names = str(args.camera_names).split(',')
     assert len(camera_names) > 0

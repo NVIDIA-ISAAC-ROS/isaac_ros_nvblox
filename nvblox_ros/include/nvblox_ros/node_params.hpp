@@ -125,10 +125,6 @@ constexpr Param<float>::Description kLidarMinRangeM{
   "lidar_min_valid_range_m", 0.1F,
   "The minimum valid range of the lidar."};
 
-constexpr Param<float>::Description kLidarMaxRangeM{
-  "lidar_max_valid_range_m", 50.0F,
-  "The maximum valid range of the lidar."};
-
 constexpr Param<bool>::Description kUseNonEqualVerticalFovLidarParamsParamDesc{
   "use_non_equal_vertical_fov_lidar_params", false,
   "Whether to use non equal vertical FoV for the LiDAR (not centered around 0 elevation). "
@@ -146,6 +142,17 @@ constexpr Param<float>::Description kMaxAngleAboveZeroElevationRadParamDesc{
   "max_angle_above_zero_elevation_rad", degreeToRadians(15.F),
   "The angle above zero elevation of the highest beam (specified as a positive number in radians). "
   "Default is for the *Hesai PandarXT32*."};
+
+constexpr Param<bool>::Description kPointcloud2TimestampsAreRelative{
+  "pointcloud2_timestamps_are_relative", true,
+  "Whether per-point timestamps in PointCloud2 messages are treated as relative "
+  "to the header timestamp (true) or as absolute (false)."};
+
+constexpr Param<bool>::Description kUseLidarMotionCompensationParamDesc{
+  "use_lidar_motion_compensation", true,
+  "If set to true, apply motion compensation to LiDAR scans."
+  "This undistorts the scan by interpolating poses for each point based on "
+  "its timestamp."};
 
 // ======= VISUALIZATION PARAMS =======
 constexpr StringParam::Description kEsdfSliceBoundsVisualizationAttachmentFrameIdParamDesc{
@@ -310,6 +317,8 @@ public:
   Param<float> layer_visualization_exclusion_radius_m{kLayerVisualizationExclusionRadiusMParamDesc};
   Param<float> layer_streamer_bandwidth_limit_mbps{kLayerStreamerBandwidthLimitMbpsParamDesc};
 
+  // TODO(dtingdahl) handle enum-from-string logic more elegant so we don't need a separate member
+  // for the enum mapping type
   StringParam esdf_mode_str{kEsdfModeParamDesc};
   EsdfMode esdf_mode;
   StringParam mapping_type_str{kMappingTypeParamDesc};
@@ -346,6 +355,8 @@ public:
   Param<bool> layer_visualization_undo_gamma_correction{
     kLayerVisualizationUndoGammaCorrectionParamDesc};
   Param<bool> output_pessimistic_distance_map{kOutputPessimisticDistanceMap};
+  Param<bool> use_lidar_motion_compensation{kUseLidarMotionCompensationParamDesc};
+  Param<bool> pointcloud2_timestamps_are_relative{kPointcloud2TimestampsAreRelative};
 
   Param<int> maximum_input_queue_length{kMaximumSensorMessageQueueLengthParamDesc};
   Param<int> back_projection_subsampling{kBackProjectionSubsamplingParamDesc};
@@ -357,9 +368,9 @@ public:
 
   Param<float> lidar_vertical_fov_rad{kLidarVerticalFovRadParamDesc};
   Param<float> lidar_min_valid_range_m{kLidarMinRangeM};
-  Param<float> lidar_max_valid_range_m{kLidarMaxRangeM};
   Param<float> min_angle_below_zero_elevation_rad{kMinAngleBelowZeroElevationRadParamDesc};
   Param<float> max_angle_above_zero_elevation_rad{kMaxAngleAboveZeroElevationRadParamDesc};
+
   Param<float> esdf_slice_bounds_visualization_side_length{
     kEsdfSliceBoundsVisualizationSideLengthParamDesc};
   Param<float> workspace_height_bounds_visualization_side_length{
@@ -389,6 +400,8 @@ public:
   Param<int> number_of_frames_to_integrate{kNumberOfFramesToIntegrate};
   Param<bool> update_on_key{kUpdateOnKey};
 
+  // TODO(dtingdahl) handle enum-from-string logic more elegant so we don't need a separate member
+  // for the enum mapping type
   StringParam dataset_type_str{kDatasetTypeDesc};
   RosDatasetType dataset_type;
 

@@ -94,6 +94,12 @@ def get_zed_remappings(mode: NvbloxMode) -> List[Tuple[str, str]]:
     return remappings
 
 
+def get_os1_remappings() -> List[Tuple[str, str]]:
+    remappings = []
+    remappings.append(('pointcloud', '/os1_cloud_node/points'))
+    return remappings
+
+
 def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
 
     mode = NvbloxMode[args.mode]
@@ -119,6 +125,8 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
         'nvblox_examples_bringup', 'config/nvblox/specializations/nvblox_multi_realsense.yaml')
     zed_config = lu.get_path('nvblox_examples_bringup',
                              'config/nvblox/specializations/nvblox_zed.yaml')
+    os1_config = lu.get_path('nvblox_examples_bringup',
+                             'config/nvblox/specializations/nvblox_os1.yaml')
 
     if mode is NvbloxMode.static:
         mode_config = {}
@@ -130,7 +138,6 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
         assert not use_lidar, 'Can not run lidar with people detection mode.'
     elif mode is NvbloxMode.dynamic:
         mode_config = dynamics_config
-        assert not use_lidar, 'Can not run lidar with dynamic mode.'
     else:
         raise Exception(f'Mode {mode} not implemented for nvblox.')
 
@@ -152,6 +159,10 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
         camera_config = zed_config
         assert num_cameras == 1, 'Zed example can only run with 1 camera.'
         assert not use_lidar, 'Can not run lidar for zed example.'
+    elif camera is NvbloxCamera.os1:
+        remappings = get_os1_remappings()
+        camera_config = os1_config
+        assert use_lidar, 'Must run lidar for os1 example.'
     else:
         raise Exception(f'Camera {camera} not implemented for nvblox.')
 
@@ -161,6 +172,11 @@ def add_nvblox(args: lu.ArgumentContainer) -> List[Action]:
     parameters.append(camera_config)
     parameters.append({'num_cameras': num_cameras})
     parameters.append({'use_lidar': use_lidar})
+
+    # Add optional parameter overrides (appended last to override YAML configs)
+    if args.use_lidar_motion_compensation != '':
+        parameters.append(
+            {'use_lidar_motion_compensation': lu.is_true(args.use_lidar_motion_compensation)})
 
     # Add the nvblox node.
     nvblox_node = ComposableNode(
@@ -191,6 +207,10 @@ def generate_launch_description() -> LaunchDescription:
     args.add_arg('lidar', 'False')
     args.add_arg('container_name', NVBLOX_CONTAINER_NAME)
     args.add_arg('run_standalone', 'False')
+    args.add_arg(
+        'use_lidar_motion_compensation',
+        '',
+        description='Enable lidar motion compensation (empty string means use config default).')
 
     args.add_opaque_function(add_nvblox)
     return LaunchDescription(args.get_launch_actions())

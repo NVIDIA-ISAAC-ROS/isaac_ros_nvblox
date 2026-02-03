@@ -37,6 +37,9 @@ using NitrosViewSubscriber =
 /// erase()
 using NitrosViewPtr = std::shared_ptr<NitrosView>;
 
+// TODO(dtingdahl) the Nitros messages only store a weak message to the underlying ROS message
+// which can be invalidated at any time. We therefore store the frame_id separately to avoid
+// problems when buffering our messages. We can remove this struct once this is fixed in Nitros.
 using NitrosViewPtrAndFrameId = std::pair<NitrosViewPtr, std::string>;
 }  // namespace nvblox
 

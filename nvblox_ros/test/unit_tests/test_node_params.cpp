@@ -75,7 +75,7 @@ TEST(BaseNodeParams, initialize) {
 }
 
 TEST(NvbloxNodeParams, initialize) {
-  constexpr size_t kExpectedParamSize = 2096;
+  constexpr size_t kExpectedParamSize = 2128;
   testParamSize(kExpectedParamSize, sizeof(NvbloxNodeParams));
 
   auto node = std::make_shared<rclcpp::Node>("node", rclcpp::NodeOptions());
@@ -113,9 +113,10 @@ TEST(NvbloxNodeParams, initialize) {
 
   testParam<float>(node.get(), params.lidar_vertical_fov_rad);
   testParam<float>(node.get(), params.lidar_min_valid_range_m);
-  testParam<float>(node.get(), params.lidar_max_valid_range_m);
   testParam<float>(node.get(), params.min_angle_below_zero_elevation_rad);
   testParam<float>(node.get(), params.max_angle_above_zero_elevation_rad);
+  testParam<bool>(node.get(), params.use_lidar_motion_compensation);
+  testParam<bool>(node.get(), params.pointcloud2_timestamps_are_relative);
   testParam<float>(node.get(), params.esdf_slice_bounds_visualization_side_length);
   testParam<float>(node.get(), params.workspace_height_bounds_visualization_side_length);
   testParam<float>(node.get(), params.integrate_depth_rate_hz);

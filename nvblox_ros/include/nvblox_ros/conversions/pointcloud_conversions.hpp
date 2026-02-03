@@ -48,6 +48,14 @@ void copyDevicePointcloudToMsg(
   const device_vector<PclPointXYZI> & pcl_pointcloud_device,
   sensor_msgs::msg::PointCloud2 * pointcloud_msg);
 
+/// Get the scan duration (which is equal to the max relative timestamp) from
+/// a pointcloud with per-point timestamps.
+/// This function uses GPU acceleration to find the maximum timestamp efficiently.
+/// @param pointcloud Pointcloud with per-point timestamps
+/// @param cuda_stream CUDA stream to use for the operation
+/// @return The maximum timestamp (scan duration) in milliseconds, or Time(0) if no timestamps
+Time getPointcloudScanDurationMs(const Pointcloud & pointcloud, const CudaStream & cuda_stream);
+
 // Helper class to store all the buffers.
 class PointcloudConverter
 {
@@ -60,10 +68,11 @@ public:
     const Pointcloud & pointcloud,
     sensor_msgs::msg::PointCloud2 * pointcloud_msg);
 
-  // Convert pointcloud to depth image.
-  void depthImageFromPointcloudGPU(
-    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud,
-    const Lidar & lidar, DepthImage * depth_image_ptr);
+  // ROS pointcloud to internal pointcloud representation
+  void pointcloudFromPointcloudMsg(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg,
+    Pointcloud * pointcloud, bool load_per_point_timestamps = true,
+    bool pointcloud2_timestamps_are_relative = true);
 
   // This function returns true if the pointcloud passed in is consistent with
   // the LiDAR intrinsics model.
@@ -90,13 +99,22 @@ public:
     visualization_msgs::msg::Marker * marker_ptr);
 
 private:
+  /// Helper functions to copy points and timestamps from a ROS pointcloud message to a pointcloud.
+  void copyPointsFromPointcloudMsgAsync(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg,
+    Pointcloud * pointcloud);
+  void copyTimestampsFromPointcloudMsgAsync(
+    const sensor_msgs::msg::PointCloud2::ConstSharedPtr & pointcloud_msg,
+    Pointcloud * pointcloud, bool pointcloud2_timestamps_are_relative);
+
   std::unordered_set<Lidar, Lidar::Hash> checked_lidar_models_;
 
   std::shared_ptr<CudaStream> cuda_stream_;
 
   // Buffers
-  host_vector<Vector3f> lidar_pointcloud_host_;
-  device_vector<Vector3f> lidar_pointcloud_device_;
+  unified_vector<Vector3f> points_host_{MemoryType::kHost};
+  unified_vector<Time> timestamps_host_{MemoryType::kHost};
+  Pointcloud pointcloud_device_{MemoryType::kDevice};
   device_vector<PclPointXYZI> pcl_pointcloud_device_;
 };
 
