@@ -2,7 +2,7 @@
 
 Nvblox ROS 2 integration for local 3D scene reconstruction and mapping.
 
-<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.2/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.2/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/" width="600px"/></a></div>
+<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.3/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.3/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_sim_nvblox_humans.gif/" width="600px"/></a></div>
 
 ## Overview
 
@@ -18,7 +18,7 @@ The package uses GPU acceleration to compute a 3D reconstruction and 2D costmaps
 [nvblox](https://github.com/nvidia-isaac/nvblox), the underlying
 framework-independent C++ library.
 
-<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.2/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.2/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/" width="750px"/></a></div>
+<div align="center"><a class="reference internal image-reference" href="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.3/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/"><img alt="image" src="https://media.githubusercontent.com/media/NVIDIA-ISAAC-ROS/.github/release-4.3/resources/isaac_ros_docs/repositories_and_packages/isaac_ros_nvblox/isaac_ros_nvblox_nodegraph.png/" width="750px"/></a></div>
 
 Above is a typical graph that uses `isaac_ros_nvblox`.
 Nvblox takes a depth image, a color image, and a pose as input, with
@@ -199,4 +199,4 @@ Please visit the [Isaac ROS Documentation](https://nvidia-isaac-ros.github.io/re
 
 ## Latest
 
-Update 2026-02-19: Support for DGX Spark and JetPack 7.1
+Update 2026-03-23: Introduced early-stage support for SIPL camera framework and LI Eagle stereo CoE/HSB camera with ROS

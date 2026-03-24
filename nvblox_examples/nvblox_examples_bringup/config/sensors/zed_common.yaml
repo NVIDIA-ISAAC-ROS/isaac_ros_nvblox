@@ -40,6 +40,11 @@
             gain: 80 # [DYNAMIC]
             auto_whitebalance: true # [DYNAMIC]
             whitebalance_temperature: 42 # [DYNAMIC] - [28,65] works only if `auto_whitebalance` is false
+            publish_rgb: true # Advertise the RGB image topics that are published only if a node subscribes to them
+            publish_left_right: true # Advertise the left and right image topics that are published only if a node subscribes to them
+            publish_raw: true # Advertise the raw image topics that are published only if a node subscribes to them
+            publish_gray: true # Advertise the gray image topics that are published only if a node subscribes to them
+            publish_stereo: false # Advertise the stereo image topic that is published only if a node subscribes to it
             qos_history: 1 # '1': KEEP_LAST - '2': KEEP_ALL
             qos_depth: 1 # Queue size if using KEEP_LAST
             qos_reliability: 1 # '1': RELIABLE - '2': BEST_EFFORT -
@@ -129,7 +134,7 @@
             max_range: 20.0 # [m] Defines a upper depth range for detections
             confidence_threshold: 50.0 # [DYNAMIC] - Minimum value of the detection confidence of an object [0,99]
             prediction_timeout: 0.5 # During this time [sec], the object will have OK state even if it is not detected. Set this parameter to 0 to disable SDK predictions            
-            filtering_mode: 1 # '0': NONE - '1': NMS3D - '2': NMS3D_PER_CLASS
+            filtering_mode: 'NMS3D' # Filtering mode that should be applied to raw detections: 'NONE', 'NMS3D', 'NMS3D_PER_CLASS'
             mc_people: true # [DYNAMIC] - Enable/disable the detection of persons for 'MULTI_CLASS_X' models
             mc_vehicle: true # [DYNAMIC] - Enable/disable the detection of vehicles for 'MULTI_CLASS_X' models
             mc_bag: true # [DYNAMIC] - Enable/disable the detection of bags for 'MULTI_CLASS_X' models

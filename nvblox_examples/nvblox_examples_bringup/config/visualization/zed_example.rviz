@@ -46,13 +46,13 @@ Visualization Manager:
           Value: true
         zed_left_camera_frame:
           Value: true
-        zed_left_camera_optical_frame:
+        zed_left_camera_frame_optical:
           Value: true
         zed_mag_link:
           Value: true
         zed_right_camera_frame:
           Value: true
-        zed_right_camera_optical_frame:
+        zed_right_camera_frame_optical:
           Value: true
         zed_temp_left_link:
           Value: true
@@ -73,14 +73,14 @@ Visualization Manager:
                 zed_left_camera_frame:
                   zed_imu_link:
                     {}
-                  zed_left_camera_optical_frame:
+                  zed_left_camera_frame_optical:
                     {}
                   zed_temp_left_link:
                     {}
                 zed_mag_link:
                   {}
                 zed_right_camera_frame:
-                  zed_right_camera_optical_frame:
+                  zed_right_camera_frame_optical:
                     {}
                   zed_temp_right_link:
                     {}
@@ -281,7 +281,7 @@ Visualization Manager:
             Durability Policy: Volatile
             History Policy: Keep Last
             Reliability Policy: Best Effort
-            Value: /zed/zed_node/left/image_rect_color
+            Value: /zed/zed_node/left/color/rect/image
           Value: true
         - Alpha: 1
           Autocompute Intensity Bounds: true
@@ -313,7 +313,7 @@ Visualization Manager:
             Filter size: 10
             History Policy: Keep Last
             Reliability Policy: Reliable
-            Value: /nvblox_node/back_projected_depth/zed_left_camera_optical_frame
+            Value: /nvblox_node/back_projected_depth/zed_left_camera_frame_optical
           Use Fixed Frame: true
           Use rainbow: true
           Value: false
