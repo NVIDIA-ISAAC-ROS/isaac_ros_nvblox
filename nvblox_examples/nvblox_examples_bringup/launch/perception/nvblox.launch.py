@@ -88,7 +88,7 @@ def get_zed_remappings(mode: NvbloxMode) -> List[Tuple[str, str]]:
     remappings = []
     remappings.append(('camera_0/depth/image', '/zed/zed_node/depth/depth_registered'))
     remappings.append(('camera_0/depth/camera_info', '/zed/zed_node/depth/camera_info'))
-    remappings.append(('camera_0/color/image', '/zed/zed_node/rgb/image_rect_color'))
+    remappings.append(('camera_0/color/image', '/zed/zed_node/rgb/color/rect/image'))
     remappings.append(('camera_0/color/camera_info', '/zed/zed_node/rgb/camera_info'))
     remappings.append(('pose', '/zed/zed_node/pose'))
     return remappings
