@@ -327,6 +327,46 @@ bool NvbloxCostmapLayer::lookupInSlice(const Eigen::Vector2f & pos, float * dist
   return false;
 }
 
+double NvbloxCostmapLayer::getCostScalingFactor()
+{
+  // Derived from the exponential decay: cost = max_cost * exp(-factor * (distance - inscribed))
+  // We approximate factor so that cost decays to ~1 at max_obstacle_distance_.
+  if (max_obstacle_distance_ > inflation_distance_) {
+    return static_cast<double>(
+      std::log(max_cost_value_) / (max_obstacle_distance_ - inflation_distance_));
+  }
+  return 10.0;
+}
+
+double NvbloxCostmapLayer::getInflationRadius()
+{
+  return static_cast<double>(max_obstacle_distance_);
+}
+
+NvbloxCostmapLayer::mutex_t * NvbloxCostmapLayer::getMutex()
+{
+  return &access_mutex_;
+}
+
+unsigned char NvbloxCostmapLayer::computeCost(double distance) const
+{
+  if (distance <= 0.0) {
+    return nav2_costmap_2d::LETHAL_OBSTACLE;
+  }
+  if (distance < inflation_distance_) {
+    return nav2_costmap_2d::INSCRIBED_INFLATED_OBSTACLE;
+  }
+  if (distance > max_obstacle_distance_) {
+    return nav2_costmap_2d::FREE_SPACE;
+  }
+  return static_cast<unsigned char>(
+    max_cost_value_ *
+    (1.0 - std::min(
+      (distance - inflation_distance_) /
+      static_cast<double>(max_obstacle_distance_),
+      1.0)));
+}
+
 }  // namespace nav2
 }  // namespace nvblox
 
