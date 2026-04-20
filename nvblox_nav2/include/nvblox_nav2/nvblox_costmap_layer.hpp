@@ -21,9 +21,11 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <tf2_ros/transform_listener.h>
+#include <mutex>
 #include <string>
 #include <memory>
 #include <nav2_costmap_2d/costmap_layer.hpp>
+#include <nav2_costmap_2d/inflation_layer_interface.hpp>
 #include <nav2_costmap_2d/layer.hpp>
 #include <nav2_costmap_2d/layered_costmap.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -35,7 +37,8 @@ namespace nvblox
 namespace nav2
 {
 
-class NvbloxCostmapLayer : public nav2_costmap_2d::CostmapLayer
+class NvbloxCostmapLayer : public nav2_costmap_2d::CostmapLayer,
+  public nav2_costmap_2d::InflationLayerInterface
 {
 public:
   NvbloxCostmapLayer();
@@ -51,6 +54,12 @@ public:
 
   void reset() override {}
   bool isClearable() override {return true;}
+
+  // InflationLayerInterface
+  double getCostScalingFactor() override;
+  double getInflationRadius() override;
+  mutex_t * getMutex() override;
+  unsigned char computeCost(double distance) const override;
 
   void sliceCallback(
     const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice);
@@ -80,6 +89,9 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
   Eigen::Isometry2f T_G_S_;
+
+  // Mutex for InflationLayerInterface
+  mutex_t access_mutex_;
 };
 
 }  // namespace nav2
