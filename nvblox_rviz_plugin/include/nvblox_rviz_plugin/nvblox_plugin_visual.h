@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <QObject>
+#include <QtCore/QObject>
 #include <OgreManualObject.h>
 #include <string>
 #include <memory>
