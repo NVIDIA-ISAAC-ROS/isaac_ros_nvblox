@@ -416,24 +416,64 @@ void NvbloxNode::advertiseServices()
 
   save_ply_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/save_ply",
-    std::bind(&NvbloxNode::savePly, this, std::placeholders::_1, std::placeholders::_2),
+    [this](
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+      std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
+    {
+      (void)request_header;
+      this->savePly(request, response);
+    },
     rmw_qos_profile_services_default);
+
   save_map_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/save_map",
-    std::bind(&NvbloxNode::saveMap, this, std::placeholders::_1, std::placeholders::_2),
+    [this](
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+      std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
+    {
+      (void)request_header;
+      this->saveMap(request, response);
+    },
     rmw_qos_profile_services_default);
+
   load_map_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/load_map",
-    std::bind(&NvbloxNode::loadMap, this, std::placeholders::_1, std::placeholders::_2),
+    [this](
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+      std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
+    {
+      (void)request_header;
+      this->loadMap(request, response);
+    },
     rmw_qos_profile_services_default);
+
   save_rates_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/save_rates",
-    std::bind(&NvbloxNode::saveRates, this, std::placeholders::_1, std::placeholders::_2),
+    [this](
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+      std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
+    {
+      (void)request_header;
+      this->saveRates(request, response);
+    },
     rmw_qos_profile_services_default);
+
   save_timings_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/save_timings",
-    std::bind(&NvbloxNode::saveTimings, this, std::placeholders::_1, std::placeholders::_2),
+    [this](
+      const std::shared_ptr<rmw_request_id_t> request_header,
+      const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
+      std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
+    {
+      (void)request_header;
+      this->saveTimings(request, response);
+    },
     rmw_qos_profile_services_default);
+
   send_esdf_and_gradient_service_ = create_service<nvblox_msgs::srv::EsdfAndGradients>(
     "~/get_esdf_and_gradient",
     std::bind(
@@ -746,16 +786,19 @@ void NvbloxNode::processServiceRequestTaskQueue()
     };
   // When processing a service request, we execute the corresponding task.
   auto task = [](auto item) -> bool {return item->executeTask();};
+
   processQueue<EsdfServiceQueuedType>(
     esdf_service_queue_,
     &esdf_service_queue_mutex_,
     service_ready,
     task);
+
   processQueue<FilePathServiceQueuedType>(
     file_path_service_queue_,
     &file_path_service_queue_mutex_,
     service_ready,
     task);
+
   // If a service requested visualization, publish right now.
   if (publish_layers_requested_) {
     publishLayers();
@@ -1487,126 +1530,65 @@ void NvbloxNode::savePly(
   const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
   std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
 {
-  // Define the task function
-  TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
-    [](auto node,
-      auto service_request,
-      auto service_response) {
-      // If we get a full path, then write to that path.
-      bool success = true;
-      if (ends_with(service_request->file_path, ".ply")) {
-        // Make sure the mesh is computed
-        node->static_mapper_->updateMesh(UpdateFullLayer::kYes);
-        success = io::outputMeshLayerToPly(
-          node->static_mapper_->mesh_layer(), service_request->file_path);
-      } else {
-        // If we get a partial path then output a bunch of stuff to a folder.
-        success &= io::outputVoxelLayerToPly(
-          node->static_mapper_->tsdf_layer(),
-          service_request->file_path + "/ros2_tsdf.ply");
-        success &= io::outputVoxelLayerToPly(
-          node->static_mapper_->esdf_layer(),
-          service_request->file_path + "/ros2_esdf.ply");
-        success &= io::outputMeshLayerToPly(
-          node->static_mapper_->mesh_layer(),
-          service_request->file_path + "/ros2_mesh.ply");
-        if (isDynamicMapping(node->params_.mapping_type)) {
-          success &= io::outputVoxelLayerToPly(
-            node->static_mapper_->freespace_layer(),
-            service_request->file_path + "/ros2_freespace.ply");
-        }
-      }
-      if (success) {
-        RCLCPP_INFO_STREAM(
-          node->get_logger(), "Output PLY file(s) to " << service_request->file_path);
-      } else {
-        RCLCPP_WARN_STREAM(
-          node->get_logger(), "Failed to write PLY file(s) to " << service_request->file_path);
-      }
-      service_response->success = success;
-      return success;
-    };
+  bool success = true;
+  if (ends_with(request->file_path, ".ply")) {
+    // Make sure the mesh is computed.
+    static_mapper_->updateMesh(UpdateFullLayer::kYes);
+    success = io::outputMeshLayerToPly(static_mapper_->mesh_layer(), request->file_path);
+  } else {
+    // If we get a partial path then output a bunch of stuff to a folder.
+    success &= io::outputVoxelLayerToPly(
+      static_mapper_->tsdf_layer(), request->file_path + "/ros2_tsdf.ply");
+    success &= io::outputVoxelLayerToPly(
+      static_mapper_->esdf_layer(), request->file_path + "/ros2_esdf.ply");
+    success &= io::outputMeshLayerToPly(
+      static_mapper_->mesh_layer(), request->file_path + "/ros2_mesh.ply");
+    if (isDynamicMapping(params_.mapping_type)) {
+      success &= io::outputVoxelLayerToPly(
+        static_mapper_->freespace_layer(), request->file_path + "/ros2_freespace.ply");
+    }
+  }
 
-  // Create the ServiceRequestTask
-  auto task =
-    std::make_shared<ServiceRequestTask<NvbloxNode, nvblox_msgs::srv::FilePath>>(
-    request_task, this, request, response);
-
-  // Push the task onto the queue and wait for completion.
-  pushOntoQueue(
-    kFilePathServiceQueueName, task, file_path_service_queue_,
-    &esdf_service_queue_mutex_);
-  task->waitForTaskCompletion();
+  if (success) {
+    RCLCPP_INFO_STREAM(get_logger(), "Output PLY file(s) to " << request->file_path);
+  } else {
+    RCLCPP_WARN_STREAM(get_logger(), "Failed to write PLY file(s) to " << request->file_path);
+  }
+  response->success = success;
 }
 
 void NvbloxNode::saveMap(
   const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
   std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
 {
-  // Define the task function
-  TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
-    [](auto node,
-      auto service_request,
-      auto service_response) {
-      std::string filename = service_request->file_path;
-      if (!ends_with(service_request->file_path, ".nvblx")) {
-        filename += ".nvblx";
-      }
+  std::string filename = request->file_path;
+  if (!ends_with(request->file_path, ".nvblx")) {
+    filename += ".nvblx";
+  }
 
-      service_response->success = node->static_mapper_->saveLayerCake(filename);
-      if (service_response->success) {
-        RCLCPP_INFO_STREAM(node->get_logger(), "Output map to file to " << filename);
-      } else {
-        RCLCPP_WARN_STREAM(node->get_logger(), "Failed to write file to " << filename);
-      }
-      return service_response->success;
-    };
-
-  // Create the ServiceRequestTask
-  auto task =
-    std::make_shared<ServiceRequestTask<NvbloxNode, nvblox_msgs::srv::FilePath>>(
-    request_task, this, request, response);
-
-  // Push the task onto the queue and wait for completion.
-  pushOntoQueue(
-    kFilePathServiceQueueName, task, file_path_service_queue_,
-    &esdf_service_queue_mutex_);
-  task->waitForTaskCompletion();
+  response->success = static_mapper_->saveLayerCake(filename);
+  if (response->success) {
+    RCLCPP_INFO_STREAM(get_logger(), "Output map to file to " << filename);
+  } else {
+    RCLCPP_WARN_STREAM(get_logger(), "Failed to write file to " << filename);
+  }
 }
 
 void NvbloxNode::loadMap(
   const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
   std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response)
 {
-  // Define the task function
-  TaskFunctionType<NvbloxNode, nvblox_msgs::srv::FilePath> request_task =
-    [](auto node,
-      auto service_request,
-      auto service_response) {
-      std::string filename = service_request->file_path;
-      if (!ends_with(service_request->file_path, ".nvblx")) {
-        filename += ".nvblx";
-      }
+  std::string filename = request->file_path;
+  if (!ends_with(request->file_path, ".nvblx")) {
+    filename += ".nvblx";
+  }
 
-      service_response->success = node->static_mapper_->loadMap(filename);
-      if (service_response->success) {
-        RCLCPP_INFO_STREAM(node->get_logger(), "Loaded map to file from " << filename);
-      } else {
-        RCLCPP_WARN_STREAM(node->get_logger(), "Failed to load map file from " << filename);
-      }
-      return service_response->success;
-    };
-
-  // Create the ServiceRequestTask
-  auto task =
-    std::make_shared<ServiceRequestTask<NvbloxNode, nvblox_msgs::srv::FilePath>>(
-    request_task, this, request, response);
-
-  // Push the task onto the queue and wait for completion.
-  pushOntoQueue(
-    kFilePathServiceQueueName, task, file_path_service_queue_,
-    &esdf_service_queue_mutex_);
-  task->waitForTaskCompletion();
+  response->success = static_mapper_->loadMap(filename);
+  if (response->success) {
+    RCLCPP_INFO_STREAM(get_logger(), "Loaded map to file from " << filename);
+  } else {
+    RCLCPP_WARN_STREAM(get_logger(), "Failed to load map file from " << filename);
+  }
 }
 
 void NvbloxNode::saveRates(
