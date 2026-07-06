@@ -96,6 +96,8 @@
       esdf_integrator_min_weight: 0.1
       esdf_integrator_max_site_distance_vox: 2.0
       esdf_integrator_max_distance_m: 2.0
+      unobserved_esdf_policy: "ignore"
+      add_negative_truncation_band_sites: false
       # mesh integrator
       mesh_integrator_min_weight: 0.1
       mesh_integrator_weld_vertices: true

@@ -18,6 +18,7 @@
 #include "nvblox_ros/nvblox_node.hpp"
 
 #include <nvblox/core/parameter_tree.h>
+#include <nvblox/geometry/bounding_boxes.h>
 #include <nvblox/io/mesh_io.h>
 #include <nvblox/utils/delays.h>
 #include <nvblox/utils/rates.h>
@@ -53,9 +54,9 @@ struct Visitor : Ts ... { using Ts::operator() ...; };
 template<class ... Ts>
 Visitor(Ts ...)->Visitor<Ts...>;
 
-rclcpp::Time getTimestamp(const NitrosView & view)
+rclcpp::Time getTimestamp(const NitrosView & image)
 {
-  return rclcpp::Time(view.GetTimestampSeconds(), view.GetTimestampNanoseconds(), RCL_ROS_TIME);
+  return rclcpp::Time(image.timestamp_sec, image.timestamp_nsec, RCL_ROS_TIME);
 }
 
 }  // namespace
@@ -98,14 +99,19 @@ NvbloxNode::NvbloxNode(
   // subscriptions.
   group_processing_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
+  // Set up ROS interfaces before the (potentially slow) mapper initialization so that
+  // subscribers and publishers exist as early as possible. This avoids dropping incoming
+  // messages while CUDA/nvblox warm up, and ensures we never reach create_subscription()
+  // after a SIGINT has invalidated the rcl context.
+  advertiseTopics();
+  advertiseServices();
+  subscribeToTopics();
+
   // Initialize the MultiMapper with the underlying dynamic/static mappers.
   initializeMultiMapper();
 
-  // Setup interactions with ROS
-  subscribeToTopics();
+  // Start the processing timer last so callbacks only run after the mapper is fully ready.
   setupTimers();
-  advertiseTopics();
-  advertiseServices();
 
   RCLCPP_INFO_STREAM(
     get_logger(), "Started up nvblox node in frame " << params_.global_frame.get()
@@ -168,7 +174,7 @@ NvbloxNode::~NvbloxNode()
     }
   }
 
-  // Having the destructor destroying NITROS types may fail if the process-wide GXF/NITROS context
+  // Having the destructor destroying NITROS types may fail if the process-wide NITROS context
   // has been released elsewhere. This is out of control of this node. To avoid crashes, we refrain
   // from deleting them and instead relay on the OS for memory cleanup. Note that this will lead to
   // memory leaks if several classes are instantiated in the same process.
@@ -252,7 +258,7 @@ void NvbloxNode::subscribeToTopics()
           this, base_name_depth + "/camera_info", input_qos_profile));
 
       depth_image_subs_.emplace_back(
-        std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>(
+        std::make_shared<::message_filters::Subscriber<NitrosView>>(
           this, base_name_depth + "/image",
           input_qos_profile));
       if (params_.use_segmentation) {
@@ -262,7 +268,7 @@ void NvbloxNode::subscribeToTopics()
             this, base_name_seg_depth + "/camera_info", input_qos_profile));
 
         segmentation_image_subs_.emplace_back(
-          std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>(
+          std::make_shared<::message_filters::Subscriber<NitrosView>>(
             this, base_name_seg_depth + "/image",
             input_qos_profile));
         // Sync depth and segmentation images with their camera infos
@@ -300,7 +306,7 @@ void NvbloxNode::subscribeToTopics()
           this, base_name_color + "/camera_info", input_qos_profile));
 
       color_image_subs_.emplace_back(
-        std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>(
+        std::make_shared<::message_filters::Subscriber<NitrosView>>(
           this, base_name_color + "/image",
           input_qos_profile));
       if (params_.use_segmentation) {
@@ -310,7 +316,7 @@ void NvbloxNode::subscribeToTopics()
             this, base_name_seg_color + "/camera_info", input_qos_profile));
 
         segmentation_image_subs_.emplace_back(
-          std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>(
+          std::make_shared<::message_filters::Subscriber<NitrosView>>(
             this, base_name_seg_color + "/image",
             input_qos_profile));
         // Sync color and segmentation images with their camera infos
@@ -382,6 +388,8 @@ void NvbloxNode::advertiseTopics()
     create_publisher<sensor_msgs::msg::PointCloud2>("~/groundplane_estimator_ground_pointcloud", 1);
   tsdf_zero_crossings_ground_plane_publisher_ =
     create_publisher<visualization_msgs::msg::Marker>("~/groundplane_estimator_estimated_plane", 1);
+  esdf_service_pointcloud_publisher_ =
+    create_publisher<sensor_msgs::msg::PointCloud2>("~/esdf_service_pointcloud", 1);
   if (params_.use_lidar) {
     lidar_image_publisher_ = create_publisher<sensor_msgs::msg::Image>(
           "~/lidar_image", 1);
@@ -460,95 +468,78 @@ void NvbloxNode::setupTimers()
 }
 
 void NvbloxNode::depthPlusMaskImageCallback(
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+  const NitrosViewPtr & depth_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info,
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+  const NitrosViewPtr & seg_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info)
 {
   timing::Timer tick_timer("ros/depth_image_callback");
   timing::Rates::tick("ros/depth_image_callback");
 
-  const NitrosView & depth_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*depth_image);
-  const NitrosView & seg_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*seg_image);
-
   timing::Delays::tick(
     "ros/depth_image_callback",
-    nvblox::Time(getTimestamp(depth_image_view).nanoseconds()),
+    nvblox::Time(getTimestamp(*depth_image).nanoseconds()),
     nvblox::Time(now().nanoseconds()));
 
   pushOntoQueue<ImageTypeVariant>(
     "depth_queue",
-    std::make_tuple(
-      std::make_shared<NitrosView>(depth_image_view), depth_camera_info,
-      std::make_shared<NitrosView>(seg_image_view), seg_camera_info),
+    std::make_tuple(depth_image, depth_camera_info, seg_image, seg_camera_info),
     depth_image_queue_, &depth_queue_mutex_);
 }
 
 void NvbloxNode::depthImageCallback(
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+  const NitrosViewPtr & depth_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info)
 {
   timing::Timer tick_timer("ros/depth_image_callback");
   timing::Rates::tick("ros/depth_image_callback");
 
-  const NitrosView & depth_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*depth_image);
-
   timing::Delays::tick(
     "ros/depth_image_callback",
-    nvblox::Time(
-      rclcpp::Time(getTimestamp(depth_image_view)).nanoseconds()),
+    nvblox::Time(getTimestamp(*depth_image).nanoseconds()),
     nvblox::Time(now().nanoseconds()));
 
   pushOntoQueue<ImageTypeVariant>(
     "depth_queue",
-    std::make_tuple(std::make_shared<NitrosView>(depth_image_view), depth_camera_info),
+    std::make_tuple(depth_image, depth_camera_info),
     depth_image_queue_, &depth_queue_mutex_);
 }
 
 void NvbloxNode::colorPlusMaskImageCallback(
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+  const NitrosViewPtr & color_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info,
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+  const NitrosViewPtr & seg_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info)
 {
   timing::Timer tick_timer("ros/color_image_callback");
   timing::Rates::tick("ros/color_image_callback");
 
-  const NitrosView & color_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*color_image);
-  const NitrosView & seg_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*seg_image);
-
   timing::Delays::tick(
     "ros/color_image_callback",
-    nvblox::Time(
-      rclcpp::Time(getTimestamp(color_image_view)).nanoseconds()),
+    nvblox::Time(getTimestamp(*color_image).nanoseconds()),
     nvblox::Time(now().nanoseconds()));
 
   pushOntoQueue<ImageTypeVariant>(
     "color_mask_queue",
-    std::make_tuple(
-      std::make_shared<NitrosView>(color_image_view), color_camera_info,
-      std::make_shared<NitrosView>(seg_image_view), seg_camera_info),
+    std::make_tuple(color_image, color_camera_info, seg_image, seg_camera_info),
     color_image_queue_, &color_queue_mutex_);
 }
 
 void NvbloxNode::colorImageCallback(
-  const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+  const NitrosViewPtr & color_image,
   const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info)
 {
   timing::Timer tick_timer("ros/color_image_callback");
   timing::Rates::tick("ros/color_image_callback");
 
-  const NitrosView & color_image_view = nvidia::isaac_ros::nitros::NitrosImageView(*color_image);
-
   timing::Delays::tick(
     "ros/color_image_callback",
-    nvblox::Time(
-      rclcpp::Time(getTimestamp(color_image_view)).nanoseconds()),
+    nvblox::Time(getTimestamp(*color_image).nanoseconds()),
     nvblox::Time(now().nanoseconds()));
 
   pushOntoQueue<ImageTypeVariant>(
     "color_queue",
-    std::make_tuple(std::make_shared<NitrosView>(color_image_view), color_camera_info),
+    std::make_tuple(color_image, color_camera_info),
     color_image_queue_, &color_queue_mutex_);
 }
 
@@ -683,15 +674,15 @@ bool NvbloxNode::isPoseAvailable(const ImageTypeVariant & variant_msg)
     Visitor{
       // Image
       [this](const ImageMsgTuple & msg) -> bool {
-        NitrosView & img_msg = *(std::get<kMsgTupleImageIdx>(msg));
-        return this->canTransform(img_msg.GetFrameId(), getTimestamp(img_msg));
+        const NitrosView & img_msg = *(std::get<kMsgTupleImageIdx>(msg));
+        return this->canTransform(img_msg.frame_id, getTimestamp(img_msg));
       },
       // Image + Mask
       [this](const ImageSegmentationMaskMsgTuple & msg) -> bool {
         const NitrosView & img_msg = *std::get<kMsgTupleImageIdx>(msg);
         const NitrosView & mask_msg = *std::get<kMsgTupleMaskIdx>(msg);
-        return this->canTransform(img_msg.GetFrameId(), getTimestamp(img_msg)) &&
-               this->canTransform(mask_msg.GetFrameId(), getTimestamp(mask_msg));
+        return this->canTransform(img_msg.frame_id, getTimestamp(img_msg)) &&
+               this->canTransform(mask_msg.frame_id, getTimestamp(mask_msg));
       }
     }, variant_msg);
 }
@@ -979,11 +970,11 @@ bool NvbloxNode::processDepthImage(const ImageTypeVariant & depth_msg)
   auto [depth_img_ptr, depth_camera_info_msg, mask_img_opt,
     mask_camera_info_opt] = decomposeImageTypeVariant(depth_msg);
 
-  const std::string depth_frame = (*depth_img_ptr).GetFrameId();
+  const std::string depth_frame = depth_img_ptr->frame_id;
   std::string mask_frame;
   rclcpp::Time mask_image_timestamp;
   if (mask_img_opt) {
-    mask_frame = mask_img_opt.value()->GetFrameId();
+    mask_frame = mask_img_opt.value()->frame_id;
     mask_image_timestamp = getTimestamp(*mask_img_opt.value());
   }
   // Check if the message is too soon, and if it is discard it
@@ -1191,11 +1182,11 @@ bool NvbloxNode::processColorImage(const ImageTypeVariant & color_msg)
   auto [color_img_ptr, color_camera_info_msg, mask_img_opt,
     mask_camera_info_opt] = decomposeImageTypeVariant(color_msg);
 
-  const std::string color_frame = (*color_img_ptr).GetFrameId();
+  const std::string color_frame = color_img_ptr->frame_id;
   std::string mask_frame;
   rclcpp::Time mask_image_timestamp;
   if (mask_img_opt) {
-    mask_frame = (*mask_img_opt)->GetFrameId();
+    mask_frame = (*mask_img_opt)->frame_id;
     mask_image_timestamp = getTimestamp(*mask_img_opt.value());
   }
 
@@ -1836,6 +1827,58 @@ void NvbloxNode::getEsdfAndGradientService(
       }
       clear_shapes_timer.Stop();
 
+      // With a non-ignore unobserved policy (e.g. kFree), the ESDF integrator
+      // needs to process the entire requested AABB — including regions with no
+      // TSDF observations. Without this, unobserved parts of the AABB would
+      // have no ESDF blocks and appear as sentinel values in the output grid.
+      //
+      // We find AABB blocks not yet allocated in the ESDF layer (i.e. outside
+      // current TSDF coverage) and mark them for ESDF update. The integrator
+      // will allocate them and apply the unobserved policy on the next
+      // processEsdf() call.
+      if (service_request->use_aabb &&
+        node->static_mapper_->esdf_integrator().unobserved_esdf_policy() !=
+        UnobservedEsdfPolicy::kIgnore)
+      {
+        // Initialize ESDF block tracking on the first service call. This is
+        // required because the block-update tracker uses lazy initialization
+        // and would silently discard blocks added before the first query.
+        static bool esdf_tracking_initialized = false;
+        if (!esdf_tracking_initialized) {
+          node->static_mapper_->startBlockTracking(BlocksToUpdateType::kEsdf);
+          esdf_tracking_initialized = true;
+        }
+
+        // Find AABB blocks not yet allocated in the ESDF layer and add them
+        // to the next ESDF update. The ESDF integrator will allocate them and
+        // mark their voxels as free (kFree) or occupied (kOccupied) depending
+        // on the unobserved policy.
+        const Vector3f aabb_min_m(
+          service_request->aabb_min_m.x,
+          service_request->aabb_min_m.y,
+          service_request->aabb_min_m.z);
+        const Vector3f aabb_size_m(
+          service_request->aabb_size_m.x,
+          service_request->aabb_size_m.y,
+          service_request->aabb_size_m.z);
+        const AxisAlignedBoundingBox aabb(aabb_min_m, aabb_min_m + aabb_size_m);
+        const float block_size = node->static_mapper_->esdf_layer().block_size();
+        const std::vector<Index3D> aabb_block_indices =
+          getBlockIndicesTouchedByBoundingBox(block_size, aabb);
+        // Find AABB blocks not yet allocated in the ESDF layer.
+        std::vector<Index3D> missing_block_indices;
+        for (const Index3D & idx : aabb_block_indices) {
+          if (!node->static_mapper_->esdf_layer().isBlockAllocated(idx)) {
+            missing_block_indices.push_back(idx);
+          }
+        }
+        // Add the missing blocks to the next ESDF update (which allocates and marks the voxels).
+        if (!missing_block_indices.empty()) {
+          node->static_mapper_->markBlocksForUpdate(
+            missing_block_indices, {BlocksToUpdateType::kEsdf});
+        }
+      }
+
       // Update the Esdf layer.
       if (service_request->update_esdf) {
         timing::Timer update_esdf_timer("ros/esdf_service/task_function/update_esdf");
@@ -1856,6 +1899,20 @@ void NvbloxNode::getEsdfAndGradientService(
         RCLCPP_INFO_STREAM(
           node->get_logger(),
           "Successfully wrote requested ESDF to MultiArrayMsg.");
+
+        // Debug visualization of the ESDF service response as a pointcloud.
+        constexpr bool kPublishEsdfServiceDebugPointcloud = false;
+        if constexpr (kPublishEsdfServiceDebugPointcloud) {
+          if (node->esdf_service_pointcloud_publisher_->get_subscription_count() > 0) {
+            const bool expect_all_observed =
+              node->static_mapper_->esdf_integrator().unobserved_esdf_policy() !=
+              UnobservedEsdfPolicy::kIgnore;
+            node->esdf_service_pointcloud_publisher_->publish(
+              conversions::esdfResponseToPointcloud2Msg(
+                *service_response, node->params_.esdf_and_gradients_unobserved_value,
+                expect_all_observed));
+          }
+        }
       } else {
         RCLCPP_WARN_STREAM(
           node->get_logger(),

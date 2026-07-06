@@ -19,11 +19,13 @@
 
 #include <isaac_ros_common/qos.hpp>
 
-namespace nvidia::nvblox {
+namespace nvidia::nvblox
+{
 
 NvbloxVoxelAdapterNode::NvbloxVoxelAdapterNode(
-    const rclcpp::NodeOptions & options, const std::string & node_name)
-    : rclcpp::Node(node_name, options){
+  const rclcpp::NodeOptions & options, const std::string & node_name)
+: rclcpp::Node(node_name, options)
+{
   const rclcpp::QoS input_qos =
     isaac_ros::common::AddQosParameter(*this, "SYSTEM_DEFAULT", "input_qos");
   subscriber_ = create_subscription<nvblox_msgs::msg::VoxelBlockLayer>(
@@ -34,7 +36,8 @@ NvbloxVoxelAdapterNode::NvbloxVoxelAdapterNode(
 }
 
 void NvbloxVoxelAdapterNode::messageCallback(
-    const nvblox_msgs::msg::VoxelBlockLayer::ConstSharedPtr& msg) {
+  const nvblox_msgs::msg::VoxelBlockLayer::ConstSharedPtr & msg)
+{
   // Clear all the blocks if requested
   if (msg->clear) {
     blocks_.clear();
@@ -44,11 +47,11 @@ void NvbloxVoxelAdapterNode::messageCallback(
   // Go through the list of blocks of the VoxelBlockLayer message, replace the one already existing
   // and add the new ones.
   for (size_t id = 0; id < msg->block_indices.size(); id++) {
-    const auto& idx = msg->block_indices[id];
-    auto& block = blocks_[{idx.x, idx.y, idx.z}];
+    const auto & idx = msg->block_indices[id];
+    auto & block = blocks_[{idx.x, idx.y, idx.z}];
     num_voxels_ -= block.num_voxels;
 
-    const auto& voxel_block = msg->blocks[id];
+    const auto & voxel_block = msg->blocks[id];
     block.num_voxels = voxel_block.centers.size();
     num_voxels_ += block.num_voxels;
     // Serialize the message into a single float array for both the voxel positions and colors.
@@ -76,7 +79,7 @@ void NvbloxVoxelAdapterNode::messageCallback(
   msg_serialized.voxel_size_m = msg->voxel_size_m;
   msg_serialized.points.reserve(3 * num_voxels_);
   msg_serialized.colors.reserve(4 * num_voxels_);
-  for (const auto& kv : blocks_) {
+  for (const auto & kv : blocks_) {
     msg_serialized.points.insert(
         msg_serialized.points.end(), kv.second.points.begin(), kv.second.points.end());
     msg_serialized.colors.insert(

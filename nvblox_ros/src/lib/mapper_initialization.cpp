@@ -88,6 +88,26 @@ MappingType mapping_type_from_string(const std::string & mapping_type_str, rclcp
   }
 }
 
+UnobservedEsdfPolicy unobserved_esdf_policy_from_string(
+  const std::string & policy_str,
+  rclcpp::Node * node)
+{
+  if (policy_str == "kIgnore" || policy_str == "ignore") {
+    return UnobservedEsdfPolicy::kIgnore;
+  } else if (policy_str == "kFree" || policy_str == "free") {
+    return UnobservedEsdfPolicy::kFree;
+  } else if (policy_str == "kOccupied" || policy_str == "occupied") {
+    return UnobservedEsdfPolicy::kOccupied;
+  } else {
+    RCLCPP_WARN_STREAM(
+      node->get_logger(), "Requested unobserved ESDF policy: \""
+        << policy_str
+        << "\" not recognized. Defaulting to: "
+        << toString(UnobservedEsdfPolicy::kIgnore));
+    return UnobservedEsdfPolicy::kIgnore;
+  }
+}
+
 WorkspaceBoundsType workspace_bounds_type_from_string(
   const std::string & workspace_bounds_type_str,
   rclcpp::Node * node)
@@ -198,6 +218,11 @@ void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * nod
   declareParameter<float>(mapper_name, kEsdfIntegratorMinWeightParamDesc, node);
   declareParameter<float>(mapper_name, kEsdfIntegratorMaxSiteDistanceVoxParamDesc, node);
   declareParameter<float>(mapper_name, kEsdfIntegratorMaxDistanceMParamDesc, node);
+  declareParameter<UnobservedEsdfPolicy, std::string>(
+    mapper_name, kUnobservedEsdfPolicyParamDesc, node,
+    [](UnobservedEsdfPolicy default_value) {return toString(default_value);});
+  declareParameter<bool>(
+    mapper_name, kAddNegativeTruncationBandSitesParamDesc, node);
   // ======= MESH INTEGRATOR =======
   declareParameter<float>(mapper_name, kMeshIntegratorMinWeightParamDesc, node);
   declareParameter<bool>(mapper_name, kMeshIntegratorWeldVerticesParamDesc, node);
@@ -370,6 +395,19 @@ MapperParams getMapperParamsFromROS(const std::string & mapper_name, rclcpp::Nod
   set_parameter<float>(
     mapper_name, kEsdfIntegratorMaxDistanceMParamDesc.name,
     [&](auto value) {params.esdf_integrator_params.esdf_integrator_max_distance_m = value;}, node);
+  set_parameter<std::string>(
+    mapper_name, kUnobservedEsdfPolicyParamDesc.name,
+    [&](auto value) {
+      const UnobservedEsdfPolicy policy = unobserved_esdf_policy_from_string(value, node);
+      params.esdf_integrator_params.unobserved_esdf_policy = policy;
+    },
+    node);
+  set_parameter<bool>(
+    mapper_name, kAddNegativeTruncationBandSitesParamDesc.name,
+    [&](auto value) {
+      params.esdf_integrator_params.add_negative_truncation_band_sites = value;
+    },
+    node);
 
   // ======= MESH INTEGRATOR =======
   set_parameter<float>(

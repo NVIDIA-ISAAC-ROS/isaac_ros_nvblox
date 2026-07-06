@@ -28,7 +28,7 @@
 #include <OgreRenderSystem.h>
 #include <OgreRenderSystemCapabilities.h>
 
-#include "nvblox_rviz_plugin/nvblox_plugin_visual.h"
+#include "nvblox_rviz_plugin/nvblox_plugin_visual.hpp"
 #include <nvblox_msgs/msg/voxel_block_layer.hpp>
 #include <ament_index_cpp/get_package_share_directory.hpp>
 

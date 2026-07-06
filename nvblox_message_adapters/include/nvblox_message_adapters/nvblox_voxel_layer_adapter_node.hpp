@@ -15,17 +15,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_ADAPTER_NODE_HPP_
-#define NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_ADAPTER_NODE_HPP_
+#ifndef NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_LAYER_ADAPTER_NODE_HPP_
+#define NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_LAYER_ADAPTER_NODE_HPP_
 
 #include <map>
+#include <string>
+#include <tuple>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include <nvblox_msgs/msg/voxel_serialized.hpp>
 #include <nvblox_msgs/msg/voxel_block_layer.hpp>
 
-namespace nvidia::nvblox {
+namespace nvidia::nvblox
+{
 
 // This node is used to convert VoxelBlockLayer messages into a VoxelSerialized message.
 // When a new message comes in, it updates the list of voxels and outputs a new VoxelSerialized
@@ -39,14 +42,15 @@ public:
 
 protected:
   // Helper structure to store the information about a specific block of the VoxelBlockLayer.
-  struct Block {
+  struct Block
+  {
     std::vector<float> points;
     std::vector<float> colors;
     int32_t num_voxels;
   };
 
   // Callback for when a new message is received
-  void messageCallback(const nvblox_msgs::msg::VoxelBlockLayer::ConstSharedPtr& msg);
+  void messageCallback(const nvblox_msgs::msg::VoxelBlockLayer::ConstSharedPtr & msg);
 
   // Publisher/Subscriber
   rclcpp::Publisher<nvblox_msgs::msg::VoxelSerialized>::SharedPtr publisher_;
@@ -60,4 +64,4 @@ protected:
 
 }  // namespace nvidia::nvblox
 
-#endif  // NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_ADAPTER_NODE_HPP_
+#endif  // NVBLOX_MESSAGE_ADAPTERS__NVBLOX_VOXEL_LAYER_ADAPTER_NODE_HPP_

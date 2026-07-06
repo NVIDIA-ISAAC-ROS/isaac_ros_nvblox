@@ -25,7 +25,7 @@
 #include "tf2_ros/buffer.h"
 
 #include "nvblox/datasets/data_loader_interface.h"
-#include "nvblox/executables/fuser.h"
+#include "nvblox/fuser/fuser.h"
 #include "nvblox/nvblox.h"
 
 #include "rclcpp/logger.hpp"
@@ -166,7 +166,9 @@ public:
     Camera * color_camera_ptr,     // NOLINT
     Time *,                        // NOLINT
     Transform *,                   // NOLINT
-    Time *) override;              // NOLINT
+    Time *,                        // NOLINT
+    MonoImage *,                   // NOLINT
+    MonoImage *) override;         // NOLINT
 
 private:
   // Steps all message streams forward until we have a match.

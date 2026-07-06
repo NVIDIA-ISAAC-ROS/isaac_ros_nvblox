@@ -15,8 +15,10 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef NVBLOX_IMAGE_PADDING__IMAGE_PADDING_NODE_HPP_
-#define NVBLOX_IMAGE_PADDING__IMAGE_PADDING_NODE_HPP_
+#ifndef NVBLOX_IMAGE_PADDING__IMAGE_PADDING_CROPPING_NODE_HPP_
+#define NVBLOX_IMAGE_PADDING__IMAGE_PADDING_CROPPING_NODE_HPP_
+
+#include <string>
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
@@ -52,6 +54,6 @@ private:
   const std::string kDefaultImageQos_ = "SYSTEM_DEFAULT";
 };
 
-} // namespace nvblox
+}  // namespace nvblox
 
-#endif  // NVBLOX_IMAGE_PADDING__IMAGE_PADDING_NODE_HPP_
+#endif  // NVBLOX_IMAGE_PADDING__IMAGE_PADDING_CROPPING_NODE_HPP_

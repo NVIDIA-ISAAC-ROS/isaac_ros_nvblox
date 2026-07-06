@@ -139,41 +139,43 @@ bool depthImageFromRosMessageAsync(
 }
 
 bool depthImageFromNitrosViewAsync(
-  const NitrosView & view, DepthImage * depth_image,
+  const NitrosView & image, DepthImage * depth_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(depth_image);
 
-  if (view.GetEncoding() == "32FC1") {
+  auto read_handle = image.get_read_handle(cuda_stream);
+  if (image.encoding == "32FC1") {
     return depthFromFloatHostOrDeviceAsync(
-      reinterpret_cast<const float *>(view.GetGpuData()),
-      view.GetHeight(), view.GetWidth(), depth_image,
+      reinterpret_cast<const float *>(read_handle.get_ptr()),
+      image.height, image.width, depth_image,
       cuda_stream);
-  } else if (view.GetEncoding() == "16UC1" || view.GetEncoding() == "mono16") {
+  } else if (image.encoding == "16UC1" || image.encoding == "mono16") {
     return depthFromIntDeviceAsync(
-      reinterpret_cast<const int16_t *>(view.GetGpuData()),
-      view.GetHeight(), view.GetWidth(), depth_image, cuda_stream);
+      reinterpret_cast<const int16_t *>(read_handle.get_ptr()),
+      image.height, image.width, depth_image, cuda_stream);
   } else {
-    RCLCPP_ERROR_STREAM(logger, "Invalid depth image encoding: " << view.GetEncoding());
+    RCLCPP_ERROR_STREAM(logger, "Invalid depth image encoding: " << image.encoding);
     return false;
   }
 }
 
 bool colorImageFromNitrosViewAsync(
-  const NitrosView & view, ColorImage * color_image,
+  const NitrosView & image, ColorImage * color_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(color_image);
 
-  const std::string encoding = view.GetEncoding();
+  auto read_handle = image.get_read_handle(cuda_stream);
+  const std::string & encoding = image.encoding;
   if (encoding == "rgb8") {
     return rgbaFromDeviceAsync(
-      reinterpret_cast<const Rgb *>(view.GetGpuData()), view.GetHeight(),
-      view.GetWidth(), color_image, cuda_stream);
+      reinterpret_cast<const Rgb *>(read_handle.get_ptr()), image.height,
+      image.width, color_image, cuda_stream);
   } else if (encoding == "bgra8") {
     return rgbaFromDeviceAsync(
-      reinterpret_cast<const Bgra *>(view.GetGpuData()), view.GetHeight(),
-      view.GetWidth(), color_image, cuda_stream);
+      reinterpret_cast<const Bgra *>(read_handle.get_ptr()), image.height,
+      image.width, color_image, cuda_stream);
   } else {
     RCLCPP_ERROR_STREAM(logger, "Invalid color image encoding: " << encoding);
     return false;
@@ -181,21 +183,21 @@ bool colorImageFromNitrosViewAsync(
 }
 
 bool monoImageFromNitrosViewAsync(
-  const NitrosView & view, MonoImage * mono_image,
+  const NitrosView & image, MonoImage * mono_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream)
 {
   CHECK_NOTNULL(mono_image);
 
   // First check if we actually have a valid image here.
-  const std::string encoding = view.GetEncoding();
-  if (view.GetEncoding() != "mono8") {
-    RCLCPP_ERROR_STREAM(logger, "Invalid mask image encoding: " << encoding);
+  if (image.encoding != "mono8") {
+    RCLCPP_ERROR_STREAM(logger, "Invalid mask image encoding: " << image.encoding);
     return false;
   }
 
+  auto read_handle = image.get_read_handle(cuda_stream);
   return monoFromIntDeviceAsync(
-    reinterpret_cast<const uint8_t *>(view.GetGpuData()),
-    view.GetHeight(), view.GetWidth(), mono_image, cuda_stream);
+    reinterpret_cast<const uint8_t *>(read_handle.get_ptr()),
+    image.height, image.width, mono_image, cuda_stream);
 }
 
 }  // namespace conversions

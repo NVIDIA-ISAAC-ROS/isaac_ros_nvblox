@@ -18,14 +18,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
 import json
-import numpy as np
 from typing import Dict, Tuple
 
-import message_filters
-import rclpy
 from cv_bridge import CvBridge
-from rclpy.node import Node
+import message_filters
+import numpy as np
 from nvblox_msgs.msg import SemanticLabelsStamped
+import rclpy
+from rclpy.node import Node
 from sensor_msgs.msg import Image
 
 
@@ -86,7 +86,8 @@ class SemanticConverter(Node):
             camera_name (str): The name of the camera
         '''
         # Subscriber
-        image_subscriber = message_filters.Subscriber(self, Image, f"/{camera_name}/semantics/ground_truth")
+        image_subscriber = message_filters.Subscriber(
+            self, Image, f"/{camera_name}/semantics/ground_truth")
         labels_subscriber = message_filters.Subscriber(
             self, SemanticLabelsStamped, f"/semantic_conversion/{camera_name}/labels_stamped")
 
@@ -97,8 +98,8 @@ class SemanticConverter(Node):
             Image, f"/semantic_conversion/{camera_name}/semantic_colorized", 1)
 
         # Synchronized callback
-        def on_camera_image_received(image_msg, label_msg):            return \
-self.on_image_received(
+        def on_camera_image_received(image_msg, label_msg):
+            return self.on_image_received(
                 publisher_mono8, publisher_colorized, image_msg, label_msg)
 
         ts = message_filters.TimeSynchronizer([image_subscriber, labels_subscriber], 10)
@@ -110,8 +111,10 @@ self.on_image_received(
         Callback to convert semantic image from IsaacSim to a consistent label image in mono8
 
         Args:
-            image_msg (Image): Input image from Isaacsim, is in CV16SC1 format and labels id vary with scene
-            labels_msg (SemanticLabelsStamped): Stamped input labels message for the current image.
+            image_msg (Image): Input image from Isaacsim, is in CV16SC1 format and labels id
+                vary with scene
+            labels_msg (SemanticLabelsStamped): Stamped input labels message for the current
+                image.
         '''
         # Load the labels as a json
         labels_dict = json.loads(labels_msg.labels)
@@ -142,11 +145,11 @@ self.on_image_received(
     def build_labels_lut(self, current_labels: Dict[str, Dict[str,
                                                               str]]) -> Tuple[np.array, np.array]:
         '''
-        Build labels lookup table (LUT) from current labels dictionary. The dictionary is formatted as
-        {<class_id_0>: {"class": <class_name_x>}} where class_id_x is the id of the class in the
-        image and class_name_x is the one that was entered in the semantics schema. This lookup
-        maps all classes that are not in the reference as unlabelled, and remaps ids / colors of the
-        reference classes to the desired reference one
+        Build labels lookup table (LUT) from current labels dictionary. The dictionary is
+        formatted as {<class_id_0>: {"class": <class_name_x>}} where class_id_x is the id of
+        the class in the image and class_name_x is the one that was entered in the semantics
+        schema. This lookup maps all classes that are not in the reference as unlabelled, and
+        remaps ids / colors of the reference classes to the desired reference one
 
         Args:
             current_labels (Dict[str, Dict[str, str]]): Labels string coming from IsaacSim
@@ -158,7 +161,10 @@ self.on_image_received(
         # First, get the maximum label that appears in the image
         max_label = -1
         for label_id, _ in current_labels.items():
-            label_id_int = int(label_id)
+            try:
+                label_id_int = int(label_id)
+            except ValueError:
+                continue
             if label_id_int > max_label:
                 max_label = label_id_int
         # Initialize all remappings to zero
@@ -166,8 +172,19 @@ self.on_image_received(
         lut_colors = np.zeros((max_label + 1, 3), dtype=np.uint8)
         # Go over all labels that are present, and get their remap
         for label_id, label_name_dict in current_labels.items():
-            label_id_int = int(label_id)
-            label_name = label_name_dict.get("class", None)
+            try:
+                label_id_int = int(label_id)
+            except ValueError:
+                if label_id != "time_stamp":
+                    print("WARNING: Skipping non-numeric label key:", label_id)
+                continue
+            if isinstance(label_name_dict, str):
+                label_name = label_name_dict
+            elif isinstance(label_name_dict, dict):
+                label_name = label_name_dict.get("class", None)
+            else:
+                print("WARNING: value must be str or dict, got:", type(label_name_dict).__name__)
+                continue
             if label_name is None:
                 continue
             label_name = label_name.lower()

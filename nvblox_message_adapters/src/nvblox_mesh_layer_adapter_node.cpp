@@ -19,11 +19,13 @@
 
 #include <isaac_ros_common/qos.hpp>
 
-namespace nvidia::nvblox {
+namespace nvidia::nvblox
+{
 
 NvbloxMeshLayerAdapterNode::NvbloxMeshLayerAdapterNode(
-    const rclcpp::NodeOptions & options, const std::string & node_name)
-    : rclcpp::Node(node_name, options){
+  const rclcpp::NodeOptions & options, const std::string & node_name)
+: rclcpp::Node(node_name, options)
+{
   const rclcpp::QoS input_qos =
     isaac_ros::common::AddQosParameter(*this, "SYSTEM_DEFAULT", "input_qos");
   subscriber_ = create_subscription<nvblox_msgs::msg::Mesh>(
@@ -34,7 +36,8 @@ NvbloxMeshLayerAdapterNode::NvbloxMeshLayerAdapterNode(
 }
 
 void NvbloxMeshLayerAdapterNode::messageCallback(
-    const nvblox_msgs::msg::Mesh::ConstSharedPtr& msg) {
+  const nvblox_msgs::msg::Mesh::ConstSharedPtr & msg)
+{
   // Clear all the blocks if requested
   if (msg->clear) {
     blocks_.clear();
@@ -44,12 +47,12 @@ void NvbloxMeshLayerAdapterNode::messageCallback(
   // Go through the list of blocks of the Mesh message, replace the one already existing
   // and add the new ones.
   for (size_t id = 0; id < msg->block_indices.size(); id++) {
-    const auto& idx = msg->block_indices[id];
-    auto& block_to_modify = blocks_[{idx.x, idx.y, idx.z}];
+    const auto & idx = msg->block_indices[id];
+    auto & block_to_modify = blocks_[{idx.x, idx.y, idx.z}];
     num_vertices_ -= block_to_modify.num_vertices;
     num_triangles_ -= block_to_modify.num_triangles;
 
-    const auto& block_from_message = msg->blocks[id];
+    const auto & block_from_message = msg->blocks[id];
     block_to_modify.num_vertices = block_from_message.vertices.size();
     block_to_modify.num_triangles = block_from_message.triangles.size() / 3;
     // If the block is now empty, we can remove it.
@@ -84,7 +87,7 @@ void NvbloxMeshLayerAdapterNode::messageCallback(
   msg_serialized.colors.reserve(4 * num_vertices_);
   int vertices_id = 0;
   // Loop through the blocks and insert them in the overall mesh
-  for (const auto& kv : blocks_) {
+  for (const auto & kv : blocks_) {
     msg_serialized.vertices.insert(
         msg_serialized.vertices.end(), kv.second.vertices.begin(), kv.second.vertices.end());
     msg_serialized.colors.insert(

@@ -17,9 +17,9 @@
 
 from typing import List, Optional
 
-from isaac_ros_launch_utils.all_types import (
-    Action, ComposableNode, LaunchDescription, TimerAction, IfCondition)
 import isaac_ros_launch_utils as lu
+from isaac_ros_launch_utils.all_types import (
+    Action, ComposableNode, IfCondition, LaunchDescription, TimerAction)
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME
 
 EMITTER_FLASHING_CONFIG_FILE_PATH = lu.get_path(
@@ -83,8 +83,7 @@ def get_splitter_node(camera_name: str) -> ComposableNode:
 
 
 def add_cameras(args: lu.ArgumentContainer) -> List[Action]:
-    """Adds a camera and (optional) realsense splitter for each camera up to num_cameras."""
-
+    """Add a camera and (optional) realsense splitter for each camera up to num_cameras."""
     # Serial numbers.
     if args.camera_serial_numbers == '':
         camera_serial_numbers = [None]

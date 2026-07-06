@@ -17,13 +17,13 @@
 
 from typing import List
 
+import isaac_ros_launch_utils as lu
 from launch import Action, LaunchDescription
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
-import isaac_ros_launch_utils as lu
 
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME, \
-    PEOPLENET_INPUT_IMAGE_WIDTH, PEOPLENET_INPUT_IMAGE_HEIGHT
+    PEOPLENET_INPUT_IMAGE_HEIGHT, PEOPLENET_INPUT_IMAGE_WIDTH
 
 
 def create_detection_pipeline(args: lu.ArgumentContainer,
@@ -137,10 +137,7 @@ def add_detection(args: lu.ArgumentContainer) -> List[Action]:
 
 
 def generate_launch_description() -> LaunchDescription:
-    '''
-    Launch the resize node, DNN Image preprocessing node, TRT node and UNet decoder node
-    for each camera.
-    '''
+    """Launch resize, DNN Image preprocessing, TRT, and UNet decoder nodes for each camera."""
     args = lu.ArgumentContainer()
     args.add_arg('num_cameras', 1,
                  description='Number of cameras requiring people detection pipeline')
