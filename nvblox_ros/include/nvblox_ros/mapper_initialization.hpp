@@ -35,6 +35,9 @@ EsdfMode esdf_mode_from_string(const std::string & esdf_mode_str, rclcpp::Node *
 MappingType mapping_type_from_string(
   const std::string & mapping_type_str, rclcpp::Node * node);
 
+UnobservedEsdfPolicy unobserved_esdf_policy_from_string(
+  const std::string & policy_str, rclcpp::Node * node);
+
 void declareMapperParameters(const std::string & mapper_name, rclcpp::Node * node);
 
 void declareMultiMapperParameters(rclcpp::Node * node);

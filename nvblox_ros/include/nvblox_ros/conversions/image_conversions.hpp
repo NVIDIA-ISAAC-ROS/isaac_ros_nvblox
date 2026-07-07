@@ -94,13 +94,13 @@ void imageMessageFromColorImage(
 ///
 /// Output and staging images will be allocated internally if necessary.
 ///
-/// @param view         Input nitros message
+/// @param image        Input nitros image message
 /// @param depth_image  Output Nvblox depth image
 /// @param logger       ROS2 logger
 /// @param cuda_stream  Cuda stream used for copying data
 /// @return True on success, False on failure.
 bool depthImageFromNitrosViewAsync(
-  const NitrosView & view,
+  const NitrosView & image,
   DepthImage * depth_image, rclcpp::Logger logger,
   const CudaStream & cuda_stream);
 
@@ -108,18 +108,18 @@ bool depthImageFromNitrosViewAsync(
 ///
 /// Output and staging images will be allocated internally if necessary.
 ///
-/// @param view         Input nitros message
+/// @param image        Input nitros image message
 /// @param color_image  Output Nvblox color image
 /// @param logger       ROS2 logger
 /// @param cuda_stream  Cuda stream used for copying data
 /// @return True on success, False on failure.
 bool colorImageFromNitrosViewAsync(
-  const NitrosView & view,
+  const NitrosView & image,
   ColorImage * color_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream);
 
 bool monoImageFromNitrosViewAsync(
-  const NitrosView & view, MonoImage * mono_image,
+  const NitrosView & image, MonoImage * mono_image,
   rclcpp::Logger logger, const CudaStream & cuda_stream);
 
 }  // namespace conversions

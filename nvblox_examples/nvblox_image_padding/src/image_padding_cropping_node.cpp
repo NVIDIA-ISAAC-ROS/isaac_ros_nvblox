@@ -124,9 +124,8 @@ void ImagePaddingCroppingNode::imageCallback(sensor_msgs::msg::Image::ConstShare
   if (crop_if_true_pad_if_false) {
     output_image_cv.image = input_image_cv_ptr->image(
       cv::Rect(left_pixels, top_pixels, desired_width_, desired_height_));
-  }
-  // Pad (if that's what we want)
-  else {
+  } else {
+    // Pad (if that's what we want)
     output_image_cv.image =
       cv::Mat::zeros(desired_height_, desired_width_, input_image_cv_ptr->image.type());
     input_image_cv_ptr->image.copyTo(

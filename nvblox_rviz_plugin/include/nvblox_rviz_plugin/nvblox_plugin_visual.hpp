@@ -24,7 +24,7 @@
 
 #include <nvblox_msgs/msg/mesh.hpp>
 
-#include "nvblox_rviz_plugin/nvblox_hash_utils.h"
+#include "nvblox_rviz_plugin/nvblox_hash_utils.hpp"
 
 #include <rviz_common/properties/bool_property.hpp>
 #include <rviz_common/properties/enum_property.hpp>

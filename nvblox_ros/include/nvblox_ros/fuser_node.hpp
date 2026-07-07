@@ -32,6 +32,7 @@
 #include "nvblox/datasets/3dmatch.h"
 #include "nvblox/datasets/redwood.h"
 #include "nvblox/datasets/replica.h"
+#include "nvblox/fuser/fuser.h"
 
 #include "nvblox_ros/conversions/esdf_slice_conversions.hpp"
 #include "nvblox_ros/conversions/image_conversions.hpp"

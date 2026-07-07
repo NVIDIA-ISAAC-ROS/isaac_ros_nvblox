@@ -53,9 +53,9 @@ include_directories(include)
 # LIBRARIES #
 #############
 add_library(${PROJECT_NAME} SHARED
-  include/nvblox_rviz_plugin/nvblox_hash_utils.h
-  include/nvblox_rviz_plugin/nvblox_plugin_display.h
-  include/nvblox_rviz_plugin/nvblox_plugin_visual.h
+  include/nvblox_rviz_plugin/nvblox_hash_utils.hpp
+  include/nvblox_rviz_plugin/nvblox_plugin_display.hpp
+  include/nvblox_rviz_plugin/nvblox_plugin_visual.hpp
   src/nvblox_plugin_display.cpp
   src/nvblox_plugin_visual.cpp
 )

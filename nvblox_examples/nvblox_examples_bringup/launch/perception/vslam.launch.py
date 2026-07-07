@@ -17,11 +17,13 @@
 
 from typing import List
 
-from isaac_ros_launch_utils.all_types import *
 import isaac_ros_launch_utils as lu
+from launch import Action
+from launch import LaunchDescription
+from launch_ros.descriptions import ComposableNode
 
-from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxCamera
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME
+from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxCamera
 
 
 def add_vslam(args: lu.ArgumentContainer) -> List[Action]:
@@ -39,7 +41,7 @@ def add_vslam(args: lu.ArgumentContainer) -> List[Action]:
         ('visual_slam/imu', 'camera0/imu'),
     ]
 
-    # Base frame: 
+    # Base frame:
     # - camera0_link for single realsense,
     # - base_link for everything else (multi realsense)
     if camera is NvbloxCamera.realsense:

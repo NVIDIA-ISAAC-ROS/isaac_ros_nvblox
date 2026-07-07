@@ -49,6 +49,9 @@ endif()
 # Don't build the pytorch wrapper
 set(BUILD_PYTORCH_WRAPPER false)
 
+# The standalone fuser visualizer is unused in the ROS build.
+set(BUILD_RENDERER false)
+
 # Use system version of these dependencies to avoid conflicts
 set(USE_SYSTEM_GLOG true)
 set(USE_SYSTEM_GFLAGS true)
@@ -83,10 +86,10 @@ find_package(cv_bridge REQUIRED)
 find_package(nvblox_ros_common REQUIRED)
 find_package(isaac_ros_common REQUIRED)
 find_package(CUDAToolkit REQUIRED)
-find_package(isaac_ros_managed_nitros REQUIRED)
+find_package(isaac_ros_nitros REQUIRED)
 find_package(isaac_ros_nitros_image_type REQUIRED)
+find_package(message_filters REQUIRED)
 find_package(isaac_ros_nitros_camera_info_type REQUIRED)
-find_package(isaac_ros_gxf REQUIRED)
 
 #############
 # LIBRARIES #
@@ -113,7 +116,7 @@ add_library(${PROJECT_NAME}_lib SHARED
   src/lib/rosbag_reading.cpp
 )
 set_nvblox_compiler_options(${PROJECT_NAME}_lib)
-target_link_libraries(${PROJECT_NAME}_lib PUBLIC nvblox_lib nvblox_eigen nvblox_datasets pthread glog)
+target_link_libraries(${PROJECT_NAME}_lib PUBLIC nvblox_lib nvblox_eigen nvblox_datasets nvblox_fuser pthread glog)
 target_link_libraries(${PROJECT_NAME}_lib PRIVATE nvblox_gpu_hash nvblox_stdgpu)
 ament_target_dependencies(${PROJECT_NAME}_lib
   PUBLIC
@@ -133,10 +136,9 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   visualization_msgs
   cv_bridge
   nvblox_ros_common
-  isaac_ros_managed_nitros
+  isaac_ros_nitros
   isaac_ros_nitros_image_type
   isaac_ros_nitros_camera_info_type
-  isaac_ros_gxf
   isaac_ros_common
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC
@@ -193,7 +195,7 @@ install(
 
 # Install the library target.
 install(
-  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets
+  TARGETS ${PROJECT_NAME}_lib nvblox_lib nvblox_eigen nvblox_datasets nvblox_fuser
   EXPORT ${PROJECT_NAME}Targets
   LIBRARY DESTINATION lib
   ARCHIVE DESTINATION lib
@@ -280,8 +282,7 @@ ament_export_dependencies(
   libstatistics_collector
   visualization_msgs
   cv_bridge
-  isaac_ros_gxf
-  isaac_ros_managed_nitros
+  isaac_ros_nitros
   nvblox_ros_common
   nvblox_msgs
   std_srvs

@@ -18,7 +18,7 @@
 #include <rviz_common/frame_manager_iface.hpp>
 #include <rviz_common/visualization_manager.hpp>
 
-#include "nvblox_rviz_plugin/nvblox_plugin_display.h"
+#include "nvblox_rviz_plugin/nvblox_plugin_display.hpp"
 
 namespace nvblox_rviz_plugin
 {

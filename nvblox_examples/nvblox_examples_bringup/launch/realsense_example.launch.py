@@ -15,11 +15,17 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-from isaac_ros_launch_utils.all_types import *
 import isaac_ros_launch_utils as lu
+from launch import LaunchDescription
+from launch.conditions import IfCondition
+from launch.conditions import UnlessCondition
+from launch.substitutions import OrSubstitution
+from launch.substitutions import PythonExpression
+from launch_ros.actions import SetParameter
 
-from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxMode, NvbloxCamera, NvbloxPeopleSegmentation
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME
+from nvblox_ros_python_utils.nvblox_launch_utils import (
+    NvbloxCamera, NvbloxMode, NvbloxPeopleSegmentation)
 
 
 def generate_launch_description() -> LaunchDescription:
@@ -39,7 +45,8 @@ def generate_launch_description() -> LaunchDescription:
         'multicam_urdf_path',
         lu.get_path('nvblox_examples_bringup',
                     'config/urdf/4_realsense_carter_example_calibration.urdf.xacro'),
-        description='Path to a URDF file describing the camera rig extrinsics. Only used in multicam.',
+        description=(
+            'Path to a URDF file describing the camera rig extrinsics. Only used in multicam.'),
         cli=True)
     args.add_arg(
         'mode',
@@ -54,7 +61,8 @@ def generate_launch_description() -> LaunchDescription:
             str(NvbloxPeopleSegmentation.peoplesemsegnet_vanilla),
             str(NvbloxPeopleSegmentation.peoplesemsegnet_shuffleseg)
         ],
-        description='The  model type of PeopleSemSegNet (only used when mode:=people_segmentation).',
+        description=(
+            'The model type of PeopleSemSegNet (only used when mode:=people_segmentation).'),
         cli=True)
     args.add_arg(
         'attach_to_container',
@@ -123,7 +131,7 @@ def generate_launch_description() -> LaunchDescription:
     # People detection for multi-RS
     camera_namespaces = ['camera0', 'camera1', 'camera2', 'camera3']
     camera_input_topics = []
-    input_camera_info_topics= []
+    input_camera_info_topics = []
     output_resized_image_topics = []
     output_resized_camera_info_topics = []
     for ns in camera_namespaces:

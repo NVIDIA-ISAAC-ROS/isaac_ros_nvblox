@@ -25,6 +25,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_msgs/msg/float32_multi_array.hpp>
 
 #include <nvblox_msgs/srv/esdf_and_gradients.hpp>
@@ -82,6 +83,22 @@ protected:
 std::vector<BoundingShape> getShapesToClear(
   const std::shared_ptr<nvblox_msgs::srv::EsdfAndGradients::Request> request,
   rclcpp::Logger logger);
+
+/// @brief Convert an EsdfAndGradients service response to a PointCloud2 message.
+///
+/// Each observed voxel in the ESDF grid becomes a point whose position is the
+/// voxel center and whose intensity is the signed distance value. Voxels whose
+/// distance equals the unobserved sentinel (within a small epsilon) are skipped.
+///
+/// @param response The EsdfAndGradients service response.
+/// @param unobserved_value The sentinel value used for unobserved voxels.
+/// @param expect_all_observed If true, assert that no voxel has the sentinel
+///        value.
+/// @return A PointCloud2 message with XYZI fields.
+sensor_msgs::msg::PointCloud2 esdfResponseToPointcloud2Msg(
+  const nvblox_msgs::srv::EsdfAndGradients::Response & response,
+  float unobserved_value,
+  bool expect_all_observed = false);
 
 }  // namespace conversions
 }  // namespace nvblox

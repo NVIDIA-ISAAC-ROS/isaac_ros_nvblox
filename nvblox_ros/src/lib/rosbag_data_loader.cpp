@@ -187,7 +187,7 @@ datasets::DataLoadResult RosDataLoader::loadNext(
   Camera color_camera;
   auto load_result = loadNext(
     depth_frame_ptr, T_L_C_ptr, camera_ptr, color_frame_ptr,
-    &T_L_color, &color_camera, nullptr, nullptr, nullptr);
+    &T_L_color, &color_camera, nullptr, nullptr, nullptr, nullptr, nullptr);
 
   if (load_result == datasets::DataLoadResult::kSuccess) {
     constexpr float kTranslationToleranceM = 0.001f;
@@ -211,7 +211,9 @@ DataLoadResult RosDataLoader::loadNext(
   Camera * color_camera_ptr,      // NOLINT
   Time *,                          // NOLINT
   Transform *,                     // NOLINT
-  Time *)                          // NOLINT
+  Time *,                          // NOLINT
+  MonoImage *,                     // NOLINT
+  MonoImage *)                     // NOLINT
 {
   CHECK(setup_success_) << "The RosDataLoader did not construct in a valid state. Likely missing "
     "messages on (at least) one topic.";

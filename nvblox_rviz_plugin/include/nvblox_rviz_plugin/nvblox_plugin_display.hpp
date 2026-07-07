@@ -27,7 +27,7 @@
 #include <nvblox_msgs/msg/mesh.hpp>
 #include <nvblox_msgs/msg/voxel_block_layer.hpp>
 
-#include "nvblox_rviz_plugin/nvblox_plugin_visual.h"
+#include "nvblox_rviz_plugin/nvblox_plugin_visual.hpp"
 
 namespace nvblox_rviz_plugin
 {

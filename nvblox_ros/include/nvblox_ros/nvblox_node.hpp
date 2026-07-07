@@ -64,12 +64,8 @@
 #include "nvblox_ros/node_params.hpp"
 #include "nvblox_ros/service_request_task.hpp"
 
-#include "isaac_ros_managed_nitros/managed_nitros_message_filters_subscriber.hpp"
-#include "isaac_ros_managed_nitros/managed_nitros_publisher.hpp"
-#include "isaac_ros_managed_nitros/managed_nitros_subscriber.hpp"
-#include "isaac_ros_nitros_camera_info_type/nitros_camera_info.hpp"
+#include "isaac_ros_nitros/types/nitros_type_message_filter_traits.hpp"
 #include "isaac_ros_nitros_image_type/nitros_image.hpp"
-#include "isaac_ros_nitros_image_type/nitros_image_view.hpp"
 
 namespace nvblox
 {
@@ -121,20 +117,20 @@ public:
 
   // Callback functions. These just stick images in a queue.
   void depthPlusMaskImageCallback(
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+    const NitrosViewPtr & depth_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info,
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+    const NitrosViewPtr & seg_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info);
   void depthImageCallback(
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & depth_image,
+    const NitrosViewPtr & depth_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & depth_camera_info);
   void colorPlusMaskImageCallback(
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+    const NitrosViewPtr & color_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info,
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & seg_image,
+    const NitrosViewPtr & seg_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & seg_camera_info);
   void colorImageCallback(
-    const nvidia::isaac_ros::nitros::NitrosImage::ConstSharedPtr & color_image,
+    const NitrosViewPtr & color_image,
     const sensor_msgs::msg::CameraInfo::ConstSharedPtr & color_camera_info);
   void pointcloudCallback(
     const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud);
@@ -333,15 +329,15 @@ protected:
 
 
   /// Image + info subscribers
-  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  std::vector<std::shared_ptr<::message_filters::Subscriber<NitrosView>>>
   depth_image_subs_;
   std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
   depth_camera_info_subs_;
-  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  std::vector<std::shared_ptr<::message_filters::Subscriber<NitrosView>>>
   color_image_subs_;
   std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
   color_camera_info_subs_;
-  std::vector<std::shared_ptr<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>>
+  std::vector<std::shared_ptr<::message_filters::Subscriber<NitrosView>>>
   segmentation_image_subs_;
   std::vector<std::shared_ptr<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>>
   segmentation_camera_info_subs_;
@@ -420,6 +416,8 @@ protected:
     tsdf_zero_crossings_pointcloud_publisher_;
   rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr
     lidar_image_publisher_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr
+    esdf_service_pointcloud_publisher_;
 
   // Services.
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;

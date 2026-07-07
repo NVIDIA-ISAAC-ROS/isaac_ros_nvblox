@@ -15,17 +15,20 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-#ifndef NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_HPP_
-#define NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_HPP_
+#ifndef NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_NODE_HPP_
+#define NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_NODE_HPP_
 
 #include <map>
+#include <string>
+#include <tuple>
 #include <vector>
 
 #include <rclcpp/rclcpp.hpp>
 #include <nvblox_msgs/msg/mesh_serialized.hpp>
 #include <nvblox_msgs/msg/mesh.hpp>
 
-namespace nvidia::nvblox {
+namespace nvidia::nvblox
+{
 
 // This node is used to convert Mesh messages into a MeshSerialized message.
 // When a new message comes in, it updates the list of block and outputs a new MeshSerialized
@@ -39,7 +42,8 @@ public:
 
 protected:
   // Helper structure to store the information about a specific block of the Mesh messages.
-  struct Block {
+  struct Block
+  {
     std::vector<float> vertices;
     std::vector<float> colors;
     std::vector<int> triangles;
@@ -48,7 +52,7 @@ protected:
   };
 
   // Callback for when a new message is received
-  void messageCallback(const nvblox_msgs::msg::Mesh::ConstSharedPtr& msg);
+  void messageCallback(const nvblox_msgs::msg::Mesh::ConstSharedPtr & msg);
 
   // Publisher/Subscriber
   rclcpp::Publisher<nvblox_msgs::msg::MeshSerialized>::SharedPtr publisher_;
@@ -63,4 +67,4 @@ protected:
 
 }  // namespace nvidia::nvblox
 
-#endif  // NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_HPP_
+#endif  // NVBLOX_MESSAGE_ADAPTERS__NVBLOX_MESH_LAYER_ADAPTER_NODE_HPP_

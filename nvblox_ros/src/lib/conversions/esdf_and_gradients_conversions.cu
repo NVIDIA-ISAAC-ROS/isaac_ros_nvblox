@@ -16,6 +16,9 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "nvblox_ros/conversions/esdf_and_gradients_conversions.hpp"
 
+#include <cmath>
+#include <cstring>
+
 #include <nvblox/core/types.h>
 #include <nvblox/map/unified_3d_grid.h>
 #include <nvblox/map/voxels.h>
@@ -177,6 +180,75 @@ std::vector<BoundingShape> getShapesToClear(
                        "clearing the spheres.");
   }
   return shapes_to_clear;
+}
+
+sensor_msgs::msg::PointCloud2 esdfResponseToPointcloud2Msg(
+    const nvblox_msgs::srv::EsdfAndGradients::Response & response,
+    const float unobserved_value,
+    const bool expect_all_observed) {
+  const auto & grid_msg = response.esdf_and_gradients;
+  const int nx = grid_msg.layout.dim[0].size;
+  const int ny = grid_msg.layout.dim[1].size;
+  const int nz = grid_msg.layout.dim[2].size;
+  const float voxel_size = response.voxel_size_m;
+  const float origin_x = response.origin_m.x;
+  const float origin_y = response.origin_m.y;
+  const float origin_z = response.origin_m.z;
+
+  struct PointXYZI {
+    float x, y, z, intensity;
+  };
+  std::vector<PointXYZI> points;
+  points.reserve(grid_msg.data.size());
+  for (int ix = 0; ix < nx; ++ix) {
+    for (int iy = 0; iy < ny; ++iy) {
+      for (int iz = 0; iz < nz; ++iz) {
+        const int idx = ix * ny * nz + iy * nz + iz;
+        const float dist = grid_msg.data[idx];
+        constexpr float kEps = 1e-2f;
+        if (std::fabs(dist - unobserved_value) < kEps) {
+          NVBLOX_CHECK(!expect_all_observed,
+            "Voxel has unobserved sentinel value in ESDF grid");
+          continue;
+        }
+        PointXYZI pt;
+        pt.x = origin_x + (static_cast<float>(ix) + 0.5f) * voxel_size;
+        pt.y = origin_y + (static_cast<float>(iy) + 0.5f) * voxel_size;
+        pt.z = origin_z + (static_cast<float>(iz) + 0.5f) * voxel_size;
+        pt.intensity = dist;
+        points.push_back(pt);
+      }
+    }
+  }
+
+  sensor_msgs::msg::PointCloud2 pcl_msg;
+  pcl_msg.header = response.header;
+  pcl_msg.height = 1;
+  pcl_msg.width = static_cast<uint32_t>(points.size());
+  pcl_msg.point_step = sizeof(PointXYZI);
+  pcl_msg.row_step = pcl_msg.point_step * pcl_msg.width;
+  pcl_msg.is_dense = true;
+
+  sensor_msgs::msg::PointField field;
+  field.datatype = sensor_msgs::msg::PointField::FLOAT32;
+  field.count = 1;
+  field.name = "x";
+  field.offset = 0;
+  pcl_msg.fields.push_back(field);
+  field.name = "y";
+  field.offset = sizeof(float);
+  pcl_msg.fields.push_back(field);
+  field.name = "z";
+  field.offset = 2 * sizeof(float);
+  pcl_msg.fields.push_back(field);
+  field.name = "intensity";
+  field.offset = 3 * sizeof(float);
+  pcl_msg.fields.push_back(field);
+
+  pcl_msg.data.resize(points.size() * sizeof(PointXYZI));
+  std::memcpy(pcl_msg.data.data(), points.data(),
+    points.size() * sizeof(PointXYZI));
+  return pcl_msg;
 }
 
 }  // namespace conversions

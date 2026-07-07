@@ -17,14 +17,14 @@
 
 from typing import List
 
+import isaac_ros_launch_utils as lu
 from launch import Action, LaunchDescription
 from launch_ros.actions import ComposableNodeContainer
 from launch_ros.descriptions import ComposableNode
-import isaac_ros_launch_utils as lu
 
-from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxPeopleSegmentation
 from nvblox_ros_python_utils.nvblox_constants import NVBLOX_CONTAINER_NAME, \
-    SEMSEGNET_INPUT_IMAGE_WIDTH, SEMSEGNET_INPUT_IMAGE_HEIGHT
+    SEMSEGNET_INPUT_IMAGE_HEIGHT, SEMSEGNET_INPUT_IMAGE_WIDTH
+from nvblox_ros_python_utils.nvblox_launch_utils import NvbloxPeopleSegmentation
 
 
 def create_segmentation_pipeline(args: lu.ArgumentContainer,
@@ -224,10 +224,7 @@ def add_segmentation(args: lu.ArgumentContainer) -> List[Action]:
 
 
 def generate_launch_description() -> LaunchDescription:
-    '''
-    Launch the DNN Image encoder, Triton node and UNet decoder node,
-    with the padding and depadding nodes
-    '''
+    """Launch DNN Image encoder, Triton, UNet decoder, padding and depadding nodes."""
     args = lu.ArgumentContainer()
     args.add_arg('people_segmentation',
                  NvbloxPeopleSegmentation.peoplesemsegnet_vanilla,
