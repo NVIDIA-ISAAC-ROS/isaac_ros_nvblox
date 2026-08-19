@@ -21,7 +21,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>nvblox_ros</name>
-  <version>4.5.0</version>
+  <version>4.6.0</version>
   <description>NVBlox ROS 2 interface</description>
 
   <maintainer email="isaac-ros-maintainers@nvidia.com">Isaac ROS Maintainers</maintainer>
@@ -55,9 +55,7 @@
   <depend>nvblox_ros_common</depend>
   <depend>nvblox_ros_python_utils</depend>
   <depend>nvblox_rviz_plugin</depend>
-  <depend>isaac_ros_nitros</depend>
   <depend>isaac_ros_nitros_image_type</depend>
-  <depend>isaac_ros_nitros_camera_info_type</depend>
   <depend>isaac_ros_common</depend>
 
   <test_depend>ament_lint_auto</test_depend>

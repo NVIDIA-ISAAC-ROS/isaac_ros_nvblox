@@ -34,6 +34,7 @@
 
 #include "rviz_rendering/render_system.hpp"
 #include "rviz_rendering/resource_config.hpp"
+#include "rviz_common/properties/property.hpp"
 
 namespace nvblox_rviz_plugin
 {
@@ -43,15 +44,29 @@ NvbloxVisualParams::NvbloxVisualParams(rviz_common::_RosTopicDisplay * parent)
 {
   cut_ceiling_property_ = new rviz_common::properties::BoolProperty(
     "Cut Ceiling", false, "If set to true, will not visualize anything above a certain z value.",
-    nullptr, SLOT(updateCeilingOptions()), this);
+    nullptr);
 
 
   ceiling_height_property_ = new rviz_common::properties::FloatProperty(
     "Ceiling Height", 1.5, "Height above which the visualization will be cut off.", nullptr,
-    SLOT(updateCeilingOptions()), this);
+    nullptr);
 
   parent->addChild(cut_ceiling_property_);
   parent->addChild(ceiling_height_property_);
+
+  // Avoid SLOT macros so this class does not need Q_OBJECT/MOC output in Bazel builds.
+  cut_ceiling_connection_ = QObject::connect(
+    cut_ceiling_property_, &rviz_common::properties::Property::changed,
+    [this]() {updateCeilingOptions();});
+  ceiling_height_connection_ = QObject::connect(
+    ceiling_height_property_, &rviz_common::properties::Property::changed,
+    [this]() {updateCeilingOptions();});
+}
+
+NvbloxVisualParams::~NvbloxVisualParams()
+{
+  QObject::disconnect(cut_ceiling_connection_);
+  QObject::disconnect(ceiling_height_connection_);
 }
 
 void NvbloxVisualParams::updateCeilingOptions()
