@@ -89,7 +89,6 @@ find_package(CUDAToolkit REQUIRED)
 find_package(isaac_ros_nitros REQUIRED)
 find_package(isaac_ros_nitros_image_type REQUIRED)
 find_package(message_filters REQUIRED)
-find_package(isaac_ros_nitros_camera_info_type REQUIRED)
 
 #############
 # LIBRARIES #
@@ -138,7 +137,6 @@ ament_target_dependencies(${PROJECT_NAME}_lib
   nvblox_ros_common
   isaac_ros_nitros
   isaac_ros_nitros_image_type
-  isaac_ros_nitros_camera_info_type
   isaac_ros_common
 )
 target_include_directories(${PROJECT_NAME}_lib PUBLIC

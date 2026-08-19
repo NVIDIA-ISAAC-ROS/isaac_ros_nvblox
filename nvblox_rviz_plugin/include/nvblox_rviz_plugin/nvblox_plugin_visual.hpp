@@ -17,7 +17,7 @@
 
 #pragma once
 
-#include <QtCore/QObject>
+#include <QMetaObject>
 #include <OgreManualObject.h>
 #include <string>
 #include <memory>
@@ -34,24 +34,24 @@
 namespace nvblox_rviz_plugin
 {
 
-class NvbloxVisualParams : public QObject
+class NvbloxVisualParams
 {
-  Q_OBJECT
-
 public:
   explicit NvbloxVisualParams(rviz_common::_RosTopicDisplay * parent);
+  ~NvbloxVisualParams();
 
   float getCeilingHeight();
   bool getCutCeiling();
 
   bool paramsChanged();
 
-public Q_SLOTS:
-  virtual void updateCeilingOptions();
+  void updateCeilingOptions();
 
 private:
   rviz_common::properties::BoolProperty * cut_ceiling_property_ = nullptr;
   rviz_common::properties::FloatProperty * ceiling_height_property_ = nullptr;
+  QMetaObject::Connection cut_ceiling_connection_;
+  QMetaObject::Connection ceiling_height_connection_;
 
   bool params_changed_ = false;
 };

@@ -21,5 +21,6 @@ find_package(ament_cmake_auto REQUIRED)
 ament_auto_find_build_dependencies()
 
 install_isaac_ros_asset(quickstart)
+install(PROGRAMS asset_scripts/quickstart.sh DESTINATION lib/${PROJECT_NAME})
 
 ament_package()
