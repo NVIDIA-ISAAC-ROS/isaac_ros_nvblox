@@ -130,7 +130,7 @@ bool Transformer::lookupTransformTf(
 bool Transformer::lookupTransformQueue(const rclcpp::Time & timestamp, Transform * transform)
 {
   // Get latest transform
-  if (timestamp == rclcpp::Time(0)) {
+  if (timestamp == rclcpp::Time(0, 0, timestamp.get_clock_type())) {
     if (transform_queue_.empty()) {
       return false;
     }
