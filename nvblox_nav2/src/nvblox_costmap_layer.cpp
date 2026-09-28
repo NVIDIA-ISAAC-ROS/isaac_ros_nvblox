@@ -36,24 +36,30 @@ void NvbloxCostmapLayer::onInitialize()
   if (!node) {
     throw std::runtime_error{"Failed to lock node"};
   }
-  enabled_ = node->declare_parameter(name_ + "." + "enabled", true);
-  nav2_costmap_global_frame_ = node->declare_parameter(
-    name_ + "." + "nav2_costmap_global_frame",
-    nav2_costmap_global_frame_);
+  // declareParameter checks has_parameter, so a second configure does not throw.
+  declareParameter("enabled", rclcpp::ParameterValue(true));
+  declareParameter(
+    "nav2_costmap_global_frame", rclcpp::ParameterValue(nav2_costmap_global_frame_));
+  declareParameter(
+    "nvblox_map_slice_topic",
+    rclcpp::ParameterValue(std::string("/nvblox_node/static_map_slice")));
+  declareParameter(
+    "convert_to_binary_costmap", rclcpp::ParameterValue(convert_to_binary_costmap_));
+  declareParameter("max_obstacle_distance", rclcpp::ParameterValue(max_obstacle_distance_));
+  declareParameter("inflation_distance", rclcpp::ParameterValue(inflation_distance_));
+  declareParameter(
+    "max_cost_value", rclcpp::ParameterValue(static_cast<int>(max_cost_value_)));
 
-  // Get the path of the map slice topic.
-  std::string nvblox_map_slice_topic = "/nvblox_node/static_map_slice";
-
-  nvblox_map_slice_topic = node->declare_parameter<std::string>(
-    getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);
-  convert_to_binary_costmap_ = node->declare_parameter<bool>(
-    getFullName("convert_to_binary_costmap"), convert_to_binary_costmap_);
-  max_obstacle_distance_ =
-    node->declare_parameter<float>(getFullName("max_obstacle_distance"), max_obstacle_distance_);
-  inflation_distance_ =
-    node->declare_parameter<float>(getFullName("inflation_distance"), inflation_distance_);
-  max_cost_value_ =
-    node->declare_parameter<uint8_t>(getFullName("max_cost_value"), max_cost_value_);
+  node->get_parameter(getFullName("enabled"), enabled_);
+  node->get_parameter(getFullName("nav2_costmap_global_frame"), nav2_costmap_global_frame_);
+  std::string nvblox_map_slice_topic;
+  node->get_parameter(getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);
+  node->get_parameter(getFullName("convert_to_binary_costmap"), convert_to_binary_costmap_);
+  node->get_parameter(getFullName("max_obstacle_distance"), max_obstacle_distance_);
+  node->get_parameter(getFullName("inflation_distance"), inflation_distance_);
+  int max_cost_value = max_cost_value_;
+  node->get_parameter(getFullName("max_cost_value"), max_cost_value);
+  max_cost_value_ = static_cast<uint8_t>(max_cost_value);
 
   RCLCPP_INFO_STREAM(
     node->get_logger(),
