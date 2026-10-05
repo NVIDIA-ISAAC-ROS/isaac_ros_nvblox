@@ -251,10 +251,15 @@ void NvbloxNode::subscribeToTopics()
         std::make_shared<::message_filters::Subscriber<sensor_msgs::msg::CameraInfo>>(
           this, base_name_depth + "/camera_info", input_qos_profile));
 
-      depth_image_subs_.emplace_back(
-        std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>(
-          this, base_name_depth + "/image",
-          input_qos_profile));
+      auto depth_image_sub = std::make_shared<nvidia::isaac_ros::nitros::message_filters::Subscriber<NitrosView>>();
+
+      depth_image_sub->subscribe(this,
+                                 base_name_depth + "/image",
+                                 input_qos_profile,
+                                 rclcpp::SubscriptionOptions(),
+                                 "nitros_image_32FC1");
+
+      depth_image_subs_.emplace_back(std::move(depth_image_sub));
       if (params_.use_segmentation) {
         const std::string base_name_seg_depth(kSegTopicBaseNames[i]);
         segmentation_camera_info_subs_.emplace_back(
