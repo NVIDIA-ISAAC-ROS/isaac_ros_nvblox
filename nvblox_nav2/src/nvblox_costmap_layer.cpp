@@ -17,11 +17,15 @@
 
 #include "nvblox_nav2/nvblox_costmap_layer.hpp"
 
+#include <functional>
 #include <string>
+#include <vector>
 
 #include <nav2_costmap_2d/costmap_math.hpp>
 #include <nav2_costmap_2d/footprint.hpp>
 #include <rclcpp/parameter_events_filter.hpp>
+
+using rcl_interfaces::msg::ParameterType;
 
 namespace nvblox
 {
@@ -29,6 +33,15 @@ namespace nav2
 {
 
 NvbloxCostmapLayer::NvbloxCostmapLayer() {}
+
+NvbloxCostmapLayer::~NvbloxCostmapLayer()
+{
+  auto node = node_.lock();
+  if (dyn_params_handler_ && node) {
+    node->remove_on_set_parameters_callback(dyn_params_handler_.get());
+  }
+  dyn_params_handler_.reset();
+}
 
 void NvbloxCostmapLayer::onInitialize()
 {
@@ -71,6 +84,49 @@ void NvbloxCostmapLayer::onInitialize()
   T_G_S_ = Eigen::Isometry2f::Identity();
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node->get_clock());
   transform_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+
+  dyn_params_handler_ = node->add_on_set_parameters_callback(
+    [this](const std::vector<rclcpp::Parameter> & parameters) {
+      rcl_interfaces::msg::SetParametersResult result;
+      for (const auto & parameter : parameters) {
+        const auto & param_type = parameter.get_type();
+        const auto & param_name = parameter.get_name();
+        if (param_name.find(name_ + ".") != 0) {
+          continue;
+        }
+
+        if (param_type == ParameterType::PARAMETER_BOOL) {
+          if (param_name == name_ + "." + "enabled" && enabled_ != parameter.as_bool()) {
+            enabled_ = parameter.as_bool();
+            current_ = false;
+          } else if (param_name == name_ + "." + "convert_to_binary_costmap" &&
+            convert_to_binary_costmap_ != parameter.as_bool())
+          {
+            convert_to_binary_costmap_ = parameter.as_bool();
+            current_ = false;
+          }
+        } else if (param_type == ParameterType::PARAMETER_DOUBLE) {
+          if (param_name == name_ + "." + "max_obstacle_distance") {
+            max_obstacle_distance_ = static_cast<float>(parameter.as_double());
+            current_ = false;
+          } else if (param_name == name_ + "." + "inflation_distance") {
+            inflation_distance_ = static_cast<float>(parameter.as_double());
+            current_ = false;
+          }
+        } else if (param_type == ParameterType::PARAMETER_INTEGER) {
+          if (param_name == name_ + "." + "max_cost_value") {
+            max_cost_value_ = static_cast<uint8_t>(parameter.as_int());
+            current_ = false;
+          }
+        } else if (param_type == ParameterType::PARAMETER_STRING) {
+          if (param_name == name_ + "." + "nav2_costmap_global_frame") {
+            nav2_costmap_global_frame_ = parameter.as_string();
+          }
+        }
+      }
+      result.successful = true;
+      return result;
+    });
 
   current_ = true;
 }

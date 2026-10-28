@@ -39,6 +39,7 @@ class NvbloxCostmapLayer : public nav2_costmap_2d::CostmapLayer
 {
 public:
   NvbloxCostmapLayer();
+  ~NvbloxCostmapLayer();
 
   void onInitialize() override;
   void updateBounds(
@@ -80,6 +81,8 @@ private:
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> transform_listener_;
   Eigen::Isometry2f T_G_S_;
+
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr dyn_params_handler_;
 };
 
 }  // namespace nav2
