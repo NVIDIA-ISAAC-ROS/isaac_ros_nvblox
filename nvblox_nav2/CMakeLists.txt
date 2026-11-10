@@ -65,8 +65,6 @@ endif()
 
 # Install the plugin
 pluginlib_export_plugin_description_file(nav2_costmap_2d nvblox_costmap_layer.xml)
-# This ROS distro drops ament_target_dependencies; link the modern imported
-# targets directly.
 target_link_libraries(${lib_name}
   rclcpp::rclcpp
   nav2_costmap_2d::nav2_costmap_2d_core
