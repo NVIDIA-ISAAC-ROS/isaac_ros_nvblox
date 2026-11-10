@@ -23,12 +23,14 @@
 #include <tf2_ros/transform_listener.h>
 #include <string>
 #include <memory>
+#include <mutex>
 #include <nav2_costmap_2d/costmap_layer.hpp>
 #include <nav2_costmap_2d/layer.hpp>
 #include <nav2_costmap_2d/layered_costmap.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <nvblox_msgs/msg/distance_map_slice.hpp>
+#include <nvblox_msgs/srv/clear_map.hpp>
 
 namespace nvblox
 {
@@ -49,14 +51,18 @@ public:
     nav2_costmap_2d::Costmap2D & master_grid, int min_i,
     int min_j, int max_i, int max_j) override;
 
-  void reset() override {}
+  void reset() override;
   bool isClearable() override {return true;}
+  void clearArea(int start_x, int start_y, int end_x, int end_y, bool invert) override;
 
   void sliceCallback(
     const nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice);
 
 private:
   bool lookupInSlice(const Eigen::Vector2f & pos, float * distance);
+
+  // Asks nvblox to clear its map and drops the current slice until nvblox confirms.
+  void requestClear(uint8_t mode, double center_x, double center_y, double size);
 
   // Settings
   bool convert_to_binary_costmap_ = false;
@@ -69,8 +75,17 @@ private:
   rclcpp::Subscription<nvblox_msgs::msg::DistanceMapSlice>::SharedPtr
     slice_sub_;
 
+  rclcpp::Client<nvblox_msgs::srv::ClearMap>::SharedPtr clear_map_client_;
+
   // State
   nvblox_msgs::msg::DistanceMapSlice::ConstSharedPtr slice_;
+
+  // Slices received while a clear request is pending predate the clear, so they are dropped.
+  int pending_clears_ = 0;
+  rclcpp::Time last_clear_request_time_;
+  // Guards slice_ and the pending clear state, which the costmap update thread,
+  // the subscription and the clear service callbacks all touch.
+  std::mutex slice_mutex_;
 
   // Global frame of the nav2 costmap.
   // This should match with the global_frame of the corresponding global_costmap/local_costmap.
