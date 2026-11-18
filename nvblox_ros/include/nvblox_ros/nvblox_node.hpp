@@ -52,6 +52,7 @@
 
 #include <nvblox_msgs/srv/file_path.hpp>
 #include <nvblox_msgs/srv/esdf_and_gradients.hpp>
+#include <nvblox_msgs/srv/clear_map.hpp>
 
 #include "nvblox_ros/layer_publishing.hpp"
 #include "nvblox_ros/conversions/image_conversions.hpp"
@@ -143,6 +144,9 @@ public:
   void loadMap(
     const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
     std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
+  void clearMap(
+    const std::shared_ptr<nvblox_msgs::srv::ClearMap::Request> request,
+    std::shared_ptr<nvblox_msgs::srv::ClearMap::Response> response);
   void saveRates(
     const std::shared_ptr<nvblox_msgs::srv::FilePath::Request> request,
     std::shared_ptr<nvblox_msgs::srv::FilePath::Response> response);
@@ -422,6 +426,7 @@ protected:
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_ply_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_map_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr load_map_service_;
+  rclcpp::Service<nvblox_msgs::srv::ClearMap>::SharedPtr clear_map_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_rates_service_;
   rclcpp::Service<nvblox_msgs::srv::FilePath>::SharedPtr save_timings_service_;
   rclcpp::Service<nvblox_msgs::srv::EsdfAndGradients>::SharedPtr send_esdf_and_gradient_service_;
@@ -498,11 +503,14 @@ protected:
       nvblox_msgs::srv::EsdfAndGradients>>;
   using FilePathServiceQueuedType = std::shared_ptr<ServiceRequestTask<NvbloxNode,
       nvblox_msgs::srv::FilePath>>;
+  using ClearMapServiceQueuedType = std::shared_ptr<ServiceRequestTask<NvbloxNode,
+      nvblox_msgs::srv::ClearMap>>;
 
   // Input queues. Unique pointers are used to enable more flexibility when deallocating.
   std::unique_ptr<std::list<sensor_msgs::msg::PointCloud2::ConstSharedPtr>> pointcloud_queue_;
   std::unique_ptr<std::list<EsdfServiceQueuedType>> esdf_service_queue_;
   std::unique_ptr<std::list<FilePathServiceQueuedType>> file_path_service_queue_;
+  std::unique_ptr<std::list<ClearMapServiceQueuedType>> clear_map_service_queue_;
   std::unique_ptr<std::list<ImageTypeVariant>> depth_image_queue_;
   std::unique_ptr<std::list<ImageTypeVariant>>
   color_image_queue_;
@@ -513,6 +521,7 @@ protected:
   static constexpr char kPointcloudQueueName[] = "pointcloud_queue";
   static constexpr char kFilePathServiceQueueName[] = "file_path_service_queue";
   static constexpr char kEsdfServiceQueueName[] = "esdf_service_queue";
+  static constexpr char kClearMapServiceQueueName[] = "clear_map_service_queue";
 
   // Input queue mutexes.
   std::mutex depth_queue_mutex_;
@@ -522,6 +531,7 @@ protected:
   std::mutex pointcloud_queue_mutex_;
   std::mutex esdf_service_queue_mutex_;
   std::mutex file_path_service_queue_mutex_;
+  std::mutex clear_map_service_queue_mutex_;
 
   // Counts the number of messages dropped from the input queues.
   // Maps the input queue to the number of messages that have been dropped.

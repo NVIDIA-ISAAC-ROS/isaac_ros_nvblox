@@ -47,6 +47,7 @@ find_package(geometry_msgs REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/FilePath.srv"
   "srv/EsdfAndGradients.srv"
+  "srv/ClearMap.srv"
   "msg/SemanticLabelsStamped.msg"
   "msg/MeshBlock.msg"
   "msg/Mesh.msg"

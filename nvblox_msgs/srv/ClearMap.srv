@@ -1,0 +1,19 @@
+# Service for clearing the static reconstruction, fully or around a square region.
+
+uint8 CLEAR_ALL=0
+uint8 CLEAR_INSIDE=1
+uint8 CLEAR_OUTSIDE=2
+
+# One of the CLEAR_* constants above.
+uint8 mode
+
+# The frame that the center below is defined in. Unused for CLEAR_ALL.
+string frame_id
+
+# Center of the region. Only x and y are used: the region spans all heights.
+geometry_msgs/Point center
+
+# Side length of the axis-aligned square region, in meters. Unused for CLEAR_ALL.
+float32 size
+---
+bool success

@@ -46,6 +46,8 @@ void NvbloxCostmapLayer::onInitialize()
 
   nvblox_map_slice_topic = node->declare_parameter<std::string>(
     getFullName("nvblox_map_slice_topic"), nvblox_map_slice_topic);
+  const std::string nvblox_clear_map_service = node->declare_parameter<std::string>(
+    getFullName("nvblox_clear_map_service"), "/nvblox_node/clear_map");
   convert_to_binary_costmap_ = node->declare_parameter<bool>(
     getFullName("convert_to_binary_costmap"), convert_to_binary_costmap_);
   max_obstacle_distance_ =
@@ -67,6 +69,13 @@ void NvbloxCostmapLayer::onInitialize()
     std::bind(&NvbloxCostmapLayer::sliceCallback, this, std::placeholders::_1),
     rclcpp::QoS(1));
 
+  // The free function yields a plain rclcpp client on every ROS distro, whatever the node type.
+  clear_map_client_ = rclcpp::create_client<nvblox_msgs::srv::ClearMap>(
+    node->get_node_base_interface(), node->get_node_graph_interface(),
+    node->get_node_services_interface(), nvblox_clear_map_service, rclcpp::ServicesQoS(),
+    nullptr);
+  last_clear_request_time_ = node->now();
+
   // Init transform and listener.
   T_G_S_ = Eigen::Isometry2f::Identity();
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(node->get_clock());
@@ -85,6 +94,7 @@ void NvbloxCostmapLayer::updateBounds(
   // upstream controller.
   // According to nav2 the bounds can only grow bigger. So we only update the
   // bounds if it grows bigger or we keep the old values
+  std::lock_guard<std::mutex> lock(slice_mutex_);
   if (slice_ != nullptr) {
     double current_plugin_min_x = slice_->origin.x;
     double current_plugin_min_y = slice_->origin.y;
@@ -160,6 +170,7 @@ void NvbloxCostmapLayer::updateCosts(
   // We'll just directly write to the costmap layer.
   setDefaultValue(nav2_costmap_2d::NO_INFORMATION);
   matchSize();
+  std::lock_guard<std::mutex> lock(slice_mutex_);
   uint8_t * costmap_array = getCharMap();
   unsigned int size_x = getSizeInCellsX(), size_y = getSizeInCellsY();
 
@@ -293,7 +304,81 @@ void NvbloxCostmapLayer::sliceCallback(
   }
 
   RCLCPP_DEBUG(node->get_logger(), "Slice callback.");
+  std::lock_guard<std::mutex> lock(slice_mutex_);
+  if (pending_clears_ > 0) {
+    // Without a timeout, a lost response would freeze the layer forever.
+    constexpr double kClearTimeoutSec = 2.0;
+    if ((node->now() - last_clear_request_time_).seconds() < kClearTimeoutSec) {
+      return;
+    }
+    RCLCPP_WARN(
+      node->get_logger(),
+      "[NvbloxCostmapLayer] No response to the clear map request; accepting new slices");
+    pending_clears_ = 0;
+  }
   slice_ = slice;
+}
+
+void NvbloxCostmapLayer::reset()
+{
+  requestClear(nvblox_msgs::srv::ClearMap::Request::CLEAR_ALL, 0.0, 0.0, 0.0);
+  resetMaps();
+  current_ = false;
+}
+
+void NvbloxCostmapLayer::clearArea(int start_x, int start_y, int end_x, int end_y, bool invert)
+{
+  const double resolution = getResolution();
+  const double center_x = getOriginX() + 0.5 * (start_x + end_x) * resolution;
+  const double center_y = getOriginY() + 0.5 * (start_y + end_y) * resolution;
+  const double size = std::max(end_x - start_x, end_y - start_y) * resolution;
+  requestClear(
+    invert ? nvblox_msgs::srv::ClearMap::Request::CLEAR_OUTSIDE :
+    nvblox_msgs::srv::ClearMap::Request::CLEAR_INSIDE,
+    center_x, center_y, size);
+  CostmapLayer::clearArea(start_x, start_y, end_x, end_y, invert);
+}
+
+void NvbloxCostmapLayer::requestClear(
+  uint8_t mode, double center_x, double center_y,
+  double size)
+{
+  auto node = node_.lock();
+  if (!node) {
+    throw std::runtime_error{"Failed to lock node"};
+  }
+
+  // The map is gone either way, so the layer stays empty until nvblox publishes a fresh slice.
+  std::lock_guard<std::mutex> lock(slice_mutex_);
+  slice_ = nullptr;
+
+  if (!clear_map_client_->service_is_ready()) {
+    RCLCPP_WARN_STREAM(
+      node->get_logger(), "[NvbloxCostmapLayer] Service "
+        << clear_map_client_->get_service_name() << " not available; nvblox map not cleared");
+    return;
+  }
+
+  auto request = std::make_shared<nvblox_msgs::srv::ClearMap::Request>();
+  request->mode = mode;
+  request->frame_id = layered_costmap_->getGlobalFrameID();
+  request->center.x = center_x;
+  request->center.y = center_y;
+  request->size = static_cast<float>(size);
+
+  ++pending_clears_;
+  last_clear_request_time_ = node->now();
+  // Nav2 calls this with the costmap locked, so the response is handled asynchronously.
+  clear_map_client_->async_send_request(
+    request,
+    [this, logger = node->get_logger()](
+      rclcpp::Client<nvblox_msgs::srv::ClearMap>::SharedFuture future) {
+      if (!future.get()->success) {
+        RCLCPP_WARN(logger, "[NvbloxCostmapLayer] nvblox failed to clear its map");
+      }
+      std::lock_guard<std::mutex> lock(slice_mutex_);
+      pending_clears_ = std::max(0, pending_clears_ - 1);
+    });
 }
 
 bool NvbloxCostmapLayer::lookupInSlice(const Eigen::Vector2f & pos, float * distance)

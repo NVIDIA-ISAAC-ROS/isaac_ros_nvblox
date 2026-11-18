@@ -43,13 +43,7 @@ find_package(rclcpp REQUIRED)
 find_package(nav2_costmap_2d REQUIRED)
 find_package(pluginlib REQUIRED)
 find_package(nvblox_msgs REQUIRED)
-
-set(dep_pkgs
-    rclcpp
-    nav2_costmap_2d
-    pluginlib
-    nvblox_msgs
-)
+find_package(tf2_ros REQUIRED)
 
 # === Build ===
 
@@ -71,6 +65,12 @@ endif()
 
 # Install the plugin
 pluginlib_export_plugin_description_file(nav2_costmap_2d nvblox_costmap_layer.xml)
-ament_target_dependencies(${lib_name} ${dep_pkgs})
+target_link_libraries(${lib_name}
+  rclcpp::rclcpp
+  nav2_costmap_2d::nav2_costmap_2d_core
+  pluginlib::pluginlib
+  tf2_ros::tf2_ros
+  ${nvblox_msgs_TARGETS}
+)
 
 ament_package()

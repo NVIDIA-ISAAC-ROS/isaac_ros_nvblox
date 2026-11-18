@@ -219,6 +219,7 @@ void NvbloxNode::subscribeToTopics()
   pointcloud_queue_ = std::make_unique<std::list<sensor_msgs::msg::PointCloud2::ConstSharedPtr>>();
   esdf_service_queue_ = std::make_unique<std::list<EsdfServiceQueuedType>>();
   file_path_service_queue_ = std::make_unique<std::list<FilePathServiceQueuedType>>();
+  clear_map_service_queue_ = std::make_unique<std::list<ClearMapServiceQueuedType>>();
 
   constexpr int kQueueSize = 10;
 
@@ -437,6 +438,10 @@ void NvbloxNode::advertiseServices()
   load_map_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/load_map",
     std::bind(&NvbloxNode::loadMap, this, std::placeholders::_1, std::placeholders::_2),
+    rclcpp::ServicesQoS());
+  clear_map_service_ = create_service<nvblox_msgs::srv::ClearMap>(
+    "~/clear_map",
+    std::bind(&NvbloxNode::clearMap, this, std::placeholders::_1, std::placeholders::_2),
     rclcpp::ServicesQoS());
   save_rates_service_ = create_service<nvblox_msgs::srv::FilePath>(
     "~/save_rates",
@@ -749,6 +754,11 @@ void NvbloxNode::processServiceRequestTaskQueue()
   processQueue<FilePathServiceQueuedType>(
     file_path_service_queue_,
     &file_path_service_queue_mutex_,
+    service_ready,
+    task);
+  processQueue<ClearMapServiceQueuedType>(
+    clear_map_service_queue_,
+    &clear_map_service_queue_mutex_,
     service_ready,
     task);
   // If a service requested visualization, publish right now.
@@ -1706,6 +1716,81 @@ void NvbloxNode::loadMap(
   pushOntoQueue(
     kFilePathServiceQueueName, task, file_path_service_queue_,
     &esdf_service_queue_mutex_);
+  task->waitForTaskCompletion();
+}
+
+void NvbloxNode::clearMap(
+  const std::shared_ptr<nvblox_msgs::srv::ClearMap::Request> request,
+  std::shared_ptr<nvblox_msgs::srv::ClearMap::Response> response)
+{
+  // Define the task function
+  TaskFunctionType<NvbloxNode, nvblox_msgs::srv::ClearMap> request_task =
+    [](auto node, auto service_request, auto service_response) {
+      using ClearMap = nvblox_msgs::srv::ClearMap::Request;
+      service_response->success = false;
+
+      if (service_request->mode == ClearMap::CLEAR_ALL) {
+        // Every block lies at a non-negative distance, so a negative keep-radius clears them all.
+        node->static_mapper_->clearOutsideRadius(Vector3f::Zero(), -1.F);
+        RCLCPP_INFO(node->get_logger(), "Cleared the entire map");
+        service_response->success = true;
+        return true;
+      }
+
+      if (service_request->mode != ClearMap::CLEAR_INSIDE &&
+        service_request->mode != ClearMap::CLEAR_OUTSIDE)
+      {
+        RCLCPP_WARN_STREAM(
+          node->get_logger(), "Invalid clear map mode: " << int(service_request->mode));
+        return false;
+      }
+      if (service_request->size <= 0.F) {
+        RCLCPP_WARN_STREAM(
+          node->get_logger(), "Invalid clear map region size: " << service_request->size);
+        return false;
+      }
+
+      Transform T_L_R;  // R = request frame
+      if (!node->transformer_.lookupTransformToGlobalFrame(
+          service_request->frame_id, rclcpp::Time(0), &T_L_R))
+      {
+        RCLCPP_WARN_STREAM(
+          node->get_logger(), "Can't clear the map: no transform from "
+            << service_request->frame_id << " to the global frame");
+        return false;
+      }
+      const Vector3f center = T_L_R * Vector3f(
+        service_request->center.x, service_request->center.y, service_request->center.z);
+      const float half_size = service_request->size / 2.F;
+
+      if (service_request->mode == ClearMap::CLEAR_INSIDE) {
+        constexpr float kMaxHeight = std::numeric_limits<float>::max();
+        const AxisAlignedBoundingBox aabb(
+          Vector3f(center.x() - half_size, center.y() - half_size, -kMaxHeight),
+          Vector3f(center.x() + half_size, center.y() + half_size, kMaxHeight));
+        node->static_mapper_->clearTsdfInsideShapes({BoundingShape(aabb)});
+      } else {
+        // The keep-sphere encloses the square, so nothing inside the square is cleared.
+        node->static_mapper_->clearOutsideRadius(center, half_size * std::sqrt(2.F));
+      }
+      RCLCPP_INFO_STREAM(
+        node->get_logger(), "Cleared the map "
+          << (service_request->mode == ClearMap::CLEAR_INSIDE ? "inside" : "outside")
+          << " a " << service_request->size << " m square around ("
+          << center.x() << ", " << center.y() << ")");
+      service_response->success = true;
+      return true;
+    };
+
+  // Create the ServiceRequestTask
+  auto task =
+    std::make_shared<ServiceRequestTask<NvbloxNode, nvblox_msgs::srv::ClearMap>>(
+    request_task, this, request, response);
+
+  // Push the task onto the queue and wait for completion.
+  pushOntoQueue(
+    kClearMapServiceQueueName, task, clear_map_service_queue_,
+    &clear_map_service_queue_mutex_);
   task->waitForTaskCompletion();
 }
 
